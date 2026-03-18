@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.2.0] — 2026-03-18
+
+### Added
+- `node` audit category: 5 new patterns covering `console.log` in production, synchronous fs operations (event loop blocking), unhandled callback errors, `process.exit()` without cleanup, plain HTTP fetch
+- 6 new security patterns: SQL injection via template literals (OWASP A03), command injection in child_process, SSRF via user-controlled fetch URLs, path traversal in fs functions, `NEXT_PUBLIC_` secret exposure, implied eval in setTimeout/setInterval
+- 4 new accessibility patterns: `role="button"` on non-button elements (WCAG 2.1.1), `href="#"` / `href="javascript:"` placeholder links, missing `lang` attribute on `<html>`, `prefers-reduced-motion` not respected
+- 4 new React patterns: conditional hook call detection (Rules of Hooks violation), component called as plain function, side effects at render scope, inline object/array props causing re-renders
+- 3 new layout patterns: CSS `@import` chain detection, render-blocking `<script>` without async/defer, `document.querySelector` in React
+- 4 new TypeScript patterns: `@ts-ignore` suppressor, floating Promises (no-floating-promises), `require()` instead of import, double assertion (`as unknown as T`)
+- 3 new Next.js patterns: `middleware.ts` not renamed to `proxy.ts` (Next.js 16), page missing metadata export, `fetchpriority` missing on LCP image
+- Block comment map: lines inside `/* */` blocks are skipped to reduce false positives
+- Test file skip: `.test.`, `.spec.`, `.d.ts`, `__tests__/`, `.stories.` files are excluded from audit
+- Extended `AuditPattern.test()` signature: now receives `lines[]` and `lineIndex` for context-aware multi-line checks
+- Updated `fetchBestPractice()` with direct routes to typescript-eslint.io/rules, OWASP Node.js Cheat Sheet, web.dev/articles/optimize-lcp, and react.dev/reference/rules
+
+### Changed
+- Audit categories enum extended: `"node"` added alongside existing 7 categories
+- Tool description updated to reflect 8 categories and 50+ patterns
+- README rewritten with full pattern tables, example output, and fetch chain documentation
+
 ## [1.1.0] — 2026-03-18
 
 ### Added
