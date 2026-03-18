@@ -1,5 +1,5 @@
 export const SERVER_NAME = "ws-mcp-server";
-export const SERVER_VERSION = "1.9.0";
+export const undefined;
 
 export const CHARS_PER_TOKEN = 3.8;
 
