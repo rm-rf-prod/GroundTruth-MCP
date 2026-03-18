@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/ws-mcp"><img src="https://img.shields.io/npm/v/ws-mcp?color=00d4aa&label=npm" alt="npm version" /></a>
+  <a href="https://www.npmjs.com/package/@senorit/ws-mcp"><img src="https://img.shields.io/npm/v/@senorit/ws-mcp?color=00d4aa&label=npm" alt="npm version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT License" /></a>
   <img src="https://img.shields.io/badge/libraries-230%2B-teal" alt="230+ libraries" />
   <img src="https://img.shields.io/badge/node-%3E%3D20-green" alt="Node 20+" />
