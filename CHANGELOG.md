@@ -1,5 +1,28 @@
 # Changelog
 
+## [1.9.0] — 2026-03-18
+
+### Added
+
+**Complete test coverage — 402 tests across 15 files** — every module now has dedicated tests with no gaps.
+
+New test files:
+
+- `src/index.test.ts` — bootstrap: McpServer instantiation (name, version, instructions), all 6 tool registration calls verified with the server instance, StdioServerTransport creation, constants validation
+- `src/services/fetcher.test.ts` — fetchDocs (llms-full, llms-txt, direct, Jina fallback, cache), fetchViaJina, fetchGitHubContent, fetchGitHubExamples (14-path concurrency, cache), fetchGitHubReleases (.git suffix stripping), fetchNpmPackage, fetchPypiPackage — 60+ cases
+- `src/tools/docs.test.ts` — ws_get_docs: registry lookup, URL resolution (http/https/npm:/pypi:/dot-notation), GitHub README fallback, response building, display-name extraction
+- `src/tools/best-practices.test.ts` — ws_best_practices: extraction guard, known BP URL race, fetchDocs fallback, full GitHub fallback chain, structuredContent fields
+- `src/tools/auto-scan-handler.test.ts` — ws_auto_scan: extraction guard, no-manifest message, package.json/requirements.txt scanning, SKIP_DEPS filtering, deduplication, cap at 20 libs
+- `src/tools/resolve.test.ts` — ws_resolve_library: extraction guard, ID/alias/fuzzy matching, language/tag filtering, structuredContent schema
+- `src/tools/search.test.ts` — ws_search: extraction guard, URL-map lookup, fetchDocs success/failure, response format
+
+### Fixed
+
+- `src/index.test.ts`: McpServer mock uses `function` keyword (not arrow) so `new McpServer()` is constructable; `vi.hoisted()` spy on `process.exit` prevents vitest from catching the async `.catch` handler as an unhandled error
+- `src/services/fetcher.test.ts`: `.not.toContain("repo.git")` (api.github.com itself contains `.git`); fetchGitHubExamples cache test asserts 14 calls (7 paths × 2 branches); npm/PyPI payloads exceed the 100-char `tryFetch` minimum
+
+---
+
 ## [1.8.0] — 2026-03-18
 
 ### Changed
