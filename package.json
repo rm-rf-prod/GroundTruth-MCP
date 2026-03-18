@@ -1,6 +1,6 @@
 {
   "name": "@senorit/ws-mcp",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "description": "Self-hosted MCP server for live docs and best practices. Context7 alternative — 330+ libraries, no rate limits, code audit tool.",
   "type": "module",
   "main": "dist/index.js",
