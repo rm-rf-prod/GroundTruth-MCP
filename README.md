@@ -42,7 +42,7 @@ Key differences:
 ### Claude Code
 
 ```bash
-claude mcp add ws -- npx -y ws-mcp@latest
+claude mcp add ws -- npx -y @senorit/ws-mcp@latest
 ```
 
 ### Cursor / Claude Desktop / VS Code
@@ -54,7 +54,7 @@ Add to your MCP config (`claude_desktop_config.json`, `.cursor/mcp.json`, or `.v
   "mcpServers": {
     "ws": {
       "command": "npx",
-      "args": ["-y", "ws-mcp@latest"]
+      "args": ["-y", "@senorit/ws-mcp@latest"]
     }
   }
 }
@@ -200,7 +200,7 @@ Context7 is a well-built project. ws-mcp takes a different approach: self-hosted
 
 ## Auto-updates
 
-The install command uses `npx -y ws-mcp@latest`. Every time your AI client starts a session, npx checks npm for the latest version. If there's a newer release, it downloads and runs it. If the cached version is current, it starts from cache instantly.
+The install command uses `npx -y @senorit/ws-mcp@latest`. Every time your AI client starts a session, npx checks npm for the latest version. If there's a newer release, it downloads and runs it. If the cached version is current, it starts from cache instantly.
 
 When I publish an update — new libraries in the registry, new tools, bug fixes — every user gets it on their next session. No manual steps, no notifications, no opt-in required.
 

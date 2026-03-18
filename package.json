@@ -1,10 +1,11 @@
 {
-  "name": "ws-mcp",
+  "name": "@senorit/ws-mcp",
   "version": "1.0.0",
-  "description": "Universal documentation and best practices MCP server. Fetches live docs from official sources — no stale training data, no rate limits.",
+  "description": "Self-hosted MCP server for live docs and best practices. Context7 alternative — 230+ libraries, no rate limits, code audit tool.",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
+    "@senorit/ws-mcp": "dist/index.js",
     "ws-mcp": "dist/index.js"
   },
   "files": [
@@ -35,11 +36,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/senorit/ws-mcp"
+    "url": "https://github.com/thatsgetpersonalnow/ws-mcp"
   },
-  "homepage": "https://github.com/senorit/ws-mcp#readme",
+  "homepage": "https://github.com/thatsgetpersonalnow/ws-mcp#readme",
   "bugs": {
-    "url": "https://github.com/senorit/ws-mcp/issues"
+    "url": "https://github.com/thatsgetpersonalnow/ws-mcp/issues"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.6.1",
