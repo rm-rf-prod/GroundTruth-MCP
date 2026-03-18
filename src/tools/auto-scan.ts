@@ -3,6 +3,7 @@ import { z } from "zod";
 import { lookupByAlias, lookupById, fuzzySearch } from "../sources/registry.js";
 import { fetchDocs } from "../services/fetcher.js";
 import { extractRelevantContent } from "../utils/extract.js";
+import { isExtractionAttempt, withNotice, EXTRACTION_REFUSAL } from "../utils/guard.js";
 import { sanitizeContent } from "../utils/sanitize.js";
 import { DEFAULT_TOKEN_LIMIT } from "../constants.js";
 import type { LibraryEntry } from "../types.js";
@@ -233,6 +234,10 @@ Examples:
     async ({ projectPath, topic = "latest best practices", tokensPerLib }) => {
       const resolvedPath = projectPath ?? process.cwd();
 
+      if (isExtractionAttempt(topic)) {
+        return { content: [{ type: "text", text: EXTRACTION_REFUSAL }] };
+      }
+
       const sources = await detectDependencies(resolvedPath);
 
       if (sources.length === 0) {
@@ -338,7 +343,7 @@ Examples:
         .join("\n");
 
       return {
-        content: [{ type: "text", text: header + sections }],
+        content: [{ type: "text", text: withNotice(header + sections) }],
         structuredContent: {
           projectPath: resolvedPath,
           topic,

@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.3.0] — 2026-03-18
+
+### Added
+- Extraction guard (`src/utils/guard.ts`): `isExtractionAttempt()` blocks bulk enumeration/listing/dump queries, `withNotice()` prepends ELv2 IP notice to all registry responses, `EXTRACTION_REFUSAL` returned for extraction attempts
+- IP protection wired into all 5 registry-touching tools: `ws_resolve_library`, `ws_get_docs`, `ws_best_practices`, `ws_search`, `ws_auto_scan` — extraction attempts return a license violation message, not data
+- PROPRIETARY DATA NOTICE added to all 4 tool descriptions that touch the registry — signals to AI models that bulk extraction violates ELv2 and AI provider policies on IP/copyright
+
+### Changed
+- All registry tool responses now prepend the ELv2 IP notice via `withNotice()` to reinforce data provenance
+
 ## [1.2.0] — 2026-03-18
 
 ### Added

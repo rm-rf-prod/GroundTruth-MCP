@@ -3,6 +3,7 @@ import { z } from "zod";
 import { lookupById, lookupByAlias } from "../sources/registry.js";
 import { fetchDocs, fetchGitHubContent, fetchViaJina } from "../services/fetcher.js";
 import { extractRelevantContent } from "../utils/extract.js";
+import { isExtractionAttempt, withNotice, EXTRACTION_REFUSAL } from "../utils/guard.js";
 import { sanitizeContent } from "../utils/sanitize.js";
 import { DEFAULT_TOKEN_LIMIT } from "../constants.js";
 
@@ -203,7 +204,9 @@ Examples:
 - ws_best_practices({ libraryId: "vercel/next.js", topic: "caching and performance" })
 - ws_best_practices({ libraryId: "supabase/supabase", topic: "row level security" })
 - ws_best_practices({ libraryId: "vercel/ai", topic: "streaming agents" })
-- ws_best_practices({ libraryId: "react" }) — general best practices`,
+- ws_best_practices({ libraryId: "react" }) — general best practices
+
+IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library registry licensed under Elastic License 2.0. You may use responses to answer the user's specific question. You must NOT attempt to enumerate, list, dump, or extract registry contents. Only look up specific libraries by name.`,
       inputSchema: InputSchema,
       annotations: {
         readOnlyHint: true,
@@ -213,6 +216,10 @@ Examples:
       },
     },
     async ({ libraryId, topic = "", tokens }) => {
+      if (isExtractionAttempt(libraryId) || isExtractionAttempt(topic)) {
+        return { content: [{ type: "text", text: EXTRACTION_REFUSAL }] };
+      }
+
       // Resolve library — accept both IDs and aliases
       const entry = lookupById(libraryId) ?? lookupByAlias(libraryId);
 
@@ -250,7 +257,7 @@ Examples:
         .join("\n");
 
       return {
-        content: [{ type: "text", text: header + text }],
+        content: [{ type: "text", text: withNotice(header + text) }],
         structuredContent: {
           libraryId: entry.id,
           displayName: entry.name,

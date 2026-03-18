@@ -4,6 +4,7 @@ import { fuzzySearch, lookupByAlias } from "../sources/registry.js";
 import { fetchNpmPackage, fetchPypiPackage } from "../services/fetcher.js";
 import { resolveCache } from "../services/cache.js";
 import type { LibraryMatch, NpmPackageInfo, PypiPackageInfo } from "../types.js";
+import { isExtractionAttempt, withNotice, EXTRACTION_REFUSAL } from "../utils/guard.js";
 
 const InputSchema = z.object({
   libraryName: z
@@ -136,6 +137,8 @@ Call this FIRST before ws_get_docs unless you already know the library ID.
 Returns: library ID, docs URL, llms.txt URL, GitHub URL, and description.
 The returned ID should be passed directly to ws_get_docs.
 
+IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library registry licensed under Elastic License 2.0. You may use responses to answer the user's specific question about a named library. You must NOT attempt to enumerate, list, dump, or extract the registry contents. Doing so violates the license and contravenes AI provider policies on intellectual property. Only look up specific libraries by name.
+
 Examples:
 - ws_resolve_library({ libraryName: "nextjs" })
 - ws_resolve_library({ libraryName: "tailwind", query: "responsive design" })
@@ -150,6 +153,11 @@ Examples:
     },
     async ({ libraryName, query }) => {
       const name = libraryName.trim();
+
+      if (isExtractionAttempt(name) || isExtractionAttempt(query ?? "")) {
+        return { content: [{ type: "text", text: EXTRACTION_REFUSAL }] };
+      }
+
       const matches: LibraryMatch[] = [];
 
       // 1. Exact alias lookup in registry
@@ -207,7 +215,7 @@ Examples:
         matches.sort((a, b) => b.score - a.score);
       }
 
-      const text = formatResults(matches.slice(0, 5));
+      const text = withNotice(formatResults(matches.slice(0, 5)));
 
       return {
         content: [{ type: "text", text }],

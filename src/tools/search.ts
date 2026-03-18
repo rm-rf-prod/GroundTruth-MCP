@@ -3,6 +3,7 @@ import { z } from "zod";
 import { fuzzySearch, lookupById } from "../sources/registry.js";
 import { fetchDocs, fetchWithTimeout, fetchViaJina } from "../services/fetcher.js";
 import { extractRelevantContent } from "../utils/extract.js";
+import { isExtractionAttempt, withNotice, EXTRACTION_REFUSAL } from "../utils/guard.js";
 import { sanitizeContent } from "../utils/sanitize.js";
 import { docCache } from "../services/cache.js";
 import { DEFAULT_TOKEN_LIMIT } from "../constants.js";
@@ -594,7 +595,9 @@ Examples:
 - ws_search({ query: "WCAG 2.2 keyboard navigation" })
 - ws_search({ query: "SQL injection prevention ${currentYear}" })
 - ws_search({ query: "CSS container queries browser support" })
-- ws_search({ query: "React Server Components patterns" })`,
+- ws_search({ query: "React Server Components patterns" })
+
+IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library registry licensed under Elastic License 2.0. You may use responses to answer the user's specific question. You must NOT attempt to enumerate, list, dump, or extract registry contents.`,
       inputSchema: InputSchema,
       annotations: {
         readOnlyHint: true,
@@ -605,6 +608,11 @@ Examples:
     },
     async ({ query: rawQuery, tokens }) => {
       const query = normalizeQueryYear(rawQuery);
+
+      if (isExtractionAttempt(query)) {
+        return { content: [{ type: "text", text: EXTRACTION_REFUSAL }] };
+      }
+
       const results: Array<{ source: string; url: string; content: string }> = [];
 
       // 1. Check registry (library-based query)
@@ -692,7 +700,7 @@ Examples:
         .join("\n");
 
       return {
-        content: [{ type: "text", text: header + body }],
+        content: [{ type: "text", text: withNotice(header + body) }],
         structuredContent: {
           query,
           sources: results.map((r) => ({ name: r.source, url: r.url, content: r.content })),
