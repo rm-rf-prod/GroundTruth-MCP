@@ -1,5 +1,28 @@
 # Changelog
 
+## [1.8.0] — 2026-03-18
+
+### Changed
+
+**All GitHub Actions upgraded to Node.js 24 native runtimes** — eliminates the "Node.js 20 actions are deprecated" warning entirely:
+
+- `actions/checkout` → v6.0.2 (`de0fac2e4500dabe0009e67214ff5f5447ce83dd`) — runs on `node24` runtime
+- `actions/setup-node` → v6.3.0 (`53b83947a5a98c8d113130e565377fae1a50d02f`) — runs on `node24` runtime
+- `actions/upload-artifact` → v7.0.0 (`bbbca2ddaa5d8feaa63e36b76fdaad77386f024f`) — runs on `node24` runtime
+- Removed `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24` env var (no longer needed)
+
+**Dependencies updated to latest:**
+
+- `zod`: `3.23.8` → `4.3.6` — fully compatible; `@modelcontextprotocol/sdk@1.27.1` explicitly declares `zod: '^3.25 || ^4.0'` peer dependency. No schema API changes required — all usage (`z.object`, `z.string`, `z.number`, `z.enum`, `z.array`, `.min`, `.max`, `.optional`, `.default`, `.describe`) is unchanged in v4.
+- `@modelcontextprotocol/sdk`: `1.6.1` → `1.27.1`
+- `typescript`: `5.7.2` → `5.9.3`
+- `tsx`: `4.19.2` → `4.21.0`
+- `@types/node`: `25.5.0` (unchanged — already latest)
+
+All 192 tests pass after upgrades.
+
+---
+
 ## [1.7.0] — 2026-03-18
 
 ### Added
