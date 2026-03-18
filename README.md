@@ -306,6 +306,12 @@ Issues and requests: [github.com/rm-rf-prod/ws-mcp/issues](https://github.com/rm
 
 ---
 
+## Star history
+
+[![Star History Chart](https://api.star-history.com/svg?repos=rm-rf-prod/ws-mcp&type=Date)](https://star-history.com/#rm-rf-prod/ws-mcp&Date)
+
+---
+
 ## License
 
 [Elastic License 2.0](./LICENSE) — free to use and self-host. You may not offer it as a managed service or build a competing product from it.
