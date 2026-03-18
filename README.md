@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/@senorit/ws-mcp"><img src="https://img.shields.io/badge/npm-v1.8.0-00d4aa" alt="npm v1.8.0" /></a>
+  <a href="https://www.npmjs.com/package/@senorit/ws-mcp"><img src="https://img.shields.io/npm/v/@senorit/ws-mcp?color=00d4aa&label=npm" alt="npm version" /></a>
   <a href="https://github.com/rm-rf-prod/ws-mcp/actions/workflows/ci.yml"><img src="https://github.com/rm-rf-prod/ws-mcp/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-ELv2-orange" alt="Elastic License 2.0" /></a>
   <img src="https://img.shields.io/badge/libraries-330%2B-teal" alt="330+ libraries" />
