@@ -1,7 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { lookupById } from "../sources/registry.js";
-import { fetchDocs, fetchGitHubReleases, fetchViaJina } from "../services/fetcher.js";
+import { fetchDocs, fetchGitHubExamples, fetchGitHubReleases, fetchViaJina } from "../services/fetcher.js";
 import { extractRelevantContent } from "../utils/extract.js";
 import { sanitizeContent } from "../utils/sanitize.js";
 
@@ -22,6 +22,7 @@ const InputSchema = z.object({
         "nextjs",
         "typescript",
         "node",
+        "python",
         "all",
       ]),
     )
@@ -89,7 +90,7 @@ const CMD_INJECT_RE = new RegExp(
 const SKIP_FILE_RE = /(?:\.test\.[jt]sx?|\.spec\.[jt]sx?|\.d\.ts|__tests__[/\\]|\.stories\.[jt]sx?)$/;
 
 /** Build a Set of char offsets that fall inside block comments to reduce false positives */
-function buildCommentMap(content: string): Set<number> {
+export function buildCommentMap(content: string): Set<number> {
   const inside = new Set<number>();
   let i = 0;
   while (i < content.length) {
@@ -105,7 +106,7 @@ function buildCommentMap(content: string): Set<number> {
   return inside;
 }
 
-const AUDIT_PATTERNS: AuditPattern[] = [
+export const AUDIT_PATTERNS: AuditPattern[] = [
   // === LAYOUT / CLS ===
   {
     category: "layout",
@@ -883,6 +884,133 @@ const AUDIT_PATTERNS: AuditPattern[] = [
         ? line
         : null,
   },
+
+  // ── Python ─────────────────────────────────────────────────────────────────
+  {
+    category: "python",
+    severity: "critical",
+    title: "SQL injection via f-string or % formatting",
+    detail:
+      "Interpolating user input directly into SQL strings enables SQL injection attacks. An attacker can read, modify, or delete any data in the database.",
+    fix: "Use parameterized queries: `cursor.execute('SELECT * FROM users WHERE id = %s', (user_id,))`. Never use f-strings, .format(), or % to build SQL.",
+    docsQuery: "Python SQL injection parameterized queries OWASP",
+    test: (line) =>
+      /\.execute\s*\(.*f['"].*\{/.test(line) ||
+      /\.execute\s*\(.*['"]\s*%\s*(?:\(|[a-zA-Z_])/.test(line) ||
+      /\.execute\s*\(.*\.format\s*\(/.test(line)
+        ? line
+        : null,
+  },
+  {
+    category: "python",
+    severity: "critical",
+    title: "eval() or exec() with dynamic input",
+    detail:
+      "`eval()` and `exec()` execute arbitrary Python code. If the argument is derived from user input or an external source, an attacker can run any code on the server.",
+    fix: "Never pass user-controlled data to `eval()` or `exec()`. Use `ast.literal_eval()` for safe parsing of Python literals.",
+    docsQuery: "Python eval exec security code injection OWASP",
+    test: (line) =>
+      /\beval\s*\(/.test(line) || /\bexec\s*\(/.test(line) ? line : null,
+  },
+  {
+    category: "python",
+    severity: "critical",
+    title: "subprocess with shell=True",
+    detail:
+      "`subprocess.run(..., shell=True)` passes the command to the system shell. If any part of the command includes user input, it enables command injection.",
+    fix: "Pass commands as a list: `subprocess.run(['ls', '-la'])`. Never use `shell=True` with any data that originates outside your application.",
+    docsQuery: "Python subprocess shell=True command injection security",
+    test: (line) => /subprocess\.\w+\s*\(.*shell\s*=\s*True/.test(line) ? line : null,
+  },
+  {
+    category: "python",
+    severity: "critical",
+    title: "os.system() call — command injection risk",
+    detail:
+      "`os.system()` passes commands to the shell. User-controlled input in the command string enables arbitrary command execution.",
+    fix: "Replace with `subprocess.run([...], check=True)` using a list of arguments. This avoids shell interpretation and command injection.",
+    docsQuery: "Python os.system command injection subprocess",
+    test: (line) => /\bos\.system\s*\(/.test(line) ? line : null,
+  },
+  {
+    category: "python",
+    severity: "high",
+    title: "Bare except clause swallows all errors",
+    detail:
+      "`except:` without an exception type catches every exception including `KeyboardInterrupt`, `SystemExit`, and `GeneratorExit`. This hides bugs and can prevent the program from shutting down cleanly.",
+    fix: "Always specify the exception type: `except Exception as e:`. Log or re-raise the error. Never use a bare `except:` in production code.",
+    docsQuery: "Python bare except anti-pattern exception handling",
+    test: (line) => /^\s*except\s*:/.test(line) ? line : null,
+  },
+  {
+    category: "python",
+    severity: "high",
+    title: "pickle.loads() from untrusted source",
+    detail:
+      "Pickle deserialization executes arbitrary Python code. Loading pickled data from an untrusted source (user input, network, database without integrity check) allows remote code execution.",
+    fix: "Never unpickle data from untrusted sources. Use JSON, MessagePack, or Protocol Buffers for data exchange. If pickle is required, verify an HMAC signature before deserializing.",
+    docsQuery: "Python pickle deserialization RCE security OWASP",
+    test: (line) => /\bpickle\.loads?\s*\(/.test(line) ? line : null,
+  },
+  {
+    category: "python",
+    severity: "high",
+    title: "MD5 or SHA1 used for password hashing",
+    detail:
+      "MD5 and SHA1 are cryptographically broken. They are fast to compute, enabling brute-force and rainbow table attacks. Never use them for storing passwords.",
+    fix: "Use `bcrypt`, `argon2-cffi`, or `passlib` for password hashing. For non-password integrity checks, use SHA-256 or SHA-3.",
+    docsQuery: "Python password hashing bcrypt argon2 security OWASP",
+    test: (line) =>
+      /hashlib\.(md5|sha1)\s*\(/.test(line) ||
+      /new\s*\(\s*['"](?:md5|sha1)['"]\s*\)/.test(line)
+        ? line
+        : null,
+  },
+  {
+    category: "python",
+    severity: "high",
+    title: "requests with verify=False — TLS validation disabled",
+    detail:
+      "Setting `verify=False` disables TLS certificate verification, making the connection vulnerable to man-in-the-middle attacks. An attacker can intercept and modify traffic.",
+    fix: "Remove `verify=False`. If using a self-signed certificate, pass the CA bundle path: `verify='/path/to/ca-bundle.crt'`.",
+    docsQuery: "Python requests verify=False TLS SSL certificate security",
+    test: (line) => /requests\.\w+\s*\(.*verify\s*=\s*False/.test(line) ? line : null,
+  },
+  {
+    category: "python",
+    severity: "high",
+    title: "Mutable default argument",
+    detail:
+      "Default argument values are evaluated once when the function is defined, not each time it is called. A mutable default (list, dict, set) is shared across all calls, leading to subtle state-leaking bugs.",
+    fix: "Use `None` as the default and initialize inside the function: `def fn(items=None): items = items if items is not None else []`.",
+    docsQuery: "Python mutable default argument anti-pattern",
+    test: (line) =>
+      /def\s+\w+\s*\([^)]*=\s*(?:\[\]|\{\}|set\s*\(\))/.test(line) ? line : null,
+  },
+  {
+    category: "python",
+    severity: "medium",
+    title: "print() in production code",
+    detail:
+      "`print()` writes to stdout with no log level, no timestamps, and no filtering. In production this pollutes logs and can expose sensitive data.",
+    fix: "Replace with `logging.debug()`, `logging.info()`, etc. Configure the root logger at application startup with a structured formatter.",
+    docsQuery: "Python logging best practices production print",
+    test: (line) => /\bprint\s*\(/.test(line) ? line : null,
+  },
+  {
+    category: "python",
+    severity: "medium",
+    title: "open() with user-controlled path — path traversal risk",
+    detail:
+      "Passing unsanitized user input to `open()` allows path traversal attacks (`../../etc/passwd`). An attacker can read or overwrite arbitrary files.",
+    fix: "Resolve and validate the path before opening: `safe = Path(base_dir).resolve() / user_input; safe.resolve().relative_to(base_dir)`. Raise an error if the path escapes the allowed directory.",
+    docsQuery: "Python path traversal open file security OWASP",
+    test: (line, _content, _offset, lines, i) => {
+      if (!/\bopen\s*\(/.test(line)) return null;
+      const nearby = lines.slice(Math.max(0, i - 5), i + 1).join(" ");
+      return /request\.|args\[|kwargs\[|input\(|sys\.argv/.test(nearby) ? line : null;
+    },
+  },
 ];
 
 async function readProjectFiles(
@@ -892,10 +1020,11 @@ async function readProjectFiles(
   const { readdir, readFile, stat } = await import("fs/promises");
   const { join, extname, relative } = await import("path");
 
-  const SOURCE_EXT = new Set([".ts", ".tsx", ".js", ".jsx", ".css", ".scss", ".html", ".mjs"]);
+  const SOURCE_EXT = new Set([".ts", ".tsx", ".js", ".jsx", ".css", ".scss", ".html", ".mjs", ".py"]);
   const SKIP_DIRS = new Set([
     "node_modules", ".git", ".next", "dist", "build", ".turbo",
     "coverage", ".cache", "out", ".vercel", "storybook-static",
+    "__pycache__", ".venv", "venv", "env",
   ]);
 
   const files: Array<{ path: string; content: string }> = [];
@@ -948,8 +1077,9 @@ function runPatterns(
 
       // Skip lines that are entirely inside a block comment
       const lineIsInBlockComment = commentMap.has(charOffset);
-      // Skip single-line comments
-      const lineIsLineComment = line.trimStart().startsWith("//");
+      // Skip single-line comments (JS/TS // and Python #)
+      const trimmed = line.trimStart();
+      const lineIsLineComment = trimmed.startsWith("//") || trimmed.startsWith("#");
 
       if (lineIsInBlockComment || lineIsLineComment) {
         charOffset += line.length + 1;
@@ -1053,6 +1183,24 @@ async function fetchBestPractice(query: string, tokens: number): Promise<string>
     if (t.length > 200) return t;
   }
 
+  if (/python|pickle|subprocess|f-string|sql.inject|argon2|bcrypt|bare.except|mutable.default|requests.verify/i.test(query)) {
+    const [owasp, pySec] = await Promise.allSettled([
+      jinaFetch("https://cheatsheetseries.owasp.org/cheatsheets/Python_Security_Cheat_Sheet.html"),
+      jinaFetch("https://python.org/dev/peps/pep-0008/"),
+    ]);
+    const owaspText = owasp.status === "fulfilled" ? owasp.value : "";
+    if (owaspText.length > 200) return owaspText;
+    const pySecText = pySec.status === "fulfilled" ? pySec.value : "";
+    if (pySecText.length > 200) return pySecText;
+
+    // Fallback to GitHub examples from popular Python security libs
+    const examples = await fetchGitHubExamples("https://github.com/pyupio/safety");
+    if (examples && examples.length > 200) {
+      const { text } = extractRelevantContent(sanitizeContent(examples), query, tokens);
+      if (text.length > 100) return text;
+    }
+  }
+
   return "";
 }
 
@@ -1075,7 +1223,7 @@ export function registerAuditTool(server: McpServer): void {
 
 This is the all-in-one tool for "find all bugs, layout issues, UX issues and fix them with latest best practices".
 
-Detects 50+ issue types across 8 categories:
+Detects 60+ issue types across 9 categories:
 
 - layout: images without dimensions, raw <img> vs next/image, 100vh mobile viewport bug, missing font-display, render-blocking scripts, CSS @import chains
 - performance: missing lazy loading, useEffect data fetching anti-pattern, barrel file tree-shaking prevention, missing Suspense streaming, document.querySelector in React, inline object/array props, missing fetchpriority on LCP image
@@ -1085,17 +1233,20 @@ Detects 50+ issue types across 8 categories:
 - nextjs: sync cookies()/headers()/params without await (Next.js 16), use client on layout, Tailwind v3 @tailwind directives, Route Handler without error handling, middleware.ts not renamed to proxy.ts (Next.js 16), page without metadata export
 - typescript: any type, non-null assertion (!), missing return types, @ts-ignore suppressor, floating Promises, require() instead of import, double assertion (as unknown as T)
 - node: console.log in production, synchronous fs operations (event loop blocking), unhandled callback errors, process.exit() without cleanup, plain HTTP fetch
+- python: SQL injection via f-string/format(), eval()/exec() with dynamic input, subprocess shell=True, os.system() command injection, bare except clause, pickle.loads() from untrusted source, MD5/SHA1 for passwords, requests verify=False, mutable default arguments, print() in production, open() path traversal
 
-Each issue includes file + line number, problem description, fix instruction, and live docs fetched from official sources (OWASP, MDN, typescript-eslint.io, react.dev, web.dev).
+Each issue includes file + line number, problem description, fix instruction, and live docs fetched from official sources (OWASP, MDN, typescript-eslint.io, react.dev, web.dev, OWASP Python Cheat Sheet).
 
 Skips generated files: .test., .spec., .d.ts, __tests__/, .stories.
-Skips commented-out code to reduce false positives.
+Skips commented-out code to reduce false positives (// and # comment lines).
+Supports .ts, .tsx, .js, .jsx, .css, .scss, .html, .mjs, and .py files.
 
 Say "ws audit" or "find all issues and fix with ws" to invoke.
 
 Examples:
 - ws_audit({}) — full audit of current project
 - ws_audit({ categories: ["accessibility", "security"] })
+- ws_audit({ categories: ["python", "security"], maxFiles: 100 })
 - ws_audit({ categories: ["layout", "performance", "node"], maxFiles: 100 })`,
       inputSchema: InputSchema,
       annotations: {

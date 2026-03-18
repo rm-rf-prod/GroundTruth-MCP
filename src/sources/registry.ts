@@ -318,3 +318,47 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     tags: ["docs", "astro", "static"],
   },
 ];
+
+/** Look up a registry entry by its exact id (e.g. "vercel/next.js"). */
+export function lookupById(id: string): LibraryEntry | undefined {
+  return LIBRARY_REGISTRY.find((e) => e.id === id);
+}
+
+/** Look up a registry entry by name or any of its aliases (case-insensitive). */
+export function lookupByAlias(query: string): LibraryEntry | undefined {
+  const q = query.toLowerCase().trim();
+  return LIBRARY_REGISTRY.find(
+    (e) =>
+      e.name.toLowerCase() === q ||
+      e.id.toLowerCase() === q ||
+      (e.aliases ?? []).some((a) => a.toLowerCase() === q) ||
+      (e.npmPackage !== undefined && e.npmPackage.toLowerCase() === q),
+  );
+}
+
+/** Return up to `limit` entries whose name/aliases/tags contain the query string. */
+export function fuzzySearch(query: string, limit = 10): LibraryEntry[] {
+  const q = query.toLowerCase().trim();
+  const scored: Array<{ entry: LibraryEntry; score: number }> = [];
+
+  for (const entry of LIBRARY_REGISTRY) {
+    let score = 0;
+    const name = entry.name.toLowerCase();
+    const id = entry.id.toLowerCase();
+    const aliases = (entry.aliases ?? []).map((a) => a.toLowerCase());
+    const tags = (entry.tags ?? []).map((t) => t.toLowerCase());
+    const desc = (entry.description ?? "").toLowerCase();
+
+    if (name === q || id === q || aliases.includes(q)) score += 100;
+    else if (name.startsWith(q) || aliases.some((a) => a.startsWith(q))) score += 50;
+    else if (name.includes(q) || id.includes(q) || aliases.some((a) => a.includes(q))) score += 25;
+    else if (tags.some((t) => t.includes(q)) || desc.includes(q)) score += 10;
+
+    if (score > 0) scored.push({ entry, score });
+  }
+
+  return scored
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit)
+    .map((s) => s.entry);
+}

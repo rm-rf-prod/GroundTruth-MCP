@@ -32,7 +32,7 @@ const InputSchema = z.object({
     .describe("Max tokens per library (default: 1500). Lower = more libraries covered."),
 });
 
-interface DependencySource {
+export interface DependencySource {
   file: string;
   dependencies: string[];
 }
@@ -46,7 +46,7 @@ async function readFileIfExists(filePath: string): Promise<string | null> {
   }
 }
 
-async function detectDependencies(projectPath: string): Promise<DependencySource[]> {
+export async function detectDependencies(projectPath: string): Promise<DependencySource[]> {
   const { join } = await import("path");
   const sources: DependencySource[] = [];
 
@@ -84,13 +84,15 @@ async function detectDependencies(projectPath: string): Promise<DependencySource
     }
   }
 
-  // pyproject.toml (Python)
+  // pyproject.toml (Python) — supports both Poetry and PEP 517 (uv, hatch, rye, pdm)
   const pyproject = await readFileIfExists(join(projectPath, "pyproject.toml"));
   if (pyproject) {
     const deps: string[] = [];
-    const dependenciesBlock = pyproject.match(/\[tool\.poetry\.dependencies\]([\s\S]*?)(?:\[|$)/);
-    if (dependenciesBlock?.[1]) {
-      const lines = dependenciesBlock[1].split("\n");
+
+    // [tool.poetry.dependencies] — Poetry format
+    const poetryBlock = pyproject.match(/\[tool\.poetry\.dependencies\]([\s\S]*?)(?:\[|$)/);
+    if (poetryBlock?.[1]) {
+      const lines = poetryBlock[1].split("\n");
       for (const line of lines) {
         const match = line.match(/^([a-zA-Z0-9_-]+)\s*=/);
         if (match?.[1] && match[1] !== "python") {
@@ -98,8 +100,41 @@ async function detectDependencies(projectPath: string): Promise<DependencySource
         }
       }
     }
-    if (deps.length > 0) {
-      sources.push({ file: "pyproject.toml", dependencies: deps });
+
+    // [project.dependencies] — PEP 517 format (uv, hatch, rye, pdm)
+    const pep517Block = pyproject.match(/\[project\]([\s\S]*?)(?:\n\[(?!project\.)|$)/);
+    if (pep517Block?.[1]) {
+      const depsArrayMatch = pep517Block[1].match(/dependencies\s*=\s*\[([\s\S]*?)\]/);
+      if (depsArrayMatch?.[1]) {
+        const lines = depsArrayMatch[1].split("\n");
+        for (const line of lines) {
+          const trimmed = line.trim().replace(/^["']|["'],?$/g, "");
+          const pkgName = trimmed.split(/[>=<!~\[\s]/)[0]?.trim();
+          if (pkgName && pkgName.length > 0 && !pkgName.startsWith("#")) {
+            deps.push(pkgName);
+          }
+        }
+      }
+    }
+
+    // [project.optional-dependencies.*] — extras/optional deps
+    const optionalBlocks = pyproject.matchAll(/\[project\.optional-dependencies\.[^\]]+\]([\s\S]*?)(?:\[|$)/g);
+    for (const block of optionalBlocks) {
+      if (block[1]) {
+        const lines = block[1].split("\n");
+        for (const line of lines) {
+          const trimmed = line.trim().replace(/^["']|["'],?$/g, "");
+          const pkgName = trimmed.split(/[>=<!~\[\s]/)[0]?.trim();
+          if (pkgName && pkgName.length > 0 && !pkgName.startsWith("#")) {
+            deps.push(pkgName);
+          }
+        }
+      }
+    }
+
+    const uniqueDeps = [...new Set(deps)];
+    if (uniqueDeps.length > 0) {
+      sources.push({ file: "pyproject.toml", dependencies: uniqueDeps });
     }
   }
 
@@ -107,7 +142,7 @@ async function detectDependencies(projectPath: string): Promise<DependencySource
   const cargoToml = await readFileIfExists(join(projectPath, "Cargo.toml"));
   if (cargoToml) {
     const deps: string[] = [];
-    const depsSection = cargoToml.match(/\[dependencies\]([\s\S]*?)(?:\[|$)/);
+    const depsSection = cargoToml.match(/\[dependencies\]([\s\S]*?)(?:\n\[|$)/);
     if (depsSection?.[1]) {
       const lines = depsSection[1].split("\n");
       for (const line of lines) {
@@ -141,6 +176,70 @@ async function detectDependencies(projectPath: string): Promise<DependencySource
     }
     if (deps.length > 0) {
       sources.push({ file: "go.mod", dependencies: deps });
+    }
+  }
+
+  // pom.xml (Maven / Java)
+  const pomXml = await readFileIfExists(join(projectPath, "pom.xml"));
+  if (pomXml) {
+    const deps: string[] = [];
+    // Match <artifactId> inside <dependency> blocks
+    const depBlocks = pomXml.matchAll(/<dependency>([\s\S]*?)<\/dependency>/g);
+    for (const block of depBlocks) {
+      if (block[1]) {
+        const artifactMatch = block[1].match(/<artifactId>\s*([^<\s]+)\s*<\/artifactId>/);
+        if (artifactMatch?.[1]) {
+          deps.push(artifactMatch[1]);
+        }
+      }
+    }
+    if (deps.length > 0) {
+      sources.push({ file: "pom.xml", dependencies: deps });
+    }
+  }
+
+  // composer.json (PHP)
+  const composerJson = await readFileIfExists(join(projectPath, "composer.json"));
+  if (composerJson) {
+    try {
+      const composer = JSON.parse(composerJson) as {
+        require?: Record<string, unknown>;
+        "require-dev"?: Record<string, unknown>;
+      };
+      const deps = [
+        ...Object.keys(composer.require ?? {}),
+        ...Object.keys(composer["require-dev"] ?? {}),
+      ]
+        .filter((p) => p !== "php" && !p.startsWith("php-") && !p.startsWith("ext-"))
+        .map((p) => {
+          // Strip vendor prefix: vendor/package -> package
+          const parts = p.split("/");
+          return parts[parts.length - 1] ?? p;
+        });
+      if (deps.length > 0) {
+        sources.push({ file: "composer.json", dependencies: deps });
+      }
+    } catch {
+      // malformed composer.json
+    }
+  }
+
+  // build.gradle / build.gradle.kts (Gradle / Android)
+  for (const gradleFile of ["build.gradle", "build.gradle.kts"]) {
+    const gradleContent = await readFileIfExists(join(projectPath, gradleFile));
+    if (gradleContent) {
+      const deps: string[] = [];
+      // Match: implementation("group:artifact:version") and similar
+      const depMatches = gradleContent.matchAll(
+        /(?:implementation|api|compileOnly|runtimeOnly|testImplementation)\s*[\("']+([^:'"]+):([^:'"]+):/g,
+      );
+      for (const m of depMatches) {
+        if (m[2]) deps.push(m[2]);
+      }
+      if (deps.length > 0) {
+        sources.push({ file: gradleFile, dependencies: deps });
+        break; // only process one gradle file
+      }
     }
   }
 
@@ -207,7 +306,7 @@ export function registerAutoScanTool(server: McpServer): void {
       title: "Auto-Scan Project Dependencies",
       description: `Automatically detect all dependencies in a project and fetch latest best practices for each.
 
-Reads: package.json, requirements.txt, pyproject.toml, Cargo.toml, go.mod — whichever exist.
+Reads: package.json, requirements.txt, pyproject.toml (Poetry + PEP 517), Cargo.toml, go.mod, pom.xml, composer.json, build.gradle — whichever exist.
 
 Use this when you want to:
 - Get current best practices for everything in a project at once

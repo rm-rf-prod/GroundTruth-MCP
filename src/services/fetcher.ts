@@ -1,12 +1,19 @@
 import { FETCH_TIMEOUT_MS, JINA_BASE_URL } from "../constants.js";
 import type { FetchResult } from "../types.js";
-import { docCache } from "./cache.js";
+import { docCache, diskDocCache } from "./cache.js";
 
 const USER_AGENT =
   "ws-mcp-server/1.0 (docs-fetcher; +https://github.com/senorit/ws-mcp-server)";
 
 // In-flight deduplication: prevents N concurrent fetches of the same URL
 const inFlightRequests = new Map<string, Promise<string | null>>();
+
+/** Build Authorization header for GitHub API if WS_GITHUB_TOKEN is set */
+function githubAuthHeaders(): Record<string, string> {
+  const token = process.env.WS_GITHUB_TOKEN;
+  if (!token) return {};
+  return { Authorization: `Bearer ${token}` };
+}
 
 export async function fetchWithTimeout(
   url: string,
@@ -25,10 +32,10 @@ export async function fetchWithTimeout(
   }
 }
 
-async function tryFetch(url: string, retries = 1): Promise<string | null> {
+async function tryFetch(url: string, retries = 1, extraHeaders?: Record<string, string>): Promise<string | null> {
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
-      const res = await fetchWithTimeout(url);
+      const res = await fetchWithTimeout(url, FETCH_TIMEOUT_MS, extraHeaders);
       if (res.status === 429 || res.status === 503) {
         if (attempt < retries) {
           await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
@@ -52,8 +59,17 @@ async function tryFetch(url: string, retries = 1): Promise<string | null> {
 export async function fetchViaJina(url: string): Promise<string | null> {
   const jinaUrl = `${JINA_BASE_URL}/${url}`;
   const cacheKey = `jina:${url}`;
-  const cached = docCache.get(cacheKey);
-  if (cached) return cached;
+
+  // Check memory cache first
+  const memCached = docCache.get(cacheKey);
+  if (memCached) return memCached;
+
+  // Check disk cache (survives across npx invocations)
+  const diskCached = await diskDocCache.get(cacheKey);
+  if (diskCached) {
+    docCache.set(cacheKey, diskCached); // warm memory cache
+    return diskCached;
+  }
 
   // Deduplicate concurrent requests for the same URL
   const inFlight = inFlightRequests.get(cacheKey);
@@ -74,6 +90,7 @@ export async function fetchViaJina(url: string): Promise<string | null> {
         const text = await res.text();
         if (text.length < 200) return null;
         docCache.set(cacheKey, text);
+        void diskDocCache.set(cacheKey, text); // persist async
         return text;
       } catch {
         if (attempt === 0) await new Promise((r) => setTimeout(r, 1000));
@@ -97,9 +114,16 @@ export async function fetchDocs(
   llmsFullTxtUrl?: string,
 ): Promise<FetchResult> {
   const cacheKey = `docs:${llmsTxtUrl ?? docsUrl}`;
-  const cached = docCache.get(cacheKey);
-  if (cached) {
-    return { content: cached, url: llmsTxtUrl ?? docsUrl, sourceType: "llms-txt" };
+
+  const memCached = docCache.get(cacheKey);
+  if (memCached) {
+    return { content: memCached, url: llmsTxtUrl ?? docsUrl, sourceType: "llms-txt" };
+  }
+
+  const diskCached = await diskDocCache.get(cacheKey);
+  if (diskCached) {
+    docCache.set(cacheKey, diskCached);
+    return { content: diskCached, url: llmsTxtUrl ?? docsUrl, sourceType: "llms-txt" };
   }
 
   // 1. Race llms-full.txt and llms.txt in parallel (both are cheap GETs)
@@ -116,6 +140,7 @@ export async function fetchDocs(
     for (const r of results) {
       if (r.content) {
         docCache.set(cacheKey, r.content);
+        void diskDocCache.set(cacheKey, r.content);
         return { content: r.content, url: r.url, sourceType: r.sourceType };
       }
     }
@@ -127,6 +152,7 @@ export async function fetchDocs(
         const autoDiscovered = await tryFetch(`${origin}/llms.txt`);
         if (autoDiscovered) {
           docCache.set(cacheKey, autoDiscovered);
+          void diskDocCache.set(cacheKey, autoDiscovered);
           return { content: autoDiscovered, url: `${origin}/llms.txt`, sourceType: "llms-txt" };
         }
       } catch { /* invalid URL */ }
@@ -139,6 +165,7 @@ export async function fetchDocs(
     const autoDiscover = await tryFetch(`${origin}/llms.txt`);
     if (autoDiscover) {
       docCache.set(cacheKey, autoDiscover);
+      void diskDocCache.set(cacheKey, autoDiscover);
       return { content: autoDiscover, url: `${origin}/llms.txt`, sourceType: "llms-txt" };
     }
   } catch {
@@ -149,6 +176,7 @@ export async function fetchDocs(
   const jinaContent = await fetchViaJina(docsUrl);
   if (jinaContent) {
     docCache.set(cacheKey, jinaContent);
+    void diskDocCache.set(cacheKey, jinaContent);
     return { content: jinaContent, url: docsUrl, sourceType: "jina" };
   }
 
@@ -156,6 +184,7 @@ export async function fetchDocs(
   const directContent = await tryFetch(docsUrl);
   if (directContent) {
     docCache.set(cacheKey, directContent);
+    void diskDocCache.set(cacheKey, directContent);
     return { content: directContent, url: docsUrl, sourceType: "direct" };
   }
 
@@ -173,9 +202,16 @@ export async function fetchGitHubContent(
   const repoPath = match[1]!;
 
   const cacheKey = `gh:${repoPath}:${path}`;
-  const cached = docCache.get(cacheKey);
-  if (cached) {
-    return { content: cached, url: githubUrl, sourceType: "github-readme" };
+
+  const memCached = docCache.get(cacheKey);
+  if (memCached) {
+    return { content: memCached, url: githubUrl, sourceType: "github-readme" };
+  }
+
+  const diskCached = await diskDocCache.get(cacheKey);
+  if (diskCached) {
+    docCache.set(cacheKey, diskCached);
+    return { content: diskCached, url: githubUrl, sourceType: "github-readme" };
   }
 
   for (const branch of ["main", "master"]) {
@@ -183,6 +219,7 @@ export async function fetchGitHubContent(
     const content = await tryFetch(rawUrl);
     if (content) {
       docCache.set(cacheKey, content);
+      void diskDocCache.set(cacheKey, content);
       return { content, url: rawUrl, sourceType: "github-readme" };
     }
   }
@@ -196,12 +233,20 @@ export async function fetchGitHubReleases(githubUrl: string): Promise<string | n
   const repoPath = (match[1] ?? "").replace(/\.git$/, "");
 
   const cacheKey = `gh-releases:${repoPath}`;
-  const cached = docCache.get(cacheKey);
-  if (cached) return cached;
+
+  const memCached = docCache.get(cacheKey);
+  if (memCached) return memCached;
+
+  const diskCached = await diskDocCache.get(cacheKey);
+  if (diskCached) {
+    docCache.set(cacheKey, diskCached);
+    return diskCached;
+  }
 
   try {
     const apiUrl = `https://api.github.com/repos/${repoPath}/releases?per_page=3`;
-    const res = await fetchWithTimeout(apiUrl, 10_000);
+    // WS_GITHUB_TOKEN raises rate limit from 60/hr to 5000/hr
+    const res = await fetchWithTimeout(apiUrl, 10_000, githubAuthHeaders());
     // 403 = rate limit (unauthenticated: 60 req/hr), 429 = explicit rate limit
     if (res.status === 403 || res.status === 429 || !res.ok) return null;
     const releases = (await res.json()) as Array<{
@@ -224,7 +269,9 @@ export async function fetchGitHubReleases(githubUrl: string): Promise<string | n
     }
 
     const content = lines.join("\n");
-    docCache.set(cacheKey, content, 60 * 60 * 1000); // 1 hour
+    const ttl = 60 * 60 * 1000; // 1 hour
+    docCache.set(cacheKey, content, ttl);
+    void diskDocCache.set(cacheKey, content, ttl);
     return content;
   } catch {
     return null;
@@ -237,6 +284,17 @@ export async function fetchGitHubExamples(githubUrl: string): Promise<string | n
   if (!match) return null;
   const repoPath = (match[1] ?? "").replace(/\.git$/, "");
 
+  const cacheKey = `gh-examples:${repoPath}`;
+
+  const memCached = docCache.get(cacheKey);
+  if (memCached) return memCached;
+
+  const diskCached = await diskDocCache.get(cacheKey);
+  if (diskCached) {
+    docCache.set(cacheKey, diskCached);
+    return diskCached;
+  }
+
   // Try common docs paths that contain best practices / examples
   const paths = [
     "CHANGELOG.md",
@@ -248,13 +306,25 @@ export async function fetchGitHubExamples(githubUrl: string): Promise<string | n
     "docs/patterns.md",
   ];
 
-  for (const path of paths) {
-    for (const branch of ["main", "master"]) {
-      const url = `https://raw.githubusercontent.com/${repoPath}/${branch}/${path}`;
-      const content = await tryFetch(url);
-      if (content && content.length > 300) {
-        return `## ${path} (GitHub)\n\n${content.slice(0, 4000)}`;
-      }
+  // Race all paths in parallel — return first hit
+  const results = await Promise.allSettled(
+    paths.flatMap((path) =>
+      ["main", "master"].map(async (branch) => {
+        const url = `https://raw.githubusercontent.com/${repoPath}/${branch}/${path}`;
+        const content = await tryFetch(url, 0, githubAuthHeaders());
+        if (content && content.length > 300) {
+          return `## ${path} (GitHub)\n\n${content.slice(0, 4000)}`;
+        }
+        return null;
+      }),
+    ),
+  );
+
+  for (const result of results) {
+    if (result.status === "fulfilled" && result.value) {
+      docCache.set(cacheKey, result.value);
+      void diskDocCache.set(cacheKey, result.value);
+      return result.value;
     }
   }
 
@@ -265,15 +335,24 @@ export async function fetchGitHubExamples(githubUrl: string): Promise<string | n
 export async function fetchNpmPackage(packageName: string): Promise<unknown> {
   const url = `https://registry.npmjs.org/${encodeURIComponent(packageName)}`;
   const cacheKey = `npm:${packageName}`;
-  const cached = docCache.get(cacheKey);
-  if (cached) return JSON.parse(cached) as unknown;
+
+  const memCached = docCache.get(cacheKey);
+  if (memCached) return JSON.parse(memCached) as unknown;
+
+  const diskCached = await diskDocCache.get(cacheKey);
+  if (diskCached) {
+    docCache.set(cacheKey, diskCached);
+    return JSON.parse(diskCached) as unknown;
+  }
 
   const content = await tryFetch(url);
   if (!content) return null;
 
   try {
     const data = JSON.parse(content);
-    docCache.set(cacheKey, content, 60 * 60 * 1000); // 1 hour for npm data
+    const ttl = 60 * 60 * 1000; // 1 hour
+    docCache.set(cacheKey, content, ttl);
+    void diskDocCache.set(cacheKey, content, ttl);
     return data as unknown;
   } catch {
     return null;
@@ -284,15 +363,24 @@ export async function fetchNpmPackage(packageName: string): Promise<unknown> {
 export async function fetchPypiPackage(packageName: string): Promise<unknown> {
   const url = `https://pypi.org/pypi/${encodeURIComponent(packageName)}/json`;
   const cacheKey = `pypi:${packageName}`;
-  const cached = docCache.get(cacheKey);
-  if (cached) return JSON.parse(cached) as unknown;
+
+  const memCached = docCache.get(cacheKey);
+  if (memCached) return JSON.parse(memCached) as unknown;
+
+  const diskCached = await diskDocCache.get(cacheKey);
+  if (diskCached) {
+    docCache.set(cacheKey, diskCached);
+    return JSON.parse(diskCached) as unknown;
+  }
 
   const content = await tryFetch(url);
   if (!content) return null;
 
   try {
     const data = JSON.parse(content);
-    docCache.set(cacheKey, content, 60 * 60 * 1000);
+    const ttl = 60 * 60 * 1000;
+    docCache.set(cacheKey, content, ttl);
+    void diskDocCache.set(cacheKey, content, ttl);
     return data as unknown;
   } catch {
     return null;

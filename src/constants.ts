@@ -1,7 +1,12 @@
 export const SERVER_NAME = "ws-mcp-server";
 export const SERVER_VERSION = "1.1.0";
 
-export const CHARS_PER_TOKEN = 4;
+export const CHARS_PER_TOKEN = 3.8;
+
+// Disk cache directory for persistent cross-invocation caching
+export const DISK_CACHE_DIR =
+  process.env.WS_CACHE_DIR ??
+  (process.env.HOME ? `${process.env.HOME}/.ws-mcp-cache` : "/tmp/.ws-mcp-cache");
 export const DEFAULT_TOKEN_LIMIT = 8000;
 export const MAX_TOKEN_LIMIT = 20000;
 export const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
