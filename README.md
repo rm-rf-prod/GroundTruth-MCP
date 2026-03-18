@@ -6,13 +6,13 @@
 
 <p align="center">
   Self-hosted MCP server for live documentation and deep code audits.<br/>
-  No rate limits. No API keys. No cloud dependency. 230+ libraries.
+  No rate limits. No API keys. No cloud dependency. 330+ libraries.
 </p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@senorit/ws-mcp"><img src="https://img.shields.io/npm/v/@senorit/ws-mcp?color=00d4aa&label=npm" alt="npm version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-ELv2-orange" alt="Elastic License 2.0" /></a>
-  <img src="https://img.shields.io/badge/libraries-230%2B-teal" alt="230+ libraries" />
+  <img src="https://img.shields.io/badge/libraries-330%2B-teal" alt="330+ libraries" />
   <img src="https://img.shields.io/badge/audit_patterns-50%2B-red" alt="50+ audit patterns" />
   <img src="https://img.shields.io/badge/categories-8-blue" alt="8 categories" />
   <img src="https://img.shields.io/badge/node-%3E%3D20-green" alt="Node 20+" />
@@ -212,7 +212,7 @@ For every library docs request, ws-mcp tries in order:
 3. **GitHub README / releases** — latest release notes and README from the project's GitHub repository
 4. **npm / PyPI metadata** — fallback for packages not in the curated registry
 
-The curated registry covers 230+ libraries with pre-mapped llms.txt URLs for instant resolution. For anything outside the registry, ws-mcp falls back to npm/PyPI metadata.
+The curated registry covers 330+ libraries with pre-mapped llms.txt URLs for instant resolution. For anything outside the registry, ws-mcp falls back to npm/PyPI metadata.
 
 ---
 
