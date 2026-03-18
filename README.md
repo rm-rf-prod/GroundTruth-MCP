@@ -1,12 +1,12 @@
 <p align="center">
-  <img src="./banner.webp" alt="ws-mcp banner" width="100%" />
+  <img src="./banner.webp" alt="ws-mcp" width="100%" />
 </p>
 
 <h1 align="center">ws-mcp</h1>
 
 <p align="center">
-  Universal documentation and best practices MCP server for Claude Code, Cursor, and any MCP-compatible AI client.<br/>
-  Fetches live content from official sources — <strong>no stale training data, no rate limits, no API key</strong>.
+  Self-hosted MCP server that fetches live documentation from official sources.<br/>
+  A Context7 alternative — with no rate limits, 230+ libraries, and a code audit tool.
 </p>
 
 <p align="center">
@@ -20,20 +20,20 @@
 
 ## Why I built this
 
-I use Claude Code heavily for production work across Next.js, Supabase, Drizzle, Tailwind, and a dozen other libraries. The problem I kept running into was simple: **Claude's training data is always months behind.**
+I use Claude Code daily for production work — Next.js, Supabase, Drizzle, Tailwind, the usual stack. The problem I kept running into: **Claude's training data is always months behind the libraries I'm using.**
 
-When I asked about Next.js 16's `proxy.ts`, it described `middleware.ts`. When I asked about AI SDK v6's `useChat`, it gave me the v5 API. When I needed the latest Drizzle ORM patterns, it gave me deprecated syntax. The knowledge cutoff isn't a small gap — for fast-moving libraries it's the difference between code that ships and code that breaks.
+When I asked about Next.js 16's `proxy.ts`, it described `middleware.ts`. When I asked about AI SDK v6's `useChat`, it gave me the v5 API. When I needed current Drizzle ORM patterns, it gave me deprecated syntax. The knowledge cutoff isn't a minor inconvenience — for fast-moving libraries it's the difference between code that ships and code that breaks.
 
-The obvious fix is Context7, an MCP server that fetches current docs. I used it for a while. Then I started hitting rate limits during long sessions. Then I noticed it had around 130 libraries in its registry. Then I saw it was returning chunked embeddings rather than the actual structured content from official docs.
+The obvious fix is [Context7](https://context7.com), an MCP server that fetches current docs. I used it for months. Then I started hitting rate limits during long sessions. Then I noticed it had around 130 libraries. Then I looked more closely and saw it was returning chunked embeddings of old doc pages rather than the structured content library authors actually publish.
 
-So I built ws-mcp.
+So I built ws-mcp as a Context7 alternative that runs on your own machine.
 
-It solves the same problem differently:
-- **Self-hosted** — runs on your machine, no shared infrastructure, no rate limits ever
-- **230+ libraries** — curated registry with the right docs URL and llms.txt path for each one
-- **Source priority that makes sense** — llms.txt files first, because library authors write those specifically for AI assistants. Embeddings of old docs pages last.
-- **An audit tool** — scans your actual source files for real issues with file and line numbers, then fetches live fixes from official docs. Context7 has nothing like this.
-- **Freeform search** — look up OWASP, WCAG, MDN, web standards, security topics. Not just library docs.
+Key differences:
+- **No rate limits** — it runs locally, no shared infrastructure
+- **llms.txt first** — library authors write these specifically for AI. Context7 doesn't prioritize them.
+- **230+ curated libraries** — plus npm/PyPI fallback for anything not in the registry
+- **Code audit tool** — scans your actual files for issues with file paths and line numbers, then fetches live fixes. Context7 has nothing like this.
+- **Freeform search** — OWASP, WCAG, MDN, web standards. Not just library docs.
 
 ---
 
@@ -60,46 +60,42 @@ Add to your MCP config (`claude_desktop_config.json`, `.cursor/mcp.json`, or `.v
 }
 ```
 
-No build step. No global install. Node 20+ required. Updates automatically — explained below.
+No build step. No global install required. Node.js 20+ is the only dependency.
 
 ---
 
 ## How it works
 
-When you ask your AI client to "use ws" or call any `ws_*` tool, here is exactly what happens:
+When you tell your AI client to "use ws for drizzle" or call any `ws_*` tool directly, here's what happens under the hood:
 
 ```
 1. ws_resolve_library("drizzle")
        │
        ├─ Check internal registry (230+ curated entries)
-       │   → matches drizzle-orm entry
+       │   → matches drizzle-orm
        │   → returns id, docsUrl, llmsTxtUrl, githubUrl
        │
 2. ws_get_docs / ws_best_practices
        │
        ├─ Step 1: fetch https://orm.drizzle.team/llms.txt
-       │          (official, written by library authors for AI)
+       │          (written by the library authors for AI assistants — highest signal)
        │
        ├─ Step 2: fetch https://orm.drizzle.team/llms-full.txt
-       │          (extended version if available)
+       │          (extended version when available)
        │
        ├─ Step 3: fetch via Jina Reader (https://r.jina.ai/...)
-       │          (renders JavaScript-heavy docs pages to clean text)
+       │          (renders JS-heavy doc pages to clean text)
        │
        └─ Step 4: fetch GitHub README + latest release notes
-                  (fallback, always works)
+                  (always works, catches anything else)
        │
 3. Content returned to your AI client
-       → AI answers with current, official information
+       → Answers based on current, official documentation
 ```
 
-For libraries **not in the registry**, the server falls back to the npm or PyPI registry to find the homepage URL, then applies the same 4-step chain. This means it works for any package, not just the 230+ curated ones.
+For libraries not in the registry, the server falls back to npm or PyPI to find the homepage, then runs the same 4-step chain. It works for any package — the curated list just makes the first step faster.
 
-For **`ws_audit`**, it reads your actual source files, runs pattern matching per category (layout, performance, accessibility, security, React, Next.js, TypeScript), collects every hit with its file path and line number, then fetches live fixes from official docs for each issue type. You get a structured report you can act on immediately.
-
-For **`ws_search`**, it maps topics to authoritative sources directly — OWASP for security, MDN for web APIs, web.dev for performance, W3C and WCAG for standards — and falls back to DuckDuckGo for anything outside those categories.
-
-Everything runs locally on stdio transport. No data leaves your machine except the outbound fetch requests to official docs sites.
+Everything runs on stdio transport. No data leaves your machine except the outbound fetch requests to official docs sites.
 
 ---
 
@@ -107,18 +103,18 @@ Everything runs locally on stdio transport. No data leaves your machine except t
 
 ### `ws_resolve_library`
 
-Resolve a library name to its docs URL and internal registry ID. Always call this first when you know the library name.
+Maps a library name to its registry entry. Call this first when you know what you're looking for.
 
 ```
-"use ws for nextjs"         → resolves to vercel/next.js
-"use ws for drizzle orm"    → resolves to drizzle-team/drizzle-orm
-"use ws for fastapi"        → resolves to tiangolo/fastapi (PyPI fallback)
-"use ws for some-new-lib"   → resolves via npm registry fallback
+"use ws for nextjs"         → vercel/next.js
+"use ws for drizzle orm"    → drizzle-team/drizzle-orm
+"use ws for fastapi"        → tiangolo/fastapi (PyPI fallback)
+"use ws for some-new-lib"   → resolved via npm registry
 ```
 
 ### `ws_get_docs`
 
-Fetch current documentation for a specific topic within a library.
+Fetches current documentation for a specific topic within a library.
 
 ```
 ws_get_docs({ libraryId: "vercel/next.js", topic: "caching" })
@@ -128,7 +124,7 @@ ws_get_docs({ libraryId: "tailwindcss/tailwindcss", topic: "dark mode" })
 
 ### `ws_best_practices`
 
-Fetch patterns, anti-patterns, and configuration guidance. Useful before starting implementation of anything non-trivial.
+Fetches patterns, anti-patterns, and configuration guidance. Run this before starting anything non-trivial.
 
 ```
 ws_best_practices({ libraryId: "vercel/next.js" })
@@ -138,7 +134,7 @@ ws_best_practices({ libraryId: "drizzle-team/drizzle-orm", topic: "migrations" }
 
 ### `ws_auto_scan`
 
-Detect all project dependencies from `package.json`, `requirements.txt`, `Cargo.toml`, or `go.mod` and fetch best practices for each one automatically. Useful at the start of a session on an unfamiliar codebase.
+Reads your `package.json`, `requirements.txt`, `Cargo.toml`, or `go.mod` and fetches best practices for every dependency automatically. Useful at the start of a session on an unfamiliar codebase.
 
 ```
 ws_auto_scan({})
@@ -147,75 +143,86 @@ ws_auto_scan({ projectPath: "/path/to/project" })
 
 ### `ws_search`
 
-Freeform search across web standards, security, accessibility, and performance topics. No library name needed.
+Searches across web standards, security, accessibility, and performance topics. No library name needed.
 
 ```
 ws_search({ query: "OWASP SQL injection prevention 2026" })
 ws_search({ query: "WCAG 2.2 focus indicators" })
 ws_search({ query: "Core Web Vitals LCP optimization" })
 ws_search({ query: "JWT vs session cookies security" })
-ws_search({ query: "HTTP/3 QUIC browser support" })
 ```
 
-Covered sources: MDN, OWASP, web.dev, W3C, WCAG, CSS-Tricks, Node.js docs, and more.
+Sources: MDN, OWASP, web.dev, W3C, WCAG, Node.js docs, and more. Falls back to DuckDuckGo for anything outside those categories.
 
 ### `ws_audit`
 
-The tool that doesn't exist anywhere else. Scans your actual source files for real issues — not hypothetical ones — and returns file paths with line numbers plus live fixes from official docs.
+Scans your actual source files for real issues — not hypothetical ones. Returns file paths with line numbers and fetches live fixes from official docs.
 
 ```
 ws_audit({ projectPath: "." })
 ws_audit({ projectPath: ".", categories: ["security", "accessibility"] })
 ```
 
-**Categories:**
-
 | Category | What it checks |
 |---|---|
-| `layout` | Layout shifts, missing image dimensions, CLS issues |
+| `layout` | Layout shifts, missing image dimensions, CLS |
 | `performance` | Bundle size, lazy loading, resource hints, render-blocking |
-| `accessibility` | Missing alt text, unlabelled inputs, poor contrast, ARIA misuse |
-| `security` | Hardcoded secrets, unsafe innerHTML, missing CSP, CORS misconfig |
-| `react` | Missing keys, stale closures, effect cleanup, prop drilling |
+| `accessibility` | Missing alt text, unlabelled inputs, ARIA misuse |
+| `security` | Hardcoded secrets, unsafe innerHTML, CORS misconfiguration |
+| `react` | Missing keys, stale closures, effect cleanup |
 | `nextjs` | Deprecated APIs, sync request access, missing Suspense boundaries |
 | `typescript` | `any` usage, non-null assertions, missing return types |
 | `all` | Everything above (default) |
 
----
-
-## Auto-updates
-
-The install command uses `npx -y ws-mcp@latest`. Every time your AI client starts a new session, npx checks npm for the latest published version. If a newer version exists, it downloads and runs it. If the cached version is already current, it starts instantly from cache.
-
-This means: when I improve the library registry, add new tools, or fix a bug and run `npm publish`, every user gets the update on their next session. No manual steps, no notifications, no opt-in.
+This is the feature that has no equivalent in Context7 or any other docs MCP.
 
 ---
 
 ## vs. Context7
 
+ws-mcp is a direct Context7 alternative. Here's how they compare:
+
 | | ws-mcp | Context7 |
 |---|---|---|
-| Hosting | Self-hosted (your machine) | Cloud service |
+| Hosting | Your machine | Cloud service |
 | Rate limits | None | Yes (shared infrastructure) |
 | Source priority | llms.txt → Jina → GitHub | Embeddings of docs pages |
-| Code audit tool | Yes — file:line with live fixes | No |
-| Freeform search | Yes — OWASP, MDN, web standards | Library docs only |
+| Code audit tool | Yes — file:line + live fixes | No |
+| Freeform search | Yes — OWASP, MDN, standards | Library docs only |
 | Libraries | 230+ curated + npm/PyPI fallback | ~130 |
 | Python / Rust / Go | Yes | Limited |
-| API key | Not required | Not required |
+| API key required | No | No |
 | Offline | No (fetches live) | No |
 
-Context7 is a good project. This one just fits my workflow better.
+Context7 is a well-built project. ws-mcp takes a different approach: self-hosted, source-priority that follows what library authors actually publish for AI, and an audit tool for real codebases.
+
+---
+
+## Auto-updates
+
+The install command uses `npx -y ws-mcp@latest`. Every time your AI client starts a session, npx checks npm for the latest version. If there's a newer release, it downloads and runs it. If the cached version is current, it starts from cache instantly.
+
+When I publish an update — new libraries in the registry, new tools, bug fixes — every user gets it on their next session. No manual steps, no notifications, no opt-in required.
 
 ---
 
 ## Requirements
 
 - Node.js 20+
-- An MCP-compatible client: Claude Code, Cursor, VS Code with MCP extension, or Claude Desktop
+- Claude Code, Cursor, VS Code (with MCP extension), or Claude Desktop
+
+---
+
+## Contributing
+
+The library registry lives in `src/sources/registry.ts`. If you want to add a library, open a PR with the entry: `id`, `name`, `docsUrl`, and `llmsTxtUrl` if the project publishes one.
+
+Bug reports and tool suggestions are welcome via [GitHub Issues](https://github.com/thatsgetpersonalnow/ws-mcp/issues).
 
 ---
 
 ## License
 
-MIT — [Senorit](https://senorit.de)
+MIT. Free to use, modify, and distribute — including commercially. See [LICENSE](./LICENSE) for the full text.
+
+Built by [Senorit](https://senorit.de).
