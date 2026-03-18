@@ -1,5 +1,35 @@
 # Changelog
 
+## [1.5.0] — 2026-03-18
+
+### Added
+- **Registry expanded to 330+ libraries** — 45 new entries across backend frameworks, CMS, AI/ML, systems languages, and frontend tooling:
+  - Backend: NestJS, Elysia, Nitro
+  - CMS: Payload CMS, Strapi, Contentful
+  - GraphQL clients: Apollo Client, urql
+  - Vector DBs: Pinecone, Qdrant
+  - Query builders: Kysely
+  - Sync: Electric SQL
+  - HTTP utils: ky, clsx, tailwind-merge
+  - Rich text: Slate.js
+  - Content: unified, MDX, Fumadocs
+  - Package managers / bundlers: pnpm, Webpack
+  - Python AI/ML: LangChain, LlamaIndex, CrewAI, LangGraph, HuggingFace Transformers
+  - Go: Gin, Fiber, GORM, chi
+  - Rust: Axum, Actix Web, sqlx, Tokio
+  - Vue ecosystem: Pinia, Nuxt Content
+  - Email: Nodemailer
+  - Accessible UI: Ariakit, Zag.js, Panda CSS
+  - Real-time: PartyKit
+  - AI chat UI: assistant-ui
+- **`ws_search` TOPIC_URL_MAP** — 22 new topic entries:
+  - WebAssembly, Vector Search / Embeddings, MCP Protocol, AI Agents & Tool Calling
+  - RAG, Prompt Engineering, gRPC / Protocol Buffers, Server-Sent Events
+  - JSON Schema, JSON-LD / Structured Data, OpenTelemetry, Email Deliverability
+  - Monorepo Patterns, Semantic Versioning, Web Animations API
+  - NestJS, Elysia, Payload CMS, Kysely, Pinia, assistant-ui
+- **`AUTHORITATIVE_DOMAINS`** expanded with 30 new domains: `docs.nestjs.com`, `elysiajs.com`, `hono.dev`, `tanstack.com`, `kysely.dev`, `opentelemetry.io`, `turbo.build`, `nx.dev`, `biome.sh`, `bun.sh`, `deno.com`, `docs.anthropic.com`, `platform.openai.com`, `modelcontextprotocol.io`, `docs.langchain.com`, `docs.llamaindex.ai`, `docs.crewai.com`, `reactnavigation.org`, `motion.dev`, `pinia.vuejs.org`, `docs.partykit.io`, `assistant-ui.com`, `pytorch.org`, `huggingface.co`, `docs.pinecone.io`, `qdrant.tech`, `grpc.io`, `protobuf.dev`, `json-schema.org`, `semver.org`, `webassembly.org`, `payloadcms.com`, `strapi.io`, `docs.expo.dev`
+
 ## [1.4.0] — 2026-03-18
 
 ### Added
