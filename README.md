@@ -11,7 +11,7 @@
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@senorit/ws-mcp"><img src="https://img.shields.io/npm/v/@senorit/ws-mcp?color=00d4aa&label=npm" alt="npm version" /></a>
-  <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT License" /></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/badge/license-ELv2-orange" alt="Elastic License 2.0" /></a>
   <img src="https://img.shields.io/badge/libraries-230%2B-teal" alt="230+ libraries" />
   <img src="https://img.shields.io/badge/node-%3E%3D20-green" alt="Node 20+" />
 </p>
@@ -223,6 +223,4 @@ Bug reports and tool suggestions are welcome via [GitHub Issues](https://github.
 
 ## License
 
-MIT. Free to use, modify, and distribute — including commercially. See [LICENSE](./LICENSE) for the full text.
-
-Built by [Senorit](https://senorit.de).
+[Elastic License 2.0](./LICENSE) — free to use and self-host. You may not offer it as a managed service or build a competing product with it.
