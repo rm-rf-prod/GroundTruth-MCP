@@ -460,7 +460,153 @@ const TOPIC_URL_MAP: Array<{ patterns: string[]; urls: string[]; name: string }>
     urls: ['https://reactnative.dev/docs/new-architecture-intro'],
     name: 'React Native New Architecture',
   },
-
+  {
+    patterns: ['webassembly', 'wasm', 'web assembly', 'emscripten', 'wasm bindgen', 'wasmtime'],
+    urls: [
+      'https://developer.mozilla.org/en-US/docs/WebAssembly',
+      'https://webassembly.org/docs/use-cases/',
+    ],
+    name: 'WebAssembly',
+  },
+  {
+    patterns: ['vector search', 'vector database', 'embeddings search', 'similarity search', 'semantic search', 'pgvector', 'pinecone', 'qdrant'],
+    urls: [
+      'https://docs.pinecone.io/guides/get-started/quickstart',
+      'https://qdrant.tech/documentation/quick-start/',
+    ],
+    name: 'Vector Search / Embeddings',
+  },
+  {
+    patterns: ['mcp protocol', 'model context protocol', 'mcp server', 'mcp client', 'mcp tool', 'build mcp', 'create mcp'],
+    urls: [
+      'https://modelcontextprotocol.io/introduction',
+      'https://modelcontextprotocol.io/docs/concepts/tools',
+    ],
+    name: 'MCP Protocol',
+  },
+  {
+    patterns: ['ai agent', 'agentic', 'llm agent', 'autonomous agent', 'multi-agent', 'tool calling', 'function calling llm'],
+    urls: [
+      'https://docs.anthropic.com/en/docs/build-with-claude/tool-use',
+      'https://platform.openai.com/docs/guides/function-calling',
+    ],
+    name: 'AI Agents & Tool Calling',
+  },
+  {
+    patterns: ['rag', 'retrieval augmented generation', 'retrieval-augmented', 'document retrieval', 'chunk embedding'],
+    urls: [
+      'https://docs.llamaindex.ai/en/stable/getting_started/concepts/',
+      'https://docs.langchain.com/docs/use-cases/question-answering',
+    ],
+    name: 'RAG (Retrieval-Augmented Generation)',
+  },
+  {
+    patterns: ['prompt engineering', 'system prompt', 'few-shot', 'chain of thought', 'prompt design', 'llm prompting'],
+    urls: [
+      'https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/overview',
+      'https://platform.openai.com/docs/guides/prompt-engineering',
+    ],
+    name: 'Prompt Engineering',
+  },
+  {
+    patterns: ['grpc', 'protocol buffers', 'protobuf', 'grpc-web', 'connect rpc', 'buf schema'],
+    urls: [
+      'https://grpc.io/docs/what-is-grpc/introduction/',
+      'https://protobuf.dev/overview/',
+    ],
+    name: 'gRPC / Protocol Buffers',
+  },
+  {
+    patterns: ['server-sent events', 'eventsource', 'event stream', 'text/event-stream'],
+    urls: ['https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events'],
+    name: 'Server-Sent Events (SSE)',
+  },
+  {
+    patterns: ['json schema', 'json schema validation', 'json schema draft', 'ajv', 'schema validation json'],
+    urls: [
+      'https://json-schema.org/learn/getting-started-step-by-step',
+      'https://json-schema.org/specification',
+    ],
+    name: 'JSON Schema',
+  },
+  {
+    patterns: ['json-ld', 'schema.org', 'rich results', 'rich snippets', 'google structured data'],
+    urls: [
+      'https://developers.google.com/search/docs/appearance/structured-data/intro-structured-data',
+      'https://schema.org/docs/gs.html',
+    ],
+    name: 'JSON-LD / Structured Data',
+  },
+  {
+    patterns: ['opentelemetry', 'otel', 'distributed tracing', 'trace context', 'spans traces', 'otel collector'],
+    urls: [
+      'https://opentelemetry.io/docs/what-is-opentelemetry/',
+      'https://opentelemetry.io/docs/languages/js/getting-started/',
+    ],
+    name: 'OpenTelemetry',
+  },
+  {
+    patterns: ['email deliverability', 'dkim', 'spf record', 'dmarc', 'email dns', 'bounce rate email'],
+    urls: [
+      'https://resend.com/blog/email-deliverability-explained',
+      'https://developers.google.com/gmail/postmaster/docs/troubleshooting',
+    ],
+    name: 'Email Deliverability',
+  },
+  {
+    patterns: ['monorepo', 'pnpm workspace', 'yarn workspace', 'monorepo setup', 'workspace packages', 'nx monorepo'],
+    urls: [
+      'https://turbo.build/repo/docs',
+      'https://nx.dev/concepts/mental-model',
+    ],
+    name: 'Monorepo Patterns',
+  },
+  {
+    patterns: ['semver', 'semantic versioning', 'version bump', 'major minor patch', 'changesets', 'release workflow'],
+    urls: [
+      'https://semver.org/',
+      'https://github.com/changesets/changesets/blob/main/docs/intro-to-using-changesets.md',
+    ],
+    name: 'Semantic Versioning',
+  },
+  {
+    patterns: ['web animations api', 'element.animate', 'keyframe animation js', 'waapi'],
+    urls: ['https://developer.mozilla.org/en-US/docs/Web/API/Web_Animations_API/Using_the_Web_Animations_API'],
+    name: 'Web Animations API',
+  },
+  {
+    patterns: ['nestjs', 'nest framework', 'nestjs module', 'nestjs controller', 'nestjs provider', 'nestjs guard'],
+    urls: [
+      'https://docs.nestjs.com/',
+      'https://docs.nestjs.com/first-steps',
+    ],
+    name: 'NestJS',
+  },
+  {
+    patterns: ['elysia', 'elysiajs', 'bun web framework'],
+    urls: ['https://elysiajs.com/quick-start'],
+    name: 'Elysia',
+  },
+  {
+    patterns: ['payload cms', 'payloadcms', 'payload headless'],
+    urls: ['https://payloadcms.com/docs/getting-started/what-is-payload'],
+    name: 'Payload CMS',
+  },
+  {
+    patterns: ['kysely', 'kysely query builder', 'type-safe sql kysely'],
+    urls: ['https://kysely.dev/docs/getting-started'],
+    name: 'Kysely',
+  },
+  {
+    patterns: ['pinia', 'vue store', 'vue state management', 'pinia setup store'],
+    urls: ['https://pinia.vuejs.org/introduction.html'],
+    name: 'Pinia',
+  },
+  {
+    patterns: ['assistant-ui', 'ai chat ui react', 'react chat component library'],
+    urls: ['https://www.assistant-ui.com/docs/getting-started'],
+    name: 'assistant-ui',
+  },
 ];
 
 function findTopicUrls(query: string): Array<{ urls: string[]; name: string }> {
@@ -512,7 +658,13 @@ function normalizeQueryYear(query: string): string {
 }
 
 const AUTHORITATIVE_DOMAINS =
-  "developer.mozilla.org|web.dev|owasp.org|cheatsheetseries.owasp.org|w3.org|webkit.org|whatwg.org|tc39.es|v8.dev|nodejs.org|docs.github.com|webaim.org|www.typescriptlang.org|vitest.dev|playwright.dev|jestjs.io|docs.astro.build|svelte.dev|vuejs.org|reactnative.dev";
+  "developer.mozilla.org|web.dev|owasp.org|cheatsheetseries.owasp.org|w3.org|webkit.org|whatwg.org|tc39.es|v8.dev|nodejs.org|docs.github.com|webaim.org|www.typescriptlang.org|vitest.dev|playwright.dev|jestjs.io|docs.astro.build|svelte.dev|vuejs.org|reactnative.dev|" +
+  "docs.nestjs.com|elysiajs.com|hono.dev|tanstack.com|kysely.dev|opentelemetry.io|turbo.build|nx.dev|biome.sh|bun.sh|deno.com|" +
+  "docs.anthropic.com|platform.openai.com|modelcontextprotocol.io|docs.langchain.com|docs.llamaindex.ai|docs.crewai.com|" +
+  "reactnavigation.org|motion.dev|pinia.vuejs.org|docs.partykit.io|assistant-ui.com|" +
+  "pytorch.org|huggingface.co|docs.pinecone.io|qdrant.tech|" +
+  "grpc.io|protobuf.dev|json-schema.org|semver.org|webassembly.org|" +
+  "payloadcms.com|strapi.io|docs.expo.dev";
 
 const AUTHORITATIVE_URL_PATTERN = new RegExp(
   `https?:\\/\\/(?:${AUTHORITATIVE_DOMAINS})[^"<\\s]*`,
