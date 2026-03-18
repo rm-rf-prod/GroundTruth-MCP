@@ -15,8 +15,8 @@
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-ELv2-orange" alt="Elastic License 2.0" /></a>
   <img src="https://img.shields.io/badge/libraries-330%2B-teal" alt="330+ libraries" />
   <img src="https://img.shields.io/badge/audit_patterns-60%2B-red" alt="60+ audit patterns" />
-  <img src="https://img.shields.io/badge/tests-106-brightgreen" alt="106 tests" />
-  <img src="https://img.shields.io/badge/node-%3E%3D20-green" alt="Node 20+" />
+  <img src="https://img.shields.io/badge/tests-192-brightgreen" alt="192 tests" />
+  <img src="https://img.shields.io/badge/node-%3E%3D24-green" alt="Node 24+" />
 </p>
 
 ---
@@ -62,7 +62,7 @@ Add to your MCP config (`claude_desktop_config.json`, `.cursor/mcp.json`, or `.v
 }
 ```
 
-No build step. No config file. Node.js 20+. npx pulls the latest version on every session start automatically.
+No build step. No config file. Node.js 24+. npx pulls the latest version on every session start automatically.
 
 ### Optional: GitHub token
 
