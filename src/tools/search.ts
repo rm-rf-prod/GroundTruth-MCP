@@ -391,6 +391,75 @@ const TOPIC_URL_MAP: Array<{ patterns: string[]; urls: string[]; name: string }>
     ],
     name: "Progressive Web Apps",
   },
+  // React Native / Expo
+  {
+    patterns: ['react native', 'react-native', 'expo sdk', 'expo router', 'expo app'],
+    urls: [
+      'https://reactnative.dev/docs/getting-started',
+      'https://docs.expo.dev/get-started/introduction/',
+    ],
+    name: 'React Native / Expo',
+  },
+  {
+    patterns: ['react compiler', 'babel-plugin-react-compiler', 'react forget', 'auto-memoization react'],
+    urls: [
+      'https://docs.expo.dev/guides/react-compiler/',
+      'https://react.dev/learn/react-compiler',
+    ],
+    name: 'React Compiler',
+  },
+  {
+    patterns: ['expo notifications', 'expo-notifications', 'push notifications react native', 'setnotificationcategoryasync', 'notification action buttons'],
+    urls: ['https://docs.expo.dev/versions/latest/sdk/notifications/'],
+    name: 'Expo Notifications',
+  },
+  {
+    patterns: ['react native gesture', 'react-native-gesture-handler', 'swipeable', 'pan gesture', 'gesture handler'],
+    urls: [
+      'https://docs.swmansion.com/react-native-gesture-handler/docs/',
+      'https://docs.swmansion.com/react-native-gesture-handler/docs/gestures/pan-gesture',
+    ],
+    name: 'React Native Gesture Handler',
+  },
+  {
+    patterns: ['react native reanimated', 'reanimated', 'useanimatedstyle', 'withspring', 'shared value'],
+    urls: ['https://docs.swmansion.com/react-native-reanimated/docs/'],
+    name: 'React Native Reanimated',
+  },
+  {
+    patterns: ['netinfo', 'react-native-netinfo', 'network status react native', 'offline banner react native', 'connectivity react native'],
+    urls: ['https://github.com/react-native-netinfo/react-native-netinfo#readme'],
+    name: 'React Native NetInfo',
+  },
+  {
+    patterns: ['react navigation', 'stack navigator', 'tab navigator', 'drawer navigator', 'navigation container'],
+    urls: ['https://reactnavigation.org/docs/getting-started'],
+    name: 'React Navigation',
+  },
+  {
+    patterns: ['nativewind', 'tailwind react native', 'tailwind expo'],
+    urls: ['https://www.nativewind.dev/getting-started/expo-router'],
+    name: 'NativeWind',
+  },
+  {
+    patterns: ['react native performance', 'flashlist', 'flatlist optimization react native', 'recycler view react native'],
+    urls: [
+      'https://shopify.github.io/flash-list/docs/',
+      'https://reactnative.dev/docs/optimizing-flatlist-configuration',
+    ],
+    name: 'React Native FlatList / FlashList',
+  },
+  {
+    patterns: ['eas build', 'expo application services', 'eas submit', 'ota update expo'],
+    urls: ['https://docs.expo.dev/build/introduction/'],
+    name: 'EAS Build',
+  },
+  {
+    patterns: ['react native new architecture', 'fabric react native', 'jsi', 'turbomodule', 'bridgeless'],
+    urls: ['https://reactnative.dev/docs/new-architecture-intro'],
+    name: 'React Native New Architecture',
+  },
+
 ];
 
 function findTopicUrls(query: string): Array<{ urls: string[]; name: string }> {
