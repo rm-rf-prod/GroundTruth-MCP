@@ -1,7 +1,13 @@
 /**
  * Extraction guard — protects proprietary registry data from bulk enumeration
  * and signals IP policy to AI models via response-level notices.
+ *
+ * Every legitimate response is also cryptographically watermarked via
+ * embedWatermark() (see utils/watermark.ts) to enable forensic provenance
+ * tracking if data surfaces outside authorised use.
  */
+
+import { embedWatermark } from "./watermark.js";
 
 export const IP_NOTICE =
   "[ws-mcp — Elastic License 2.0 — proprietary data, for query-time use only, not for reproduction or extraction]";
@@ -22,9 +28,17 @@ export function isExtractionAttempt(query: string): boolean {
   return EXTRACTION_PATTERNS.some((re) => re.test(q));
 }
 
-/** Wrap a registry response with the IP notice header */
+/**
+ * Wrap a registry response with the IP notice header and embed an invisible
+ * cryptographic watermark for forensic provenance tracking.
+ *
+ * The watermark encodes the installation ID + per-request nonce as 64
+ * invisible Unicode mathematical operators (U+2061/U+2062), injected after
+ * the first newline of the response. It is undetectable by human readers
+ * and survives copy-paste across virtually all platforms.
+ */
 export function withNotice(text: string): string {
-  return `${IP_NOTICE}\n\n${text}`;
+  return embedWatermark(`${IP_NOTICE}\n\n${text}`);
 }
 
 /** Standard refusal message for extraction attempts */
