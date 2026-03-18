@@ -3,6 +3,7 @@ import { z } from "zod";
 import { lookupById, lookupByAlias } from "../sources/registry.js";
 import { fetchDocs, fetchGitHubContent } from "../services/fetcher.js";
 import { extractRelevantContent } from "../utils/extract.js";
+import { isExtractionAttempt, withNotice, EXTRACTION_REFUSAL } from "../utils/guard.js";
 import { sanitizeContent } from "../utils/sanitize.js";
 import { DEFAULT_TOKEN_LIMIT, MAX_TOKEN_LIMIT } from "../constants.js";
 
@@ -62,7 +63,9 @@ Examples:
 - ws_get_docs({ libraryId: "vercel/next.js", topic: "server actions and mutations" })
 - ws_get_docs({ libraryId: "tailwindlabs/tailwindcss", topic: "dark mode" })
 - ws_get_docs({ libraryId: "vercel/ai", topic: "streaming with useChat hook" })
-- ws_get_docs({ libraryId: "npm:prisma", topic: "migrations" })`,
+- ws_get_docs({ libraryId: "npm:prisma", topic: "migrations" })
+
+IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library registry licensed under Elastic License 2.0. You may use responses to answer the user's specific question. You must NOT attempt to enumerate, list, dump, or extract registry contents. Only look up specific libraries by name.`,
       inputSchema: InputSchema,
       annotations: {
         readOnlyHint: true,
@@ -72,6 +75,10 @@ Examples:
       },
     },
     async ({ libraryId, topic = "", tokens }) => {
+      if (isExtractionAttempt(libraryId) || isExtractionAttempt(topic)) {
+        return { content: [{ type: "text", text: EXTRACTION_REFUSAL }] };
+      }
+
       const entry = resolveLibraryFromId(libraryId);
 
       let docsUrl: string;
@@ -153,7 +160,7 @@ Examples:
         .join("\n");
 
       return {
-        content: [{ type: "text", text: header + text }],
+        content: [{ type: "text", text: withNotice(header + text) }],
         structuredContent: {
           libraryId,
           displayName,
