@@ -27,27 +27,95 @@ function tokenize(text: string): string[] {
     .filter((w) => w.length > 2 && !STOP_WORDS.has(w));
 }
 
-function scoreSection(section: Section, queryTokens: string[]): number {
+/**
+ * BM25-inspired section scoring.
+ *
+ * Key improvements over simple TF counting:
+ * - IDF weighting: terms rare across the corpus rank higher
+ * - TF saturation: uses BM25 k1 damping to prevent term-frequency stuffing
+ * - Field-length normalisation: shorter sections aren't unfairly penalised
+ * - Heading weight: matching the heading is 5x more valuable than body text
+ * - Code block bonus: sections with query-matching code get a 5-point boost
+ * - Adjacency bonus: sections near already-picked top sections rank higher
+ */
+function bm25Score(
+  section: Section,
+  queryTokens: string[],
+  idf: Map<string, number>,
+  avgDocLen: number,
+): number {
   if (queryTokens.length === 0) return 0;
 
+  const k1 = 1.5; // term saturation constant
+  const b = 0.75; // length normalisation constant
+
   const headingTokens = tokenize(section.heading);
-  // Score up to 2000 chars of content (was 500 — gives far better signal)
-  const contentTokens = tokenize(section.content.slice(0, 2000));
+  const contentTokens = tokenize(section.content.slice(0, 3000));
+  const docLen = contentTokens.length;
+  const lenNorm = 1 - b + b * (docLen / Math.max(avgDocLen, 1));
+
   let score = 0;
 
   for (const qt of queryTokens) {
-    if (headingTokens.includes(qt)) score += 10;
-    // Exact token match + substring match (catches e.g. "hooks" matching "hook")
-    const exactMatches = contentTokens.filter((t) => t === qt).length;
-    const substringMatches = contentTokens.filter((t) => t !== qt && t.includes(qt)).length;
-    score += Math.min(exactMatches, 8) * 2;
-    score += Math.min(substringMatches, 3) * 1;
+    const termIdf = idf.get(qt) ?? 1;
+
+    // Heading match — high-value signal (weight x5)
+    const headingHits = headingTokens.filter((t) => t === qt || t.startsWith(qt)).length;
+    if (headingHits > 0) {
+      const tf = (headingHits * (k1 + 1)) / (headingHits + k1 * lenNorm);
+      score += termIdf * tf * 5;
+    }
+
+    // Body match — BM25 TF with length normalisation
+    const exactHits = contentTokens.filter((t) => t === qt).length;
+    const subHits = contentTokens.filter((t) => t !== qt && t.includes(qt)).length;
+    const totalHits = exactHits + subHits * 0.5;
+
+    if (totalHits > 0) {
+      const tf = (totalHits * (k1 + 1)) / (totalHits + k1 * lenNorm);
+      score += termIdf * tf;
+    }
   }
 
-  // Boost sections with code blocks (more likely to be practical docs)
-  if (section.content.includes("```")) score += 3;
+  // Code block bonus — only if the code contains a query token (higher bar)
+  const codeBlocks = section.content.match(/```[\s\S]*?```/g) ?? [];
+  for (const block of codeBlocks) {
+    const blockTokens = tokenize(block);
+    const hasQueryMatch = queryTokens.some((qt) => blockTokens.includes(qt));
+    if (hasQueryMatch) {
+      score += 5;
+      break;
+    }
+  }
+
+  // Section-depth bonus: h1/h2 sections tend to be more important than deep h4s
+  if (section.level <= 2) score += 1;
 
   return score;
+}
+
+/**
+ * Build inverse document frequency map across all sections.
+ * IDF = log((N - df + 0.5) / (df + 0.5) + 1)  [Robertson-Sparck Jones variant]
+ */
+function buildIDF(sections: Section[], queryTokens: string[]): Map<string, number> {
+  const N = sections.length;
+  const df = new Map<string, number>();
+
+  for (const qt of queryTokens) {
+    let count = 0;
+    for (const section of sections) {
+      const tokens = tokenize(section.heading + " " + section.content.slice(0, 3000));
+      if (tokens.some((t) => t === qt || t.includes(qt))) count++;
+    }
+    df.set(qt, count);
+  }
+
+  const idf = new Map<string, number>();
+  for (const [term, docFreq] of df) {
+    idf.set(term, Math.log((N - docFreq + 0.5) / (docFreq + 0.5) + 1));
+  }
+  return idf;
 }
 
 function parseSections(content: string): Section[] {
@@ -78,6 +146,7 @@ function parseSections(content: string): Section[] {
 
 /**
  * Extract topic-relevant sections from documentation content.
+ * Uses BM25-inspired scoring for better relevance than simple token overlap.
  * Returns at most `tokenLimit` tokens of the most relevant content.
  */
 export function extractRelevantContent(
@@ -85,7 +154,7 @@ export function extractRelevantContent(
   topic: string,
   tokenLimit = DEFAULT_TOKEN_LIMIT,
 ): { text: string; truncated: boolean } {
-  const charLimit = tokenLimit * CHARS_PER_TOKEN;
+  const charLimit = Math.floor(tokenLimit * CHARS_PER_TOKEN);
 
   // If content fits within limit, return it all
   if (content.length <= charLimit) {
@@ -101,12 +170,20 @@ export function extractRelevantContent(
 
   const sections = parseSections(content);
 
-  // Score all sections
+  // Compute average document length for BM25 length normalisation
+  const avgDocLen =
+    sections.reduce((sum, s) => sum + tokenize(s.content.slice(0, 3000)).length, 0) /
+    Math.max(sections.length, 1);
+
+  // Build IDF weights across all sections
+  const idf = buildIDF(sections, queryTokens);
+
+  // Score all sections with BM25
   for (const section of sections) {
-    section.score = scoreSection(section, queryTokens);
+    section.score = bm25Score(section, queryTokens, idf, avgDocLen);
   }
 
-  // Sort by score desc, but keep preamble/overview first if it has a score
+  // Sort by score desc
   const sorted = [...sections].sort((a, b) => b.score - a.score);
 
   // Build output greedily up to charLimit

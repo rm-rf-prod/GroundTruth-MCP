@@ -6,7 +6,7 @@ import { extractRelevantContent } from "../utils/extract.js";
 import { isExtractionAttempt, withNotice, EXTRACTION_REFUSAL } from "../utils/guard.js";
 import { sanitizeContent } from "../utils/sanitize.js";
 import { docCache } from "../services/cache.js";
-import { DEFAULT_TOKEN_LIMIT } from "../constants.js";
+import { DEFAULT_TOKEN_LIMIT, MAX_TOKEN_LIMIT } from "../constants.js";
 
 const InputSchema = z.object({
   query: z
@@ -20,9 +20,9 @@ const InputSchema = z.object({
     .number()
     .int()
     .min(1000)
-    .max(DEFAULT_TOKEN_LIMIT)
+    .max(MAX_TOKEN_LIMIT)
     .default(DEFAULT_TOKEN_LIMIT)
-    .describe("Max tokens to return"),
+    .describe("Max tokens to return (default 8000, max 20000)"),
 });
 
 // Curated topic-to-URL map for docs-only topics that have no npm package
@@ -606,6 +606,125 @@ const TOPIC_URL_MAP: Array<{ patterns: string[]; urls: string[]; name: string }>
     patterns: ['assistant-ui', 'ai chat ui react', 'react chat component library'],
     urls: ['https://www.assistant-ui.com/docs/getting-started'],
     name: 'assistant-ui',
+  },
+  // Backend frameworks
+  {
+    patterns: ['spring boot', 'spring framework', 'spring mvc', 'spring security', 'spring data', '@springbootapplication'],
+    urls: [
+      'https://docs.spring.io/spring-boot/docs/current/reference/html/getting-started.html',
+      'https://docs.spring.io/spring-boot/docs/current/reference/html/howto.html',
+    ],
+    name: 'Spring Boot',
+  },
+  {
+    patterns: ['laravel', 'php laravel', 'laravel eloquent', 'laravel blade', 'artisan'],
+    urls: [
+      'https://laravel.com/docs/routing',
+      'https://laravel.com/docs/eloquent',
+      'https://laravel.com/docs/deployment',
+    ],
+    name: 'Laravel',
+  },
+  {
+    patterns: ['ruby on rails', 'rails framework', 'active record rails', 'rails routes', 'rake db'],
+    urls: [
+      'https://guides.rubyonrails.org/getting_started.html',
+      'https://guides.rubyonrails.org/security.html',
+      'https://guides.rubyonrails.org/active_record_basics.html',
+    ],
+    name: 'Ruby on Rails',
+  },
+  // Messaging / queues
+  {
+    patterns: ['kafka', 'apache kafka', 'kafka producer', 'kafka consumer', 'kafka topics', 'confluent'],
+    urls: [
+      'https://kafka.apache.org/documentation/#gettingStarted',
+      'https://developer.confluent.io/learn-kafka/',
+    ],
+    name: 'Apache Kafka',
+  },
+  {
+    patterns: ['rabbitmq', 'amqp', 'message broker', 'rabbit mq'],
+    urls: [
+      'https://www.rabbitmq.com/tutorials',
+      'https://www.rabbitmq.com/documentation.html',
+    ],
+    name: 'RabbitMQ',
+  },
+  {
+    patterns: ['bullmq', 'bull queue', 'job queue redis', 'worker queue nodejs'],
+    urls: [
+      'https://docs.bullmq.io/guide/introduction',
+      'https://docs.bullmq.io/patterns/producer-consumer',
+    ],
+    name: 'BullMQ',
+  },
+  // GraphQL
+  {
+    patterns: ['graphql', 'graphql schema', 'graphql resolvers', 'graphql subscriptions', 'graphql best practices'],
+    urls: [
+      'https://graphql.org/learn/',
+      'https://www.apollographql.com/docs/apollo-server/schema/schema/',
+    ],
+    name: 'GraphQL',
+  },
+  // Infrastructure
+  {
+    patterns: ['docker', 'dockerfile', 'docker compose', 'container build', 'docker multi-stage'],
+    urls: [
+      'https://docs.docker.com/develop/develop-images/instructions/',
+      'https://docs.docker.com/develop/security-best-practices/',
+    ],
+    name: 'Docker',
+  },
+  {
+    patterns: ['kubernetes', 'k8s', 'kubectl', 'helm chart', 'k8s deployment', 'kubernetes pod'],
+    urls: [
+      'https://kubernetes.io/docs/concepts/',
+      'https://kubernetes.io/docs/tasks/',
+    ],
+    name: 'Kubernetes',
+  },
+  {
+    patterns: ['terraform', 'iac', 'infrastructure as code', 'tf plan', 'terraform module'],
+    urls: [
+      'https://developer.hashicorp.com/terraform/docs',
+      'https://developer.hashicorp.com/terraform/language/best-practices',
+    ],
+    name: 'Terraform',
+  },
+  {
+    patterns: ['github actions', 'workflow yaml', 'ci cd github', 'github runner', 'workflow dispatch'],
+    urls: [
+      'https://docs.github.com/en/actions/learn-github-actions/understanding-github-actions',
+      'https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions',
+    ],
+    name: 'GitHub Actions',
+  },
+  // Databases
+  {
+    patterns: ['postgresql', 'postgres', 'pg', 'psql', 'postgres index', 'vacuum analyze'],
+    urls: [
+      'https://www.postgresql.org/docs/current/sql.html',
+      'https://www.postgresql.org/docs/current/performance-tips.html',
+    ],
+    name: 'PostgreSQL',
+  },
+  {
+    patterns: ['redis', 'redis cache', 'redis pub sub', 'redis data types', 'redis cluster'],
+    urls: [
+      'https://redis.io/docs/latest/develop/',
+      'https://redis.io/docs/latest/develop/use/patterns/',
+    ],
+    name: 'Redis',
+  },
+  {
+    patterns: ['mongodb', 'mongo', 'mongoose schema', 'aggregation pipeline', 'mongodb index'],
+    urls: [
+      'https://www.mongodb.com/docs/manual/introduction/',
+      'https://www.mongodb.com/docs/manual/core/aggregation-pipeline/',
+    ],
+    name: 'MongoDB',
   },
 ];
 

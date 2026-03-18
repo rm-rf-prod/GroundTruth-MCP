@@ -13,8 +13,8 @@
   <a href="https://www.npmjs.com/package/@senorit/ws-mcp"><img src="https://img.shields.io/npm/v/@senorit/ws-mcp?color=00d4aa&label=npm" alt="npm version" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-ELv2-orange" alt="Elastic License 2.0" /></a>
   <img src="https://img.shields.io/badge/libraries-330%2B-teal" alt="330+ libraries" />
-  <img src="https://img.shields.io/badge/audit_patterns-50%2B-red" alt="50+ audit patterns" />
-  <img src="https://img.shields.io/badge/categories-8-blue" alt="8 categories" />
+  <img src="https://img.shields.io/badge/audit_patterns-60%2B-red" alt="60+ audit patterns" />
+  <img src="https://img.shields.io/badge/categories-9-blue" alt="9 categories" />
   <img src="https://img.shields.io/badge/node-%3E%3D20-green" alt="Node 20+" />
 </p>
 
@@ -22,13 +22,13 @@
 
 ## Why this exists
 
-Every AI coding assistant hallucinates APIs. Not because the model is bad — because documentation changes faster than training data does. A library ships a major version, deprecates half its API, and the model keeps generating the old patterns for months.
+AI coding assistants hallucinate APIs. Not because the models are bad, but because documentation changes faster than training data does. A library ships a major version, deprecates half its API, and the model keeps generating the old patterns for months. You catch it in review if you're lucky. You catch it in production if you're not.
 
-Context7 helps, but it has rate limits, lives in the cloud, and only covers ~130 libraries. When you hit the cap mid-session, you get nothing.
+Context7 helps, but it has rate limits, lives in the cloud, and covers around 130 libraries. Hit the quota mid-session and you get nothing. I did this enough times that I built the thing I actually wanted.
 
-ws-mcp runs on your machine. It fetches documentation directly from the source at query time — `llms.txt` files first, then Jina Reader for JS-rendered docs, then GitHub. No quota. No shared infrastructure. No stale cache. And it covers 330+ libraries, including the full Python AI/ML stack, Go, Rust, and every web standard from OWASP to WebAssembly.
+ws-mcp runs on your machine. It fetches docs directly from the source at query time: `llms.txt` files first (purpose-built for LLMs by the maintainers themselves), then Jina Reader for JS-rendered pages, then GitHub. No quota, no cold start, no cache from six months ago. Coverage is 330+ libraries across the Python AI/ML stack, Go, Rust, and web standards including OWASP, MDN, and WebAssembly.
 
-The code audit tool came from a different problem: AI assistants write insecure code by default. SQL built via template literals, `innerHTML` with user input, missing `await` on Next.js async APIs, `any` scattered through TypeScript. The audit scanner finds these at file:line level and fetches the current fix guidance from the actual spec or cheat sheet — not from training data.
+The audit tool came from a different problem. AI assistants produce insecure code patterns without knowing they're doing it. SQL built with template literals, `innerHTML` fed user input, `any` throughout TypeScript, `cookies()` called without `await` in Next.js 16. The scanner finds these at `file:line` level and fetches current fix guidance from the actual spec.
 
 ---
 
@@ -61,44 +61,67 @@ Add to your MCP config (`claude_desktop_config.json`, `.cursor/mcp.json`, or `.v
 }
 ```
 
-No build step. No configuration. Node.js 20+.
+No build step. No config file. Node.js 20+. npx pulls the latest version on every session start automatically.
+
+### Optional: GitHub token
+
+ws-mcp fetches README files, release notes, and migration guides from GitHub. Unauthenticated requests are rate-limited to 60/hr. If you hit that, set a token:
+
+```bash
+# Claude Code
+claude mcp add ws -e WS_GITHUB_TOKEN=ghp_yourtoken -- npx -y @senorit/ws-mcp@latest
+
+# Cursor / Claude Desktop / VS Code
+{
+  "mcpServers": {
+    "ws": {
+      "command": "npx",
+      "args": ["-y", "@senorit/ws-mcp@latest"],
+      "env": { "WS_GITHUB_TOKEN": "ghp_yourtoken" }
+    }
+  }
+}
+```
+
+A token with no extra scopes (public repo read) is enough. Raises the limit from 60 to 5000 requests/hr.
 
 ---
 
 ## Tools
 
-Six tools. Each does one thing.
+Six tools. Each does one thing and stops there.
 
 | Tool | What it does |
 |---|---|
 | `ws_resolve_library` | Find a library by name, get its registry entry and docs URL |
-| `ws_get_docs` | Fetch documentation for a specific topic within a library |
-| `ws_best_practices` | Get patterns, anti-patterns, and configuration guidance |
+| `ws_get_docs` | Fetch docs for a specific topic within a library |
+| `ws_best_practices` | Get patterns, anti-patterns, and config guidance |
 | `ws_auto_scan` | Read `package.json` / `requirements.txt` and fetch best practices per dependency |
-| `ws_search` | Search OWASP, MDN, web.dev, W3C, WCAG, AI docs, and other authoritative sources |
-| `ws_audit` | Scan source files for real issues — exact file:line locations and live fix references |
+| `ws_search` | Search OWASP, MDN, web.dev, W3C, official language docs, and AI provider docs |
+| `ws_audit` | Scan source files for real issues — exact `file:line` locations and live fix references |
 
 ---
 
 ## `ws_audit` — code audit
 
-Walks your project, reports exact file:line locations, and fetches current fix guidance from official sources for every issue type found.
+Walks your project, finds issues at exact `file:line` locations, and fetches current fix guidance from official sources for every issue type it finds.
 
 ### How it works
 
-1. Reads all `.ts`, `.tsx`, `.js`, `.jsx`, `.css`, `.html` files up to a configurable limit (default: 50, max: 200)
-2. Skips test files (`.test.`, `.spec.`, `__tests__/`), generated files, and commented-out lines
-3. Runs 50+ patterns — sourced from OWASP cheat sheets, typescript-eslint rules, react.dev/reference/rules, and web.dev
+1. Reads all `.ts`, `.tsx`, `.js`, `.jsx`, `.css`, `.html`, `.py` files up to a configurable limit (default: 50, max: 200)
+2. Skips test files, generated files, and commented-out lines (both `//` and `#`)
+3. Runs 60+ patterns — sourced from OWASP cheat sheets, typescript-eslint rules, react.dev/reference/rules, web.dev, and the OWASP Python Security Cheat Sheet
 4. For the top unique issue types, fetches current fix guidance from the authoritative source
-5. Reports each finding with the file path, line number, problem, and a concrete fix
+5. Reports each finding with file path, line number, the problem, and a concrete fix
 
 ### Categories
 
 ```
-ws_audit({ categories: ["all"] })                   // default — all 8 categories
-ws_audit({ categories: ["security", "node"] })      // OWASP + Node.js anti-patterns
-ws_audit({ categories: ["accessibility"] })         // WCAG AA scan
-ws_audit({ categories: ["typescript", "react"] })   // type safety + React rules
+ws_audit({ categories: ["all"] })                      // default — all 9 categories
+ws_audit({ categories: ["security", "node"] })         // OWASP + Node.js anti-patterns
+ws_audit({ categories: ["python", "security"] })       // Python OWASP scan
+ws_audit({ categories: ["accessibility"] })            // WCAG AA scan
+ws_audit({ categories: ["typescript", "react"] })      // type safety + React rules
 ```
 
 | Category | Patterns | What it checks |
@@ -111,6 +134,7 @@ ws_audit({ categories: ["typescript", "react"] })   // type safety + React rules
 | `nextjs` | 6 | Sync `cookies()`/`headers()`/`params` without await (Next.js 16), `use client` on layout, Tailwind v3 directives, Route Handler without error handling, `middleware.ts` not renamed to `proxy.ts`, pages without metadata |
 | `typescript` | 7 | `any` type, non-null assertions, missing return types, `@ts-ignore`, floating Promises, `require()` instead of import, double assertion |
 | `node` | 5 | `console.log` in production, synchronous fs operations, unhandled callback errors, `process.exit()` without cleanup, plain HTTP fetch |
+| `python` | 11 | SQL injection via f-string/format(), `eval()`/`exec()` with dynamic input, `subprocess` with `shell=True`, `os.system()`, bare `except:` clauses, `pickle.loads()` from untrusted source, MD5/SHA1 for passwords, `requests verify=False`, mutable default arguments, `print()` in production, `open()` path traversal |
 
 ### Options
 
@@ -152,7 +176,7 @@ Live fix: OWASP SQL Injection Prevention Cheat Sheet
 
 ## `ws_search` — freeform search
 
-Searches any topic without a library name. Pulls from OWASP, MDN, web.dev, W3C, official language docs, AI provider docs, and more.
+For questions that aren't tied to a specific library. Pulls from OWASP, MDN, web.dev, W3C, official language docs, AI provider docs, and anything else in the topic map below.
 
 ```
 ws_search({ query: "WCAG 2.2 focus indicators" })
@@ -186,13 +210,13 @@ ws_search({ query: "MCP protocol tool definition" })
 
 ## `ws_auto_scan` — dependency best practices
 
-Reads your project manifest and fetches best practices for each dependency automatically.
+Point it at your project root and it reads the manifest, figures out what you're actually using, and fetches best practices per dependency.
 
 ```
 ws_auto_scan({ projectPath: "." })
 ```
 
-Supports: `package.json` (Node.js), `requirements.txt` (Python), `Cargo.toml` (Rust), `go.mod` (Go), `pom.xml` (Maven).
+Supports `package.json` (Node.js), `requirements.txt` / `pyproject.toml` (Python — pip, uv, hatch, rye, pdm, Poetry), `Cargo.toml` (Rust), `go.mod` (Go), `pom.xml` (Maven), `build.gradle` / `build.gradle.kts` (Gradle), and `composer.json` (PHP).
 
 ---
 
@@ -225,10 +249,10 @@ ws_audit({ projectPath: ".", categories: ["security", "accessibility"] })
 
 ## Fetch chain
 
-For every library docs request, ws-mcp tries sources in this order:
+For every library docs request, ws-mcp tries sources in this order and stops at the first one that returns useful content:
 
-1. **`llms.txt` / `llms-full.txt`** — purpose-built LLM context files from the project maintainer. Fast and accurate.
-2. **Jina Reader** (`r.jina.ai`) — converts the official docs page to clean markdown. Handles JS-rendered sites.
+1. **`llms.txt` / `llms-full.txt`** — purpose-built LLM context files published by the project maintainer. Accurate and fast because someone actually wrote them for this purpose.
+2. **Jina Reader** (`r.jina.ai`) — converts the official docs page to clean markdown. Handles JS-rendered sites that would return nothing via a plain fetch.
 3. **GitHub README / releases** — latest release notes and README from the project repository.
 4. **npm / PyPI metadata** — fallback for packages outside the curated registry.
 
@@ -272,22 +296,18 @@ For every library docs request, ws-mcp tries sources in this order:
 
 ## vs. Context7
 
+Context7 is good. This is what I reach for instead.
+
 | | ws-mcp | Context7 |
 |---|---|---|
 | Hosting | Self-hosted | Cloud |
 | Rate limits | None | Yes |
 | Source priority | llms.txt → Jina → GitHub | Doc page embeddings |
-| Code audit | Yes — 50+ patterns, file:line, live fixes | No |
+| Code audit | Yes — 60+ patterns, 9 categories, file:line, live fixes | No |
 | Freeform search | Yes — OWASP, MDN, AI docs, web standards | Library docs only |
 | Libraries | 330+ curated + npm/PyPI fallback | ~130 |
 | Python / Rust / Go | Yes | Limited |
 | API key required | No | No |
-
----
-
-## Auto-updates
-
-Uses `npx -y @senorit/ws-mcp@latest`. On every session start, npx checks npm for the latest version and downloads it automatically. No manual update step.
 
 ---
 
@@ -300,7 +320,7 @@ Uses `npx -y @senorit/ws-mcp@latest`. On every session start, npx checks npm for
 
 ## Contributing
 
-The library registry lives in `src/sources/registry.ts`. To add a library, open a PR with `id`, `name`, `docsUrl`, and `llmsTxtUrl` if the project publishes one.
+The library registry is in `src/sources/registry.ts`. Adding a library means a PR with `id`, `name`, `docsUrl`, and `llmsTxtUrl` if the project publishes one. That's it.
 
 Issues and requests: [github.com/rm-rf-prod/ws-mcp/issues](https://github.com/rm-rf-prod/ws-mcp/issues)
 
