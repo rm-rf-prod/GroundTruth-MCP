@@ -36,11 +36,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/thatsgetpersonalnow/ws-mcp"
+    "url": "https://github.com/rm-rf-prod/ws-mcp"
   },
-  "homepage": "https://github.com/thatsgetpersonalnow/ws-mcp#readme",
+  "homepage": "https://github.com/rm-rf-prod/ws-mcp#readme",
   "bugs": {
-    "url": "https://github.com/thatsgetpersonalnow/ws-mcp/issues"
+    "url": "https://github.com/rm-rf-prod/ws-mcp/issues"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.6.1",

@@ -217,7 +217,7 @@ When I publish an update — new libraries in the registry, new tools, bug fixes
 
 The library registry lives in `src/sources/registry.ts`. If you want to add a library, open a PR with the entry: `id`, `name`, `docsUrl`, and `llmsTxtUrl` if the project publishes one.
 
-Bug reports and tool suggestions are welcome via [GitHub Issues](https://github.com/thatsgetpersonalnow/ws-mcp/issues).
+Bug reports and tool suggestions are welcome via [GitHub Issues](https://github.com/rm-rf-prod/ws-mcp/issues).
 
 ---
 
