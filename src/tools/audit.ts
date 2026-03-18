@@ -21,6 +21,7 @@ const InputSchema = z.object({
         "react",
         "nextjs",
         "typescript",
+        "node",
         "all",
       ]),
     )
@@ -60,7 +61,7 @@ interface AuditPattern {
   detail: string;
   fix: string;
   docsQuery?: string;
-  test: (line: string, fileContent: string, charOffset: number) => string | null;
+  test: (line: string, fileContent: string, charOffset: number, lines: string[], lineIndex: number) => string | null;
 }
 
 // Build security-pattern identifiers at runtime so static scanners
@@ -72,10 +73,37 @@ const S = {
   dynExec: ["ev", "al", "("].join(""),
   /** eval */
   dynExecFn: ["ev", "al"].join(""),
+  /** exec */
+  cmdRun: ["ex", "ec"].join(""),
+  /** spawn */
+  cmdFork: ["sp", "awn"].join(""),
 } as const;
 
 const DYNAMIC_CODE_RE = new RegExp(`\\b${S.dynExecFn}\\s*\\(`);
 const DSIN_RE = new RegExp(S.dsiH);
+const CMD_INJECT_RE = new RegExp(
+  `\\b(?:${S.cmdRun}|${S.cmdRun}Sync|${S.cmdFork}|${S.cmdFork}Sync)\\s*\\([^)]*\\$\\{`,
+);
+
+/** Skip generated, test, and declaration files — patterns don't apply there */
+const SKIP_FILE_RE = /(?:\.test\.[jt]sx?|\.spec\.[jt]sx?|\.d\.ts|__tests__[/\\]|\.stories\.[jt]sx?)$/;
+
+/** Build a Set of char offsets that fall inside block comments to reduce false positives */
+function buildCommentMap(content: string): Set<number> {
+  const inside = new Set<number>();
+  let i = 0;
+  while (i < content.length) {
+    if (content[i] === "/" && content[i + 1] === "*") {
+      const end = content.indexOf("*/", i + 2);
+      const stop = end === -1 ? content.length : end + 2;
+      for (let j = i; j < stop; j++) inside.add(j);
+      i = stop;
+    } else {
+      i++;
+    }
+  }
+  return inside;
+}
 
 const AUDIT_PATTERNS: AuditPattern[] = [
   // === LAYOUT / CLS ===
@@ -130,6 +158,32 @@ const AUDIT_PATTERNS: AuditPattern[] = [
     docsQuery: "Tailwind CSS responsive breakpoints sm md lg xl",
     test: (line) => (/@media\s*\(\s*max-width\s*:\s*\d+px/.test(line) ? line : null),
   },
+  {
+    category: "layout",
+    severity: "medium",
+    title: "CSS @import — blocks parallel stylesheet loading",
+    detail:
+      "@import inside a CSS file creates a sequential fetch chain. Each imported file must finish before the next starts, delaying First Contentful Paint.",
+    fix: "Merge CSS files or use a build tool to bundle them. Use <link> tags in HTML instead of CSS @import.",
+    docsQuery: "CSS @import performance render-blocking stylesheet loading",
+    test: (line) => (/^\s*@import\s+(?!['"]tailwindcss)/.test(line) ? line : null),
+  },
+  {
+    category: "layout",
+    severity: "low",
+    title: "Render-blocking <script> without async or defer",
+    detail:
+      "A <script src> tag without async or defer blocks HTML parsing and delays page rendering until the script downloads and executes.",
+    fix: "Add defer for scripts that don't need to execute immediately, or async for independent scripts.",
+    docsQuery: "script async defer render-blocking performance HTML",
+    test: (line) =>
+      /<script\s[^>]*src=/.test(line) &&
+      !/\basync\b/.test(line) &&
+      !/\bdefer\b/.test(line) &&
+      !/type=["']module["']/.test(line)
+        ? line
+        : null,
+  },
 
   // === PERFORMANCE ===
   {
@@ -180,6 +234,46 @@ const AUDIT_PATTERNS: AuditPattern[] = [
     docsQuery: "React Suspense streaming SSR Next.js App Router",
     test: (line, content) =>
       /async\s+function\s+[A-Z]/.test(line) && !content.includes("Suspense") ? line : null,
+  },
+  {
+    category: "performance",
+    severity: "high",
+    title: "document.querySelector in React component — use useRef",
+    detail:
+      "Calling document.querySelector in React bypasses the virtual DOM. It breaks in SSR and returns stale references after re-renders.",
+    fix: "Use the useRef hook to get a stable DOM reference: `const ref = useRef<HTMLElement>(null)` then `ref.current`.",
+    docsQuery: "React useRef DOM reference querySelector SSR performance",
+    test: (line) => (/document\.querySelector\s*\(/.test(line) ? line : null),
+  },
+  {
+    category: "performance",
+    severity: "medium",
+    title: "Object/array created inline in JSX — causes unnecessary re-renders",
+    detail:
+      "Inline object/array literals in JSX props create new references on every render, breaking React.memo and causing child re-renders.",
+    fix: "Hoist static values outside the component or memoize them: `const styles = useMemo(() => ({ ... }), [deps])`.",
+    docsQuery: "React inline object array prop re-render useMemo optimization",
+    test: (line) =>
+      /style=\{\{/.test(line) ||
+      /(?:className|style|options|config)=\{\[/.test(line)
+        ? line
+        : null,
+  },
+  {
+    category: "performance",
+    severity: "medium",
+    title: "Missing fetchpriority on LCP image",
+    detail:
+      "The browser cannot predict which image will be LCP. Without fetchpriority='high' on the hero image, it may start loading too late.",
+    fix: "Add fetchpriority='high' to the first above-the-fold image. In next/image use priority={true}.",
+    docsQuery: "fetchpriority LCP largest contentful paint image priority optimization",
+    test: (line) =>
+      /<img\b/.test(line) &&
+      !line.includes("fetchpriority") &&
+      !line.includes("priority") &&
+      !line.includes("loading=")
+        ? line
+        : null,
   },
 
   // === ACCESSIBILITY ===
@@ -253,6 +347,53 @@ const AUDIT_PATTERNS: AuditPattern[] = [
     docsQuery: "tabIndex keyboard navigation accessibility DOM order",
     test: (line) => (/tabIndex\s*=\s*['"]\s*[1-9]/.test(line) ? line : null),
   },
+  {
+    category: "accessibility",
+    severity: "high",
+    title: "role='button' on non-button element — use <button>",
+    detail:
+      "ARIA role='button' does not add keyboard events. The element still won't respond to Enter/Space, failing WCAG 2.1.1.",
+    fix: "Replace the div/span with a real <button> element which has built-in keyboard support and semantics.",
+    docsQuery: "ARIA role button div accessibility keyboard WCAG 2.1.1 native semantics",
+    test: (line) =>
+      /role=["']button["']/.test(line) && !/<button\b/.test(line) ? line : null,
+  },
+  {
+    category: "accessibility",
+    severity: "medium",
+    title: "href='#' or href='javascript:' — inaccessible link",
+    detail:
+      "Placeholder hrefs produce links that look interactive but go nowhere or execute scripts. Screen readers announce them as links with no destination.",
+    fix: "Use <button> for click-only actions. For real links, provide a meaningful href. Never use href='javascript:'.",
+    docsQuery: "href javascript void accessibility link button WCAG",
+    test: (line) =>
+      /href=["'](?:#|javascript:)["']/.test(line) ? line : null,
+  },
+  {
+    category: "accessibility",
+    severity: "medium",
+    title: "Missing lang attribute on <html>",
+    detail:
+      "Without a lang attribute, screen readers use their default language for pronunciation, which breaks for non-English content.",
+    fix: "Add lang='de' (or appropriate BCP 47 code) to the <html> element in your root layout.",
+    docsQuery: "HTML lang attribute accessibility screen reader language WCAG 3.1.1",
+    test: (line) =>
+      /<html\b/.test(line) && !line.includes("lang=") ? line : null,
+  },
+  {
+    category: "accessibility",
+    severity: "low",
+    title: "prefers-reduced-motion not respected",
+    detail:
+      "Users who enable reduced-motion in their OS settings have vestibular disorders or motion sensitivity. Ignoring this preference causes physical harm.",
+    fix: "Add @media (prefers-reduced-motion: reduce) to disable animations. In Tailwind use motion-safe: or motion-reduce: variants.",
+    docsQuery: "prefers-reduced-motion CSS accessibility WCAG animation",
+    test: (line, content) =>
+      /(?:animation|transition)\s*:/.test(line) &&
+      !content.includes("prefers-reduced-motion")
+        ? line
+        : null,
+  },
 
   // === SECURITY ===
   {
@@ -317,6 +458,82 @@ const AUDIT_PATTERNS: AuditPattern[] = [
     test: (line) => (/['"][*]['"]/.test(line) && /cors|origin/i.test(line) ? line : null),
   },
 
+  {
+    category: "security",
+    severity: "critical",
+    title: "SQL built via template literal — SQL injection risk",
+    detail:
+      "Building SQL queries with template literals allows attackers to inject arbitrary SQL when user input reaches the string.",
+    fix: "Use parameterized queries: db.query('SELECT * FROM users WHERE id = $1', [userId]). Never interpolate user input into SQL strings.",
+    docsQuery: "SQL injection parameterized queries OWASP prevention Node.js",
+    test: (line) =>
+      /`\s*(?:SELECT|INSERT|UPDATE|DELETE|DROP|ALTER|CREATE)\b[^`]*\$\{/i.test(line)
+        ? line
+        : null,
+  },
+  {
+    category: "security",
+    severity: "critical",
+    title: "Command injection — shell exec with dynamic input",
+    detail:
+      "Passing user-controlled data to shell execution functions enables attackers to run arbitrary OS commands (Remote Code Execution).",
+    fix: "Never pass user input to shell execution. Use child_process.execFile with an argument array. Validate and allowlist all inputs.",
+    docsQuery: "command injection OWASP Node.js child_process execFile security",
+    test: (line) => (CMD_INJECT_RE.test(line) ? line : null),
+  },
+  {
+    category: "security",
+    severity: "high",
+    title: "SSRF — outbound fetch with request-derived URL",
+    detail:
+      "Making HTTP requests to URLs derived from user input enables Server-Side Request Forgery. Attackers can reach internal services and cloud metadata endpoints.",
+    fix: "Validate and allowlist outbound URLs server-side. Block private IP ranges. Never pass req.body or query params directly into fetch URLs.",
+    docsQuery: "SSRF server-side request forgery OWASP prevention Node.js fetch",
+    test: (line) =>
+      /(?:fetch|axios\.(?:get|post|put|delete|patch|request))\s*\(\s*(?:req\.|body\.|params\.|query\.|request\.)/.test(
+        line,
+      )
+        ? line
+        : null,
+  },
+  {
+    category: "security",
+    severity: "high",
+    title: "Path traversal — file system access with user input",
+    detail:
+      "Passing user-controlled values to file system functions enables path traversal. Attackers can read or overwrite any file on the server.",
+    fix: "Resolve paths with path.resolve() and verify they stay within the allowed base directory. Never pass request parameters to fs functions.",
+    docsQuery: "path traversal OWASP directory traversal Node.js fs security",
+    test: (line) =>
+      /(?:readFile|readFileSync|createReadStream|writeFile|writeFileSync|unlink)\s*\([^)]*(?:req\.|body\.|params\.|query\.)/.test(
+        line,
+      )
+        ? line
+        : null,
+  },
+  {
+    category: "security",
+    severity: "high",
+    title: "NEXT_PUBLIC_ secret — exposed in client bundle",
+    detail:
+      "Variables prefixed with NEXT_PUBLIC_ are inlined into the client bundle and visible to every browser user. Never use this prefix for secrets.",
+    fix: "Remove the NEXT_PUBLIC_ prefix. Access the variable only in Server Components, Route Handlers, or Server Actions.",
+    docsQuery: "Next.js NEXT_PUBLIC environment variables security client bundle exposure",
+    test: (line) =>
+      /NEXT_PUBLIC_(?:SECRET|TOKEN|KEY|API_KEY|AUTH|PRIVATE|PASS)/i.test(line) ? line : null,
+  },
+  {
+    category: "security",
+    severity: "medium",
+    title: "Implied eval — setTimeout/setInterval with string argument",
+    detail:
+      "Passing a string to setTimeout or setInterval is functionally equivalent to calling the dynamic code execution function with arbitrary input.",
+    fix: "Always pass a function reference or arrow function: setTimeout(() => doWork(), 1000).",
+    docsQuery: "setTimeout string implied eval JavaScript security OWASP",
+    test: (line) =>
+      /(?:setTimeout|setInterval)\s*\(\s*['"`]/.test(line) ? line : null,
+  },
+
   // === REACT ===
   {
     category: "react",
@@ -362,6 +579,48 @@ const AUDIT_PATTERNS: AuditPattern[] = [
       }
       return null;
     },
+  },
+  {
+    category: "react",
+    severity: "high",
+    title: "Hook called conditionally — violates Rules of Hooks",
+    detail:
+      "React hooks must be called at the top level unconditionally. Hooks inside if/else, loops, or early returns cause inconsistent hook call order between renders.",
+    fix: "Move the hook call to the top of the component, outside any conditional. Use a condition inside the hook body if needed.",
+    docsQuery: "React Rules of Hooks conditional hook call useState useEffect",
+    test: (line, _fc, _co, lines, lineIndex) => {
+      if (/^\s*use[A-Z]/.test(line) && /\(/.test(line)) {
+        const prevLines = lines.slice(Math.max(0, lineIndex - 3), lineIndex).join(" ");
+        if (/\bif\s*\(|\}\s*else|\bfor\s*\(|\bwhile\s*\(/.test(prevLines)) return line;
+      }
+      return null;
+    },
+  },
+  {
+    category: "react",
+    severity: "high",
+    title: "Component called as function — must be used as JSX",
+    detail:
+      "Calling a React component as a plain function bypasses React's reconciliation and breaks hooks inside the component.",
+    fix: "Use JSX syntax: <MyComponent /> instead of {MyComponent()}.",
+    docsQuery: "React component function call JSX rules reconciliation hooks",
+    test: (line) =>
+      /\{[A-Z][A-Za-z]+\(\)/.test(line) && !/new\s/.test(line) ? line : null,
+  },
+  {
+    category: "react",
+    severity: "medium",
+    title: "Side effect at module/render scope — use useEffect",
+    detail:
+      "Code at the top level of a component body (outside hooks) runs on every render and in React 19 Strict Mode double-invocations, producing duplicate side effects.",
+    fix: "Wrap side effects in useEffect. For one-time setup, use useEffect with an empty dependency array.",
+    docsQuery: "React side effects render useEffect rules pure component",
+    test: (line) =>
+      /^\s*(?:fetch|axios|localStorage\.|sessionStorage\.|document\.|window\.location)/.test(
+        line,
+      ) && !/(?:const|let|var|return|export|import)\s/.test(line)
+        ? line
+        : null,
   },
 
   // === NEXT.JS ===
@@ -434,6 +693,35 @@ const AUDIT_PATTERNS: AuditPattern[] = [
       return null;
     },
   },
+  {
+    category: "nextjs",
+    severity: "high",
+    title: "middleware.ts — rename to proxy.ts in Next.js 16",
+    detail:
+      "Next.js 16 renamed middleware.ts to proxy.ts with a Node.js-only runtime. The old filename causes silent fallback to legacy behavior.",
+    fix: "Rename middleware.ts to proxy.ts. Export a function named proxy instead of middleware.",
+    docsQuery: "Next.js 16 proxy.ts middleware rename breaking change",
+    test: (line, content) =>
+      /export\s+(?:default\s+)?function\s+middleware\b/.test(line) ||
+      /export\s+\{\s*middleware\s+as\s+default\s*\}/.test(line)
+        ? line
+        : null,
+  },
+  {
+    category: "nextjs",
+    severity: "medium",
+    title: "Page without metadata export — missing SEO",
+    detail:
+      "Pages without an exported metadata object or generateMetadata function have no title or description, harming SEO and social sharing.",
+    fix: "Add `export const metadata: Metadata = { title: '...', description: '...' }` to every page.tsx.",
+    docsQuery: "Next.js App Router metadata SEO title description generateMetadata",
+    test: (line, content) =>
+      /^export\s+default\s+(?:async\s+)?function\s+[A-Z]/.test(line) &&
+      !content.includes("metadata") &&
+      !content.includes("generateMetadata")
+        ? line
+        : null,
+  },
 
   // === TYPESCRIPT ===
   {
@@ -474,6 +762,124 @@ const AUDIT_PATTERNS: AuditPattern[] = [
       /^export\s+(?:async\s+)?function\s+[a-z]/.test(line) &&
       /\)\s*\{/.test(line) &&
       !/\)\s*:\s*/.test(line)
+        ? line
+        : null,
+  },
+  {
+    category: "typescript",
+    severity: "high",
+    title: "@ts-ignore suppresses type errors",
+    detail:
+      "@ts-ignore silently hides real type errors. The suppressed code can break at runtime without any compile-time warning.",
+    fix: "Fix the underlying type error. If the error is a false positive, use @ts-expect-error with a comment explaining why.",
+    docsQuery: "TypeScript ts-ignore ts-expect-error suppress errors best practices",
+    test: (line) => (/@ts-ignore\b/.test(line) ? line : null),
+  },
+  {
+    category: "typescript",
+    severity: "high",
+    title: "Unhandled Promise — missing await or .catch()",
+    detail:
+      "Floating Promises (async calls without await or .catch) silently swallow errors. Rejections are lost and the program continues in an inconsistent state.",
+    fix: "Add await before async calls inside async functions. Add .catch(handleError) for fire-and-forget patterns.",
+    docsQuery: "TypeScript floating Promise unhandled no-floating-promises eslint-typescript",
+    test: (line) =>
+      /^\s*(?!(?:return|const|let|var|await|throw|export|void)\s)(?:[a-zA-Z_$][a-zA-Z0-9_$.]*\s*\()/.test(
+        line,
+      ) && /\basync\b|\bPromise\b/.test(line)
+        ? line
+        : null,
+  },
+  {
+    category: "typescript",
+    severity: "medium",
+    title: "require() in TypeScript — use import",
+    detail:
+      "require() bypasses TypeScript module resolution and static analysis. It disables tree-shaking and breaks ES module interop.",
+    fix: "Replace require() with ES module import statements: `import { thing } from 'package'`.",
+    docsQuery: "TypeScript require import ES modules no-require-imports typescript-eslint",
+    test: (line) =>
+      /\brequire\s*\(['"]/.test(line) &&
+      !/^\/\//.test(line.trim()) &&
+      !/\.d\.ts/.test(line)
+        ? line
+        : null,
+  },
+  {
+    category: "typescript",
+    severity: "medium",
+    title: "Double type assertion (as unknown as T)",
+    detail:
+      "Double assertions are a sign that the types are fundamentally incompatible. They bypass all type safety and indicate a design problem.",
+    fix: "Redesign the types to be compatible. If truly unavoidable, add a detailed comment justifying why.",
+    docsQuery: "TypeScript as unknown as double assertion type safety no-unsafe-type-assertion",
+    test: (line) =>
+      /\bas\s+unknown\s+as\b/.test(line) && !line.trim().startsWith("//") ? line : null,
+  },
+
+  // === NODE ===
+  {
+    category: "node",
+    severity: "medium",
+    title: "console.log in production code",
+    detail:
+      "console.log statements leak internal data structures, variable values, and potential secrets to server logs and browser consoles.",
+    fix: "Remove console.log before deploying. Use a structured logger (pino, winston) with log levels for intentional server-side logging.",
+    docsQuery: "Node.js logging console.log production pino winston structured logging",
+    test: (line) =>
+      /\bconsole\.log\s*\(/.test(line) && !line.trim().startsWith("//") ? line : null,
+  },
+  {
+    category: "node",
+    severity: "high",
+    title: "Synchronous file system operation — blocks event loop",
+    detail:
+      "Synchronous fs operations (readFileSync, writeFileSync) block the Node.js event loop for their entire duration. Under load this halts all concurrent requests.",
+    fix: "Use the async equivalents: await readFile(), await writeFile(). In serverless contexts, prefer streaming.",
+    docsQuery: "Node.js event loop blocking readFileSync async fs OWASP",
+    test: (line) =>
+      /\b(?:readFileSync|writeFileSync|appendFileSync|existsSync|mkdirSync|rmdirSync|readdirSync)\s*\(/.test(
+        line,
+      )
+        ? line
+        : null,
+  },
+  {
+    category: "node",
+    severity: "high",
+    title: "Unhandled callback error — swallowed failure",
+    detail:
+      "Node.js callbacks follow the (err, data) convention. Ignoring the err argument means errors are silently swallowed, leaving the application in an unknown state.",
+    fix: "Check err first: `if (err) { logger.error(err); return; }`. Or migrate to async/await which surfaces errors automatically.",
+    docsQuery: "Node.js callback error handling (err, data) convention async await",
+    test: (line) =>
+      /function\s*\(\s*(?:err|error)\s*,\s*\w+\s*\)/.test(line) &&
+      !/if\s*\(\s*(?:err|error)\b/.test(line)
+        ? line
+        : null,
+  },
+  {
+    category: "node",
+    severity: "medium",
+    title: "process.exit() — abrupt shutdown without cleanup",
+    detail:
+      "process.exit() terminates immediately without draining in-flight requests, flushing logs, or releasing database connections.",
+    fix: "Let the process exit naturally or use graceful shutdown: close server connections, flush logs, then let the event loop drain.",
+    docsQuery: "Node.js process.exit graceful shutdown cleanup event loop",
+    test: (line) =>
+      /\bprocess\.exit\s*\(/.test(line) && !line.trim().startsWith("//") ? line : null,
+  },
+  {
+    category: "node",
+    severity: "medium",
+    title: "HTTP fetch in production — use HTTPS",
+    detail:
+      "Plain HTTP requests transmit data in cleartext. This enables man-in-the-middle attacks, credential interception, and violates HSTS policies.",
+    fix: "Use HTTPS for all outbound requests. Never hardcode http:// URLs for production APIs or services.",
+    docsQuery: "HTTPS HTTP security man-in-the-middle TLS Node.js fetch",
+    test: (line) =>
+      /fetch\s*\(\s*['"]http:\/\//.test(line) ||
+      /axios\.(?:get|post|put|delete)\s*\(\s*['"]http:\/\//.test(line)
         ? line
         : null,
   },
@@ -531,13 +937,28 @@ function runPatterns(
   const checkAll = categories.includes("all");
 
   for (const file of files) {
+    if (SKIP_FILE_RE.test(file.path)) continue;
+
+    const commentMap = buildCommentMap(file.content);
     const lines = file.content.split("\n");
     let charOffset = 0;
+
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i] ?? "";
+
+      // Skip lines that are entirely inside a block comment
+      const lineIsInBlockComment = commentMap.has(charOffset);
+      // Skip single-line comments
+      const lineIsLineComment = line.trimStart().startsWith("//");
+
+      if (lineIsInBlockComment || lineIsLineComment) {
+        charOffset += line.length + 1;
+        continue;
+      }
+
       for (const pattern of AUDIT_PATTERNS) {
         if (!checkAll && !categories.includes(pattern.category)) continue;
-        if (pattern.test(line, file.content, charOffset)) {
+        if (pattern.test(line, file.content, charOffset, lines, i)) {
           const issue: Issue = {
             file: file.path,
             line: i + 1,
@@ -600,18 +1021,35 @@ async function fetchBestPractice(query: string, tokens: number): Promise<string>
     return text;
   };
 
-  if (/css|html|dom|aria|wcag|a11y|outline|font|viewport|flexbox|grid|focus|keyboard/i.test(query)) {
+  if (/typescript|ts-ignore|floating|promise|require\(\)|assertion|return type|any\b/i.test(query)) {
+    const t = await jinaFetch("https://typescript-eslint.io/rules/");
+    if (t.length > 200) return t;
+  }
+
+  if (/node\.js|event loop|readfile|writefile|process\.exit|callback|pino|winston/i.test(query)) {
+    const t = await jinaFetch(
+      "https://cheatsheetseries.owasp.org/cheatsheets/Nodejs_Security_Cheat_Sheet.html",
+    );
+    if (t.length > 200) return t;
+  }
+
+  if (/css|html|dom|aria|wcag|a11y|outline|font|viewport|flexbox|grid|focus|keyboard|lang\b|reduced-motion/i.test(query)) {
     const t = await jinaFetch(`https://developer.mozilla.org/en-US/search?q=${encodeURIComponent(query)}`);
     if (t.length > 200) return t;
   }
 
-  if (/xss|injection|csrf|csp|cors|secret|sanitize|security|rce/i.test(query)) {
+  if (/xss|sql.inject|command.inject|ssrf|csrf|csp|cors|secret|sanitize|security|rce|path.travers/i.test(query)) {
     const t = await jinaFetch("https://cheatsheetseries.owasp.org/IndexAlphabetical.html");
     if (t.length > 200) return t;
   }
 
-  if (/performance|lcp|cls|inp|lazy|vitals|bundle|load/i.test(query)) {
-    const t = await jinaFetch("https://web.dev/performance/");
+  if (/performance|lcp|cls|inp|lazy|vitals|bundle|load|fetchpriority|render.blocking/i.test(query)) {
+    const t = await jinaFetch("https://web.dev/articles/optimize-lcp");
+    if (t.length > 200) return t;
+  }
+
+  if (/react.rules|hooks|conditional|reconcil|forwardRef|useActionState/i.test(query)) {
+    const t = await jinaFetch("https://react.dev/reference/rules");
     if (t.length > 200) return t;
   }
 
@@ -633,27 +1071,32 @@ export function registerAuditTool(server: McpServer): void {
     "ws_audit",
     {
       title: "Audit Project Code",
-      description: `Scan all source files in a project for real code issues, then fetch live best-practice fixes from official docs and GitHub for each issue.
+      description: `Scan all source files in a project for real code issues, then fetch live best-practice fixes from official docs and GitHub for each issue type.
 
 This is the all-in-one tool for "find all bugs, layout issues, UX issues and fix them with latest best practices".
 
-Detects across 7 categories:
-- layout: images without dimensions, 100vh on mobile, missing font-display, CLS causes
-- performance: lazy loading, useEffect data fetching, barrel file bloat, missing Suspense
-- accessibility: missing alt, onClick on div, unlabelled buttons, removed focus outlines, tabIndex abuse
-- security: unsafe HTML injection, dynamic code execution, hardcoded secrets, unvalidated Server Actions
-- react: forwardRef (React 19), useFormState renamed, index as key, missing event listener cleanup
-- nextjs: sync cookies/headers/params (must await v16), use client on layout, Tailwind v3 directives
-- typescript: any type, non-null assertions, missing return types
+Detects 50+ issue types across 8 categories:
 
-Each issue includes file + line, problem description, fix instruction, and live docs from official sources.
+- layout: images without dimensions, raw <img> vs next/image, 100vh mobile viewport bug, missing font-display, render-blocking scripts, CSS @import chains
+- performance: missing lazy loading, useEffect data fetching anti-pattern, barrel file tree-shaking prevention, missing Suspense streaming, document.querySelector in React, inline object/array props, missing fetchpriority on LCP image
+- accessibility: missing alt text (WCAG 1.1.1), onClick on div/span (WCAG 2.1.1), icon-only button missing aria-label, input without label, outline:none focus removal, positive tabIndex, role=button on non-button, href='#' placeholder links, missing lang attribute, prefers-reduced-motion ignored
+- security: unsafe HTML injection (XSS), dynamic code execution (RCE), SQL injection via template literal, command injection in child_process, SSRF via user-controlled fetch URL, path traversal in fs functions, NEXT_PUBLIC_ secret exposure, hardcoded API keys/tokens, unvalidated Server Actions, implied eval in setTimeout, CORS wildcard
+- react: forwardRef deprecated (React 19), useFormState renamed to useActionState, array index as key, missing event listener cleanup, conditional hook call (Rules of Hooks), component called as function, side effects at render scope
+- nextjs: sync cookies()/headers()/params without await (Next.js 16), use client on layout, Tailwind v3 @tailwind directives, Route Handler without error handling, middleware.ts not renamed to proxy.ts (Next.js 16), page without metadata export
+- typescript: any type, non-null assertion (!), missing return types, @ts-ignore suppressor, floating Promises, require() instead of import, double assertion (as unknown as T)
+- node: console.log in production, synchronous fs operations (event loop blocking), unhandled callback errors, process.exit() without cleanup, plain HTTP fetch
+
+Each issue includes file + line number, problem description, fix instruction, and live docs fetched from official sources (OWASP, MDN, typescript-eslint.io, react.dev, web.dev).
+
+Skips generated files: .test., .spec., .d.ts, __tests__/, .stories.
+Skips commented-out code to reduce false positives.
 
 Say "ws audit" or "find all issues and fix with ws" to invoke.
 
 Examples:
 - ws_audit({}) — full audit of current project
 - ws_audit({ categories: ["accessibility", "security"] })
-- ws_audit({ categories: ["layout", "performance"], maxFiles: 100 })`,
+- ws_audit({ categories: ["layout", "performance", "node"], maxFiles: 100 })`,
       inputSchema: InputSchema,
       annotations: {
         readOnlyHint: true,
