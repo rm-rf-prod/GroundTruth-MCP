@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.7.0] — 2026-03-18
+
+### Added
+
+**Comprehensive test suite expanded to 192 tests across 8 files** — new coverage for previously untested modules:
+
+- `src/utils/watermark.test.ts` — 22 tests: `getInstallId` format and session consistency; `embedWatermark` invisible-char count (64), position after first newline, visible content preservation, no-newline path, nonce randomness; `detectWatermark` roundtrip correctness, edge cases (empty string, partial bits, cross-call installId consistency); `responseIntegrityToken` determinism, collision resistance, invisible-char stripping before hash
+- `src/utils/guard.test.ts` — 29 tests: `isExtractionAttempt` positive cases (18 extraction phrases), negative cases (11 legitimate queries), case-insensitivity, short/empty query detection; `withNotice` IP notice presence and ordering, watermark embedding; `IP_NOTICE` and `EXTRACTION_REFUSAL` content assertions
+- `src/services/cache.test.ts` — 21 tests: `LRUCache` get/set, TTL expiry with fake timers, `has()`, `clear()`, `size()`, overwrite, custom TTL; `DiskCache` get/set via `WS_CACHE_DIR` env override, missing key, expired entry, cross-instance persistence, graceful I/O error handling
+
+**GitHub Actions updated to Node.js 24-compatible action versions**:
+
+- `actions/checkout` → v4.3.1 (`34e114876b0b11c390a56381ad16ebd13914f8d5`)
+- `actions/setup-node` → v4.4.0 (`49933ea5288caeca8642d1e84afbd3f7d6820020`)
+- `actions/upload-artifact` → v4.6.2 (`ea165f8d65b6e75b540449e92b4886f43607fa02`)
+
+Eliminates the "Node.js 20 actions are deprecated" CI warning.
+
+**CI test job switched to `test:coverage`** — the previous `npm test` (no coverage output) caused the coverage artifact upload step to fail with "No files were found". Changed to `npm run test:coverage`.
+
+**`@types/node` updated to 25.5.0** — aligned with TypeScript 5.x (`ts5.7` dist-tag). Previously at 22.x.
+
+---
+
 ## [1.6.0] — 2026-03-18
 
 ### Added
