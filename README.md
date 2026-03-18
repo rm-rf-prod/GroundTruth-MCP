@@ -32,6 +32,12 @@ The code audit tool came from a different problem: AI assistants write insecure 
 
 ---
 
+<p align="center">
+  <img src="./diagram.webp" alt="ws-mcp architecture — library nodes connected to a central hub, code audit panel, live documentation fetch" width="100%" />
+</p>
+
+---
+
 ## Install
 
 ### Claude Code
