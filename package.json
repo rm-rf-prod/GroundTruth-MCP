@@ -19,7 +19,8 @@
     "prepublishOnly": "npm run clean && npm run build",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "version": "node -e \"const fs=require('fs');const v=JSON.parse(fs.readFileSync('package.json','utf8')).version;const c=fs.readFileSync('src/constants.ts','utf8').replace(/SERVER_VERSION = \\\"[^\\\"]+\\\"/,`SERVER_VERSION = \\\"${v}\\\"`);fs.writeFileSync('src/constants.ts',c)\" && git add src/constants.ts"
   },
   "engines": {
     "node": ">=24"
