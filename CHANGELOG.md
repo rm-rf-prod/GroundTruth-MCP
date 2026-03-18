@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.4.0] — 2026-03-18
+
+### Added
+- `src/utils/watermark.ts`: cryptographic response watermarking
+  - Generates a persistent 4-byte installation ID on first run, saved to `~/.ws-mcp-install.key` (mode 0600)
+  - Embeds 64-bit fingerprint per response: `installId (32 bits) + nonce (32 bits)` as invisible Unicode math operators `U+2061`/`U+2062` (FUNCTION APPLICATION / INVISIBLE TIMES)
+  - Characters are semantically invisible, survive copy-paste, and are not flagged by AI detectors or whitespace strippers (unlike ZWS/ZWJ)
+  - `detectWatermark(text)` extracts `installId` and `nonce` for forensic provenance — if data surfaces publicly, the source installation can be identified
+  - `responseIntegrityToken(text)` produces a SHA-256 digest of the clean content for optional audit logging
+- `withNotice()` in `guard.ts` now calls `embedWatermark()` automatically — every registry response is watermarked at the point of IP notice injection, zero changes required in tool handlers
+
+### Security
+- Every response from `ws_resolve_library`, `ws_get_docs`, `ws_best_practices`, `ws_search`, and `ws_auto_scan` now carries an installation-specific cryptographic fingerprint
+- Leaked or extracted data can be traced to a specific server instance via the embedded install ID
+
 ## [1.3.0] — 2026-03-18
 
 ### Added
