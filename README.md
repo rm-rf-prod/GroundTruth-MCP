@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./banner.webp" alt="ws-mcp" width="100%" />
+  <img src="./banner.webp" alt="ws-mcp — self-hosted MCP server for live documentation and code audits" width="100%" />
 </p>
 
 <h1 align="center">ws-mcp</h1>
@@ -11,10 +11,11 @@
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@senorit/ws-mcp"><img src="https://img.shields.io/npm/v/@senorit/ws-mcp?color=00d4aa&label=npm" alt="npm version" /></a>
+  <a href="https://github.com/rm-rf-prod/ws-mcp/actions/workflows/ci.yml"><img src="https://github.com/rm-rf-prod/ws-mcp/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-ELv2-orange" alt="Elastic License 2.0" /></a>
   <img src="https://img.shields.io/badge/libraries-330%2B-teal" alt="330+ libraries" />
   <img src="https://img.shields.io/badge/audit_patterns-60%2B-red" alt="60+ audit patterns" />
-  <img src="https://img.shields.io/badge/categories-9-blue" alt="9 categories" />
+  <img src="https://img.shields.io/badge/tests-106-brightgreen" alt="106 tests" />
   <img src="https://img.shields.io/badge/node-%3E%3D20-green" alt="Node 20+" />
 </p>
 
@@ -94,7 +95,7 @@ Six tools. Each does one thing and stops there.
 | Tool | What it does |
 |---|---|
 | `ws_resolve_library` | Find a library by name, get its registry entry and docs URL |
-| `ws_get_docs` | Fetch docs for a specific topic within a library |
+| `ws_get_docs` | Fetch live docs for a specific topic within a library |
 | `ws_best_practices` | Get patterns, anti-patterns, and config guidance |
 | `ws_auto_scan` | Read `package.json` / `requirements.txt` and fetch best practices per dependency |
 | `ws_search` | Search OWASP, MDN, web.dev, W3C, official language docs, and AI provider docs |
@@ -102,7 +103,7 @@ Six tools. Each does one thing and stops there.
 
 ---
 
-## `ws_audit` — code audit
+## `ws_audit` — code audit tool
 
 Walks your project, finds issues at exact `file:line` locations, and fetches current fix guidance from official sources for every issue type it finds.
 
@@ -114,7 +115,7 @@ Walks your project, finds issues at exact `file:line` locations, and fetches cur
 4. For the top unique issue types, fetches current fix guidance from the authoritative source
 5. Reports each finding with file path, line number, the problem, and a concrete fix
 
-### Categories
+### Audit categories
 
 ```
 ws_audit({ categories: ["all"] })                      // default — all 9 categories
@@ -174,7 +175,7 @@ Live fix: OWASP SQL Injection Prevention Cheat Sheet
 
 ---
 
-## `ws_search` — freeform search
+## `ws_search` — freeform documentation search
 
 For questions that aren't tied to a specific library. Pulls from OWASP, MDN, web.dev, W3C, official language docs, AI provider docs, and anything else in the topic map below.
 
@@ -234,7 +235,7 @@ find all issues and fix with ws
 use ws for gRPC
 ```
 
-### Direct calls
+### Direct tool calls
 
 ```typescript
 ws_resolve_library({ libraryName: "nestjs" })
@@ -258,9 +259,9 @@ For every library docs request, ws-mcp tries sources in this order and stops at 
 
 ---
 
-## Registry coverage
+## Library registry — 330+ libraries
 
-330+ libraries across every major ecosystem.
+Coverage across every major ecosystem.
 
 | Ecosystem | Libraries |
 |---|---|
@@ -308,6 +309,30 @@ Context7 is good. This is what I reach for instead.
 | Libraries | 330+ curated + npm/PyPI fallback | ~130 |
 | Python / Rust / Go | Yes | Limited |
 | API key required | No | No |
+
+---
+
+## Testing
+
+The project ships a full unit test suite — 106 tests across 5 files, covering every audit pattern, all 8 manifest parsers, registry lookup, topic extraction, and sanitization logic.
+
+```bash
+npm test                # run all tests
+npm run test:coverage   # with V8 coverage report
+npm run typecheck       # TypeScript strict check (no emit)
+```
+
+Test files:
+
+| File | Coverage |
+|---|---|
+| `src/sources/registry.test.ts` | LIBRARY_REGISTRY integrity, `lookupById`, `lookupByAlias`, fuzzy search |
+| `src/tools/audit.test.ts` | `buildCommentMap`, all 60+ patterns — Python, security, TypeScript, React, Node |
+| `src/tools/auto-scan.test.ts` | All 8 manifest parsers using temp directories (package.json, requirements.txt, pyproject.toml, Cargo.toml, go.mod, pom.xml, composer.json, build.gradle) |
+| `src/utils/extract.test.ts` | Topic relevance ranking, truncation, document order preservation |
+| `src/utils/sanitize.test.ts` | Prompt injection stripping, `<script>`/`<style>` removal, navigation link cleanup |
+
+Tests run in CI on every push and pull request to `main`. See `.github/workflows/ci.yml`.
 
 ---
 

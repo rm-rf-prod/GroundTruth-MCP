@@ -1,5 +1,61 @@
 # Changelog
 
+## [1.6.0] — 2026-03-18
+
+### Added
+
+**Python audit category** — 11 new patterns covering the OWASP Python Security Cheat Sheet:
+
+- SQL injection via f-string or `.format()` interpolation
+- `eval()` / `exec()` with dynamic input (RCE)
+- `subprocess` with `shell=True` (command injection)
+- `os.system()` call (command injection)
+- Bare `except:` clause (swallows all errors including `KeyboardInterrupt`)
+- `pickle.loads()` from untrusted source (deserialization RCE)
+- MD5 / SHA1 used for password hashing (weak crypto)
+- `requests` with `verify=False` (TLS validation disabled)
+- Mutable default argument (`def fn(x=[])`), classic Python footgun
+- `print()` in production code
+- `open()` with user-controlled path (path traversal)
+
+`ws_audit` now supports `.py` source files and skips `__pycache__/`, `.venv/`, `venv/`, `env/` directories.
+
+**Full unit test suite** — 106 tests across 5 files (Vitest, ESM-native, `pool: forks`):
+
+- `src/sources/registry.test.ts` — LIBRARY_REGISTRY integrity, `lookupById`, `lookupByAlias`, `fuzzySearch`
+- `src/tools/audit.test.ts` — `buildCommentMap`, all 11 Python patterns (positive + negative cases), security / TypeScript / React / Node smoke tests, category coverage
+- `src/tools/auto-scan.test.ts` — all 8 manifest parsers (temp dirs): `package.json`, `requirements.txt`, `pyproject.toml` (Poetry + PEP 517), `Cargo.toml`, `go.mod`, `pom.xml`, `composer.json`, `build.gradle` / `.kts`
+- `src/utils/extract.test.ts` — topic relevance ranking, truncation, document order preservation
+- `src/utils/sanitize.test.ts` — prompt injection stripping, `<script>` / `<style>` removal, navigation link cleanup
+
+**GitHub Actions CI pipeline** (`.github/workflows/ci.yml`):
+
+- Three jobs run on push and pull requests to `main`
+- `typecheck`: `tsc --noEmit`
+- `test`: `vitest run`, uploads coverage artifact
+- `build`: `npm run build` + `npm audit --audit-level=high`, uploads dist artifact
+- `build` requires both `typecheck` and `test` to pass
+- Pinned action SHAs for supply chain integrity
+
+**`typecheck` npm script** — runs `tsc --noEmit` without the build step. Separated from the build for use in CI and pre-commit hooks.
+
+**`.node-version` file** — pin Node.js 24 for reproducible CI environments.
+
+### Fixed
+
+- **Python SQL injection false positive**: the `%` detection pattern now requires `%` to appear after a closing quote, distinguishing `cursor.execute("..." % var)` (injection) from `cursor.execute("... %s", (var,))` (parameterized query). The old regex incorrectly flagged `%s` SQL placeholders inside the query string.
+- **Cargo.toml parser**: the section boundary regex now uses `\n[` (newline + bracket) instead of any `[`, so inline values like `features = ["derive"]` no longer terminate the `[dependencies]` block early. Only `tokio = "1"` and `reqwest = "0.11"` were not being detected.
+- **`pyproject.toml` PEP 517 parser**: same fix for the `[project]` section boundary. The regex was stopping at `dependencies = [` or at `uvicorn[standard]` extras syntax instead of continuing to the actual next TOML section header.
+- **composer.json filter**: changed `!p.startsWith("php")` to `p !== "php" && !p.startsWith("php-")`. The old filter excluded `phpunit/phpunit` (and any PHP testing package with a `php*` prefix) instead of only filtering the `php` version constraint entry and `php-64bit` platform variants.
+- **Test files in dist**: added `src/**/*.test.ts` to `tsconfig.json` exclude list. Test files were being compiled and obfuscated into `dist/` on every production build.
+
+### Changed
+
+- Tool description updated: 50+ patterns → 60+ patterns, 8 categories → 9 categories, Python listed explicitly
+- Source extensions in `ws_audit` scanner: `.py` added alongside `.ts`, `.tsx`, `.js`, `.jsx`, `.css`, `.html`
+
+---
+
 ## [1.5.0] — 2026-03-18
 
 ### Added
