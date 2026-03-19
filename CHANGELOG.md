@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.4.0] — 2026-03-19
+
+- refactor: perf, type safety, and linting improvements
+
+---
+
 ## [2.3.2] — 2026-03-19
 
 - fix: add path traversal and SSRF guards to audit, auto-scan, docs, fetcher
