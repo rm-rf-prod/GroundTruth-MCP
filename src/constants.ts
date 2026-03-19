@@ -1,4 +1,4 @@
-export const SERVER_NAME = "gt-mcp-server";
+export const SERVER_NAME = "GroundTruth";
 export const SERVER_VERSION = "2.3.0";
 
 // Known size of the full private registry (updated with each release that adds entries)
