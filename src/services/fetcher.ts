@@ -3,7 +3,7 @@ import type { FetchResult } from "../types.js";
 import { docCache, diskDocCache } from "./cache.js";
 
 const USER_AGENT =
-  `gt-mcp-server/${SERVER_VERSION} (docs-fetcher; +https://github.com/rm-rf-prod/GroundTruth-MCP)`;
+  `GroundTruth/${SERVER_VERSION} (docs-fetcher; +https://github.com/rm-rf-prod/GroundTruth-MCP)`;
 
 // In-flight deduplication: prevents N concurrent fetches of the same URL
 const inFlightRequests = new Map<string, Promise<string | null>>();
