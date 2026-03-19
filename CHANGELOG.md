@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.3.2] — 2026-03-19
+
+- fix: add path traversal and SSRF guards to audit, auto-scan, docs, fetcher
+- fix: rename gt-mcp-server to GroundTruth in User-Agent and test
+- fix: update SERVER_NAME test to GroundTruth
+
+---
+
 ## [2.3.1] — 2026-03-19
 
 - chore: rename SERVER_NAME to GroundTruth

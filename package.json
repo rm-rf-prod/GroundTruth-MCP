@@ -1,6 +1,6 @@
 {
   "name": "@groundtruth-mcp/gt-mcp",
-  "version": "2.3.1",
+  "version": "2.3.2",
   "description": "Self-hosted MCP server for live docs and best practices. Context7 alternative — 363+ libraries, no rate limits, code audit tool.",
   "type": "module",
   "main": "dist/index.js",
