@@ -13,6 +13,7 @@ vi.mock("../services/fetcher.js", () => ({
   fetchDocs: vi.fn(),
   fetchWithTimeout: vi.fn(),
   fetchViaJina: vi.fn(),
+  fetchDevDocs: vi.fn(),
 }));
 
 vi.mock("../utils/extract.js", () => ({
@@ -44,7 +45,7 @@ vi.mock("../services/cache.js", () => ({
 // ── Imports after mocks ─────────────────────────────────────────────────────
 
 import { fuzzySearch, lookupById } from "../sources/registry.js";
-import { fetchDocs, fetchWithTimeout, fetchViaJina } from "../services/fetcher.js";
+import { fetchDocs, fetchWithTimeout, fetchViaJina, fetchDevDocs } from "../services/fetcher.js";
 import { isExtractionAttempt } from "../utils/guard.js";
 import { docCache } from "../services/cache.js";
 
@@ -83,6 +84,7 @@ beforeEach(() => {
   vi.mocked(fetchDocs).mockReset();
   vi.mocked(fetchWithTimeout).mockReset();
   vi.mocked(fetchViaJina).mockReset().mockResolvedValue(null);
+  vi.mocked(fetchDevDocs).mockReset().mockResolvedValue(null);
   vi.mocked(isExtractionAttempt).mockReset().mockReturnValue(false);
   vi.mocked(docCache.get).mockReset().mockReturnValue(undefined);
   vi.mocked(docCache.set).mockReset();
@@ -450,6 +452,49 @@ describe("gt_search handler", () => {
       vi.mocked(docCache.get).mockReturnValue(LONG_CONTENT);
       const result = await handler({ query: "OWASP top 10 vulnerabilities" });
       expect(result.content[0]!.text).toContain("owasp.org");
+    });
+  });
+
+  describe("devdocs.io source", () => {
+    it("calls fetchDevDocs with the first word of the query as slug", async () => {
+      vi.mocked(fetchDevDocs).mockResolvedValue("x".repeat(201));
+      await handler({ query: "express middleware routing" });
+      expect(fetchDevDocs).toHaveBeenCalledWith("express", "express middleware routing");
+    });
+
+    it("adds devdocs result to sources when content is longer than 200 chars", async () => {
+      vi.mocked(fetchDevDocs).mockResolvedValue("x".repeat(201));
+      const result = await handler({ query: "redis commands" });
+      const names = result.structuredContent?.sources.map((s) => s.name) ?? [];
+      expect(names).toContain("DevDocs");
+    });
+
+    it("devdocs URL uses slug derived from first query word", async () => {
+      vi.mocked(fetchDevDocs).mockResolvedValue("x".repeat(201));
+      const result = await handler({ query: "redis commands" });
+      const devDocsSource = result.structuredContent?.sources.find((s) => s.name === "DevDocs");
+      expect(devDocsSource?.url).toContain("devdocs.io");
+      expect(devDocsSource?.url).toContain("redis");
+    });
+
+    it("does not add devdocs result when content is 200 chars or fewer", async () => {
+      vi.mocked(fetchDevDocs).mockResolvedValue("x".repeat(200));
+      const result = await handler({ query: "redis commands" });
+      const names = result.structuredContent?.sources.map((s) => s.name) ?? [];
+      expect(names).not.toContain("DevDocs");
+    });
+
+    it("does not add devdocs result when fetchDevDocs returns null", async () => {
+      vi.mocked(fetchDevDocs).mockResolvedValue(null);
+      const result = await handler({ query: "redis commands" });
+      const names = result.structuredContent?.sources.map((s) => s.name) ?? [];
+      expect(names).not.toContain("DevDocs");
+    });
+
+    it("does not call fetchDevDocs when other sources already returned results", async () => {
+      vi.mocked(fetchViaJina).mockResolvedValue(LONG_CONTENT);
+      await handler({ query: "OWASP injection vulnerabilities" });
+      expect(fetchDevDocs).not.toHaveBeenCalled();
     });
   });
 

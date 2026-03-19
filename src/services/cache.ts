@@ -1,4 +1,4 @@
-import type { CacheEntry } from "../types.js";
+import type { CacheEntry, LibraryMatch } from "../types.js";
 import { CACHE_TTL_MS, DISK_CACHE_DIR } from "../constants.js";
 import { createHash } from "crypto";
 import { readFile, writeFile, mkdir, stat } from "fs/promises";
@@ -126,7 +126,7 @@ export class DiskCache {
 
 // Shared cache instances
 export const docCache = new LRUCache<string>(200);
-export const resolveCache = new LRUCache<unknown>(500);
+export const resolveCache = new LRUCache<LibraryMatch>(500);
 
 // Persistent disk cache — survives across npx invocations
 export const diskDocCache = new DiskCache();

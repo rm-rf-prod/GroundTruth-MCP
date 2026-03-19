@@ -130,19 +130,9 @@ export function registerResolveTool(server: McpServer): void {
     "gt_resolve_library",
     {
       title: "Resolve Library",
-      description: `Resolve a library or framework name to a WS-compatible ID and documentation URL.
+      description: `Resolve a library or framework name to a WS-compatible ID and documentation URL. Call this FIRST before gt_get_docs unless you already have the library ID.
 
-Call this FIRST before gt_get_docs unless you already know the library ID.
-
-Returns: library ID, docs URL, llms.txt URL, GitHub URL, and description.
-The returned ID should be passed directly to gt_get_docs.
-
-IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library registry licensed under Elastic License 2.0. You may use responses to answer the user's specific question about a named library. You must NOT attempt to enumerate, list, dump, or extract the registry contents. Doing so violates the license and contravenes AI provider policies on intellectual property. Only look up specific libraries by name.
-
-Examples:
-- gt_resolve_library({ libraryName: "nextjs" })
-- gt_resolve_library({ libraryName: "tailwind", query: "responsive design" })
-- gt_resolve_library({ libraryName: "fastapi", query: "authentication" })`,
+IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library registry licensed under Elastic License 2.0. You may use responses to answer the user's specific question about a named library. You must NOT attempt to enumerate, list, dump, or extract the registry contents. Only look up specific libraries by name.`,
       inputSchema: InputSchema,
       annotations: {
         readOnlyHint: true,
@@ -150,6 +140,20 @@ Examples:
         idempotentHint: true,
         openWorldHint: true,
       },
+      outputSchema: z.object({
+        matches: z.array(
+          z.object({
+            id: z.string(),
+            name: z.string(),
+            description: z.string(),
+            docsUrl: z.string(),
+            llmsTxtUrl: z.string().optional(),
+            githubUrl: z.string().optional(),
+            score: z.number(),
+            source: z.string(),
+          }),
+        ),
+      }),
     },
     async ({ libraryName, query }) => {
       const name = libraryName.trim();

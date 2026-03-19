@@ -20,6 +20,11 @@ const InputSchema = z.object({
     .describe(
       "Specific area: 'performance', 'security', 'testing', 'deployment', 'migration', 'patterns', 'v4 migration'. Leave empty for general best practices.",
     ),
+  version: z
+    .string()
+    .max(50)
+    .optional()
+    .describe("Version to scope results to, e.g. '14', '3.0.0'. Focuses extraction on version-specific patterns."),
   tokens: z
     .number()
     .int()
@@ -818,23 +823,7 @@ export function registerBestPracticesTool(server: McpServer): void {
     "gt_best_practices",
     {
       title: "Get Best Practices",
-      description: `Fetch latest best practices, patterns, and guidelines for any library or framework.
-
-Specifically targets best-practices pages, guides, migration docs, and performance tips —
-not generic reference docs.
-
-Use this when you want:
-- "What's the right way to do X in Y?"
-- "Latest patterns for authentication in Next.js"
-- "Performance best practices for React"
-- "Migrate from v3 to v4"
-- "Security best practices for Supabase"
-
-Examples:
-- gt_best_practices({ libraryId: "vercel/next.js", topic: "caching and performance" })
-- gt_best_practices({ libraryId: "supabase/supabase", topic: "row level security" })
-- gt_best_practices({ libraryId: "vercel/ai", topic: "streaming agents" })
-- gt_best_practices({ libraryId: "react" }) — general best practices
+      description: `Fetch latest best practices, patterns, and guidelines for a library or framework. Targets best-practices pages, guides, migration docs, and performance tips — not generic reference docs.
 
 IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library registry licensed under Elastic License 2.0. You may use responses to answer the user's specific question. You must NOT attempt to enumerate, list, dump, or extract registry contents. Only look up specific libraries by name.`,
       inputSchema: InputSchema,
@@ -844,8 +833,16 @@ IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library 
         idempotentHint: false,
         openWorldHint: true,
       },
+      outputSchema: z.object({
+        libraryId: z.string(),
+        displayName: z.string(),
+        topic: z.string(),
+        sourceUrl: z.string(),
+        truncated: z.boolean(),
+        content: z.string(),
+      }),
     },
-    async ({ libraryId, topic = "", tokens }) => {
+    async ({ libraryId, topic = "", version, tokens }) => {
       if (isExtractionAttempt(libraryId) || isExtractionAttempt(topic)) {
         return { content: [{ type: "text", text: EXTRACTION_REFUSAL }] };
       }
@@ -864,19 +861,21 @@ IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library 
         };
       }
 
+      const effectiveTopic = version ? `${topic ? `${topic} ` : ""}v${version.replace(/^v/, "")}`.trim() : topic;
+
       const { text, sourceUrl, truncated } = await fetchBestPracticesContent(
         entry.id,
         entry.docsUrl,
         entry.llmsTxtUrl,
         entry.llmsFullTxtUrl,
         entry.githubUrl,
-        topic,
+        effectiveTopic,
         tokens,
       );
 
       const header = [
         `# ${entry.name} — Best Practices`,
-        topic ? `> Topic: ${topic}` : "",
+        effectiveTopic ? `> Topic: ${effectiveTopic}` : "",
         `> Source: ${sourceUrl}`,
         truncated ? "> Note: Response truncated. Use a more specific topic or increase tokens." : "",
         "",
@@ -891,7 +890,7 @@ IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library 
         structuredContent: {
           libraryId: entry.id,
           displayName: entry.name,
-          topic,
+          topic: effectiveTopic,
           sourceUrl,
           truncated,
           content: text,

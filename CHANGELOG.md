@@ -1,5 +1,54 @@
 # Changelog
 
+## [2.3.0] — 2026-03-19
+
+### New — version-specific doc retrieval
+
+`gt_get_docs` and `gt_best_practices` now accept an optional `version` parameter. Pass `"14"`, `"3.0.0"`, or `"v18.2.0"` to scope results to a specific release.
+
+- `gt_get_docs`: tries the GitHub tag README at `raw.githubusercontent.com/<repo>/<tag>/README.md` first, then falls back to the npm versioned package page at `npmjs.com/package/<pkg>/v/<version>`.
+- `gt_best_practices`: applies version to the extraction topic (e.g., `"routing v14.0.0"`) so BM25 ranking surfaces version-relevant content from the fetched docs.
+
+### New — devdocs.io in `gt_search`
+
+`gt_search` now includes devdocs.io as a step-3 fallback source covering 200+ technologies: Go, Rust, Python stdlib, Ruby, PostgreSQL, MySQL, Redis, MongoDB, Nginx, Apache, and more. Activated only when the primary curated sources return no results, keeping latency low for common queries.
+
+### New — 5 MCP prompts
+
+Discoverable workflow templates shown as slash commands in Claude Desktop and compatible MCP clients:
+
+| Prompt | Argument | Calls |
+|---|---|---|
+| `audit-my-project` | — | `gt_audit` |
+| `upgrade-check` | `library` | `gt_changelog` |
+| `best-practices-scan` | — | `gt_auto_scan` |
+| `compare-libraries` | `libraries` | `gt_compare` |
+| `security-check` | `topic` | `gt_search` (OWASP) |
+
+### New — `outputSchema` on all 9 tools
+
+All tools now declare a formal JSON Schema `outputSchema`, enabling client-side validation of `structuredContent` shapes and better IDE/agent tooling.
+
+### Security — expanded injection pattern detection
+
+Five new patterns added to `INJECTION_PATTERNS` in `constants.ts`:
+
+- HTML comment injection: `<!-- ignore above, do X -->`
+- Unicode direction override characters (U+202A–202E, U+2066–2069)
+- "act as ... you are an AI" role-switch pattern
+- "pretend you are / pretend to be" reframing pattern
+- "from now on ... you/ignore/forget" instruction override pattern
+
+### Fixes
+
+- `USER_AGENT` version string now reads from `SERVER_VERSION` at runtime instead of being hardcoded as `"1.0"`
+
+### Tests — 593 across 19 files
+
+28 new tests covering: version param fetch paths (GitHub tag, npm versioned page, fallback), `effectiveTopic` construction, devdocs.io integration, and all 5 MCP prompt registrations.
+
+---
+
 ## [2.2.0] — 2026-03-19
 
 ### Tools — Nine total

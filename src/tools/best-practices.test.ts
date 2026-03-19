@@ -41,7 +41,7 @@ import { isExtractionAttempt } from "../utils/guard.js";
 
 // ── Handler capture ─────────────────────────────────────────────────────────
 
-type HandlerInput = { libraryId: string; topic?: string; tokens?: number };
+type HandlerInput = { libraryId: string; topic?: string; version?: string; tokens?: number };
 type HandlerResult = {
   content: Array<{ type: string; text: string }>;
   structuredContent?: Record<string, unknown>;
@@ -276,6 +276,47 @@ describe("gt_best_practices handler", () => {
       vi.mocked(fetchViaJina).mockResolvedValue(BP_CONTENT);
       const result = await handler({ libraryId: "vercel/next.js" });
       expect(result.structuredContent).toHaveProperty("truncated");
+    });
+
+    it("includes effectiveTopic in topic header when version provided without topic", async () => {
+      const entry = makeEntry();
+      vi.mocked(lookupById).mockReturnValue(entry);
+      vi.mocked(fetchViaJina).mockResolvedValue(BP_CONTENT);
+      const result = await handler({ libraryId: "vercel/next.js", version: "14.0.0" });
+      expect(result.content[0]!.text).toContain("v14.0.0");
+    });
+
+    it("combines topic and version into effectiveTopic", async () => {
+      const entry = makeEntry();
+      vi.mocked(lookupById).mockReturnValue(entry);
+      vi.mocked(fetchViaJina).mockResolvedValue(BP_CONTENT);
+      const result = await handler({ libraryId: "vercel/next.js", topic: "routing", version: "14.0.0" });
+      expect(result.content[0]!.text).toContain("routing v14.0.0");
+    });
+
+    it("strips leading v from version in effectiveTopic to avoid vv prefix", async () => {
+      const entry = makeEntry();
+      vi.mocked(lookupById).mockReturnValue(entry);
+      vi.mocked(fetchViaJina).mockResolvedValue(BP_CONTENT);
+      const result = await handler({ libraryId: "vercel/next.js", version: "v14.0.0" });
+      expect(result.content[0]!.text).toContain("v14.0.0");
+      expect(result.content[0]!.text).not.toContain("vv14.0.0");
+    });
+
+    it("stores effectiveTopic in structuredContent topic field", async () => {
+      const entry = makeEntry();
+      vi.mocked(lookupById).mockReturnValue(entry);
+      vi.mocked(fetchViaJina).mockResolvedValue(BP_CONTENT);
+      const result = await handler({ libraryId: "vercel/next.js", version: "14" });
+      expect(result.structuredContent?.topic).toBe("v14");
+    });
+
+    it("stores combined effectiveTopic in structuredContent when topic and version provided", async () => {
+      const entry = makeEntry();
+      vi.mocked(lookupById).mockReturnValue(entry);
+      vi.mocked(fetchViaJina).mockResolvedValue(BP_CONTENT);
+      const result = await handler({ libraryId: "vercel/next.js", topic: "caching", version: "14.2" });
+      expect(result.structuredContent?.topic).toBe("caching v14.2");
     });
 
     it("includes truncation notice in header when truncated", async () => {

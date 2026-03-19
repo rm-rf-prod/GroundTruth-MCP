@@ -3,6 +3,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { SERVER_NAME, SERVER_VERSION } from "./constants.js";
 import { getInstallId } from "./utils/watermark.js";
+import { z } from "zod";
 import { registerResolveTool } from "./tools/resolve.js";
 import { registerDocsTool } from "./tools/docs.js";
 import { registerBestPracticesTool } from "./tools/best-practices.js";
@@ -18,38 +19,24 @@ const server = new McpServer(
   {
     instructions: `GroundTruth — Universal Documentation and Best Practices Fetcher.
 
-Covers: libraries, frameworks, web standards (MDN), security (OWASP), accessibility (WCAG),
-performance (Core Web Vitals), HTTP, CSS, auth standards, databases, infrastructure, and more.
+Covers: libraries, frameworks, web standards (MDN), security (OWASP), accessibility (WCAG), performance, HTTP, CSS, auth standards, databases, infrastructure, and more.
 
-Available tools:
-1. gt_resolve_library — Resolve a library name to a GT ID and docs URL. Call this first when you know the library name.
-2. gt_get_docs — Fetch up-to-date documentation for any library, filtered by topic.
-3. gt_best_practices — Fetch latest best practices, patterns, and guidelines for a specific library.
-4. gt_auto_scan — Auto-detect ALL project dependencies (package.json, requirements.txt, etc.) and fetch best practices for each. Use when the user says "use gt" without specifying a library.
-5. gt_search — Freeform search for ANY topic including web standards, security, accessibility, and anything else. No library name needed.
-6. gt_audit — Scan actual project code files for real issues (layout shifts, perf, a11y, security, React, Next.js, TypeScript), then fetch live best practices for each issue type from official docs. Returns file+line locations so you can fix everything.
-7. gt_changelog — Fetch recent release notes and changelog for a library. Use before upgrading.
-8. gt_compat — Check browser/Node.js/runtime compatibility for a web API, CSS feature, or JS syntax.
-9. gt_compare — Compare 2–3 libraries side-by-side to help with "which one should I use?" decisions.
+Tools:
+1. gt_resolve_library — Resolve a library name to an ID and docs URL. Call this first.
+2. gt_get_docs — Fetch up-to-date documentation filtered by topic.
+3. gt_best_practices — Fetch latest best practices for a library.
+4. gt_auto_scan — Detect all project dependencies and fetch best practices for each.
+5. gt_search — Freeform search: web standards, security, accessibility, any topic.
+6. gt_audit — Scan project code for real issues, fetch live fixes from official docs.
+7. gt_changelog — Fetch recent release notes. Use before upgrading.
+8. gt_compat — Check browser/runtime compatibility for a web API or CSS feature.
+9. gt_compare — Compare 2–3 libraries side-by-side.
 
-Quick Workflows:
-
-"use gt" or "use gt for latest best practices":
-  → gt_auto_scan({}) to scan current project
-  → OR gt_search({ query: "latest best practices for [detected tech]" })
-
-"use gt to check [topic]":
-  → gt_search({ query: "[topic]" })
-
-"use gt for [library]":
-  → gt_resolve_library({ libraryName: "[library]" })
-  → gt_best_practices({ libraryId: "...", topic: "..." })
-
-When you do NOT know what library to look up — use gt_auto_scan or gt_search.
-
-"find and fix all issues" / "use gt to audit":
-  → gt_audit({ projectPath: "." }) to scan code for real bugs/issues
-  → Apply fixes at the returned file:line locations using live best practices
+Workflows:
+"use gt" → gt_auto_scan({})
+"use gt for [library]" → gt_resolve_library → gt_best_practices
+"find and fix all issues" → gt_audit({ projectPath: "." })
+"check [topic]" → gt_search({ query: "[topic]" })
 
 All content is fetched live from official sources — no stale training data.`,
   },
@@ -64,6 +51,65 @@ registerAuditTool(server);
 registerChangelogTool(server);
 registerCompatTool(server);
 registerCompareTool(server);
+
+// MCP Prompts — discoverable workflow templates shown as slash commands in compatible clients
+server.prompt(
+  "audit-my-project",
+  "Scan this project for code issues and fetch live best-practice fixes from official docs",
+  () => ({
+    messages: [{
+      role: "user",
+      content: { type: "text", text: "Please use gt_audit to scan this project for all code issues (layout, performance, accessibility, security, React, Next.js, TypeScript, Node.js, Python). For each issue type found, fetch live best-practice fixes and show me what to change at each file:line location." },
+    }],
+  }),
+);
+
+server.prompt(
+  "upgrade-check",
+  "Check release notes and breaking changes before upgrading a library",
+  { library: z.string().describe("Library to check, e.g. 'nextjs', 'react', 'prisma'") },
+  ({ library }) => ({
+    messages: [{
+      role: "user",
+      content: { type: "text", text: `Use gt_changelog to fetch the recent release notes for ${library}. Summarize what changed, highlight any breaking changes, and list migration steps if available.` },
+    }],
+  }),
+);
+
+server.prompt(
+  "best-practices-scan",
+  "Get current best practices for every library in this project",
+  () => ({
+    messages: [{
+      role: "user",
+      content: { type: "text", text: "Use gt_auto_scan to detect all dependencies in this project and fetch the latest best practices for each one. Highlight any patterns we should update." },
+    }],
+  }),
+);
+
+server.prompt(
+  "compare-libraries",
+  "Compare two or three libraries side-by-side to decide which one to use",
+  { libraries: z.string().describe("Comma-separated library names, e.g. 'prisma, drizzle-orm' or 'zod, valibot, yup'") },
+  ({ libraries }) => ({
+    messages: [{
+      role: "user",
+      content: { type: "text", text: `Use gt_compare to compare these libraries side-by-side: ${libraries}. Show their key differences, tradeoffs, and which use cases each one fits best.` },
+    }],
+  }),
+);
+
+server.prompt(
+  "security-check",
+  "Search OWASP and security docs for guidance on a vulnerability or security topic",
+  { topic: z.string().describe("Security topic, e.g. 'SQL injection', 'JWT best practices', 'CSP headers'") },
+  ({ topic }) => ({
+    messages: [{
+      role: "user",
+      content: { type: "text", text: `Use gt_search to find the latest OWASP guidance and security best practices for: ${topic}. Include prevention techniques, code examples if available, and any relevant CVEs or spec references.` },
+    }],
+  }),
+);
 
 async function main(): Promise<void> {
   const transport = new StdioServerTransport();

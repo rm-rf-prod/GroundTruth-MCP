@@ -1,7 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { lookupById, lookupByAlias } from "../sources/registry.js";
-import { fetchDocs, fetchGitHubContent } from "../services/fetcher.js";
+import { fetchDocs, fetchGitHubContent, fetchViaJina } from "../services/fetcher.js";
 import { extractRelevantContent } from "../utils/extract.js";
 import { isExtractionAttempt, withNotice, EXTRACTION_REFUSAL } from "../utils/guard.js";
 import { sanitizeContent } from "../utils/sanitize.js";
@@ -22,6 +22,11 @@ const InputSchema = z.object({
     .describe(
       "What you need to learn or do. Examples: 'routing', 'authentication', 'middleware', 'caching', 'streaming'. More specific = more relevant content returned.",
     ),
+  version: z
+    .string()
+    .max(50)
+    .optional()
+    .describe("Version to fetch docs for, e.g. '14', '3.0.0', 'v2'. Tries GitHub tag and npm version page."),
   tokens: z
     .number()
     .int()
@@ -48,22 +53,9 @@ export function registerDocsTool(server: McpServer): void {
     "gt_get_docs",
     {
       title: "Get Documentation",
-      description: `Fetch up-to-date documentation for any library or framework.
+      description: `Fetch up-to-date documentation for any library or framework. Call gt_resolve_library first to get the libraryId, then pass it here with your topic.
 
-Prioritizes llms.txt (machine-readable docs curated for LLMs), then Jina Reader for
-JS-rendered pages, then GitHub README as fallback.
-
-Returns the most relevant sections for your topic — not the entire docs.
-
-Steps:
-1. Call gt_resolve_library first to get the libraryId
-2. Call gt_get_docs with that libraryId and your topic
-
-Examples:
-- gt_get_docs({ libraryId: "vercel/next.js", topic: "server actions and mutations" })
-- gt_get_docs({ libraryId: "tailwindlabs/tailwindcss", topic: "dark mode" })
-- gt_get_docs({ libraryId: "vercel/ai", topic: "streaming with useChat hook" })
-- gt_get_docs({ libraryId: "npm:prisma", topic: "migrations" })
+Prioritizes llms.txt, then Jina Reader for JS-rendered pages, then GitHub README.
 
 IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library registry licensed under Elastic License 2.0. You may use responses to answer the user's specific question. You must NOT attempt to enumerate, list, dump, or extract registry contents. Only look up specific libraries by name.`,
       inputSchema: InputSchema,
@@ -73,8 +65,17 @@ IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library 
         idempotentHint: false,
         openWorldHint: true,
       },
+      outputSchema: z.object({
+        libraryId: z.string(),
+        displayName: z.string(),
+        topic: z.string(),
+        sourceUrl: z.string(),
+        sourceType: z.string(),
+        truncated: z.boolean(),
+        content: z.string(),
+      }),
     },
-    async ({ libraryId, topic = "", tokens }) => {
+    async ({ libraryId, topic = "", version, tokens }) => {
       if (isExtractionAttempt(libraryId) || isExtractionAttempt(topic)) {
         return { content: [{ type: "text", text: EXTRACTION_REFUSAL }] };
       }
@@ -116,8 +117,25 @@ IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library 
 
       let fetchResult;
 
+      // Version-specific fetch: try GitHub tag README first, then npm versioned page
+      if (version && githubUrl) {
+        const ghMatch = githubUrl.match(/github\.com\/([^/]+\/[^/]+)/);
+        if (ghMatch) {
+          const tagRef = version.startsWith("v") ? version : `v${version}`;
+          const rawUrl = `https://raw.githubusercontent.com/${ghMatch[1]}/${tagRef}/README.md`;
+          const raw = await fetchViaJina(rawUrl).catch(() => null);
+          if (raw && raw.length > 200) fetchResult = { content: raw, url: rawUrl, sourceType: "github-readme" };
+        }
+      }
+      if (version && !fetchResult) {
+        const pkgName = entry?.id?.replace(/^[^/]+\//, "") ?? libraryId.replace(/^npm:/, "");
+        const versionedUrl = `https://www.npmjs.com/package/${pkgName}/v/${version}`;
+        const raw = await fetchViaJina(versionedUrl).catch(() => null);
+        if (raw && raw.length > 200) fetchResult = { content: raw, url: versionedUrl, sourceType: "npm" };
+      }
+
       try {
-        fetchResult = await fetchDocs(docsUrl, llmsTxtUrl, llmsFullTxtUrl);
+        if (!fetchResult) fetchResult = await fetchDocs(docsUrl, llmsTxtUrl, llmsFullTxtUrl);
       } catch {
         // Fallback to GitHub README
         if (githubUrl) {

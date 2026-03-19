@@ -1,9 +1,9 @@
-import { FETCH_TIMEOUT_MS, JINA_BASE_URL } from "../constants.js";
+import { FETCH_TIMEOUT_MS, JINA_BASE_URL, SERVER_VERSION } from "../constants.js";
 import type { FetchResult } from "../types.js";
 import { docCache, diskDocCache } from "./cache.js";
 
 const USER_AGENT =
-  "gt-mcp-server/1.0 (docs-fetcher; +https://github.com/rm-rf-prod/GroundTruth-MCP)";
+  `gt-mcp-server/${SERVER_VERSION} (docs-fetcher; +https://github.com/rm-rf-prod/GroundTruth-MCP)`;
 
 // In-flight deduplication: prevents N concurrent fetches of the same URL
 const inFlightRequests = new Map<string, Promise<string | null>>();
@@ -113,17 +113,17 @@ export async function fetchDocs(
   llmsTxtUrl?: string,
   llmsFullTxtUrl?: string,
 ): Promise<FetchResult> {
-  const cacheKey = `docs:${llmsTxtUrl ?? docsUrl}`;
+  const cacheKey = `docs:${docsUrl}`;
 
   const memCached = docCache.get(cacheKey);
   if (memCached) {
-    return { content: memCached, url: llmsTxtUrl ?? docsUrl, sourceType: "llms-txt" };
+    return { content: memCached, url: docsUrl, sourceType: "llms-txt" };
   }
 
   const diskCached = await diskDocCache.get(cacheKey);
   if (diskCached) {
     docCache.set(cacheKey, diskCached);
-    return { content: diskCached, url: llmsTxtUrl ?? docsUrl, sourceType: "llms-txt" };
+    return { content: diskCached, url: docsUrl, sourceType: "llms-txt" };
   }
 
   // 1. Race llms-full.txt and llms.txt in parallel (both are cheap GETs)
@@ -306,10 +306,16 @@ export async function fetchGitHubExamples(githubUrl: string): Promise<string | n
     "docs/patterns.md",
   ];
 
-  // Race all paths in parallel — return first hit
-  const results = await Promise.allSettled(
-    paths.flatMap((path) =>
-      ["main", "master"].map(async (branch) => {
+  // Try up to 6 candidates concurrently — return first hit
+  const candidates = paths.flatMap((path) =>
+    ["main", "master"].map((branch) => ({ path, branch })),
+  );
+
+  const CONCURRENCY = 6;
+  for (let i = 0; i < candidates.length; i += CONCURRENCY) {
+    const batch = candidates.slice(i, i + CONCURRENCY);
+    const results = await Promise.allSettled(
+      batch.map(async ({ path, branch }) => {
         const url = `https://raw.githubusercontent.com/${repoPath}/${branch}/${path}`;
         const content = await tryFetch(url, 0, githubAuthHeaders());
         if (content && content.length > 300) {
@@ -317,14 +323,14 @@ export async function fetchGitHubExamples(githubUrl: string): Promise<string | n
         }
         return null;
       }),
-    ),
-  );
+    );
 
-  for (const result of results) {
-    if (result.status === "fulfilled" && result.value) {
-      docCache.set(cacheKey, result.value);
-      void diskDocCache.set(cacheKey, result.value);
-      return result.value;
+    for (const result of results) {
+      if (result.status === "fulfilled" && result.value) {
+        docCache.set(cacheKey, result.value);
+        void diskDocCache.set(cacheKey, result.value);
+        return result.value;
+      }
     }
   }
 
@@ -357,6 +363,33 @@ export async function fetchNpmPackage(packageName: string): Promise<unknown> {
   } catch {
     return null;
   }
+}
+
+/** Fetch documentation from devdocs.io — pre-parsed, offline-capable docs for 200+ technologies */
+export async function fetchDevDocs(slug: string, topic?: string): Promise<string | null> {
+  const slugEncoded = encodeURIComponent(slug.toLowerCase());
+  const cacheKey = `devdocs:${slugEncoded}:${topic ?? ""}`;
+
+  const memCached = docCache.get(cacheKey);
+  if (memCached) return memCached;
+
+  const diskCached = await diskDocCache.get(cacheKey);
+  if (diskCached) {
+    docCache.set(cacheKey, diskCached);
+    return diskCached;
+  }
+
+  // Try the devdocs.io search endpoint
+  const searchUrl = topic
+    ? `https://devdocs.io/search?q=${encodeURIComponent(`${slug} ${topic}`)}`
+    : `https://devdocs.io/${slugEncoded}/`;
+
+  const content = await fetchViaJina(searchUrl);
+  if (!content || content.length < 200) return null;
+
+  docCache.set(cacheKey, content);
+  void diskDocCache.set(cacheKey, content);
+  return content;
 }
 
 /** Query PyPI for package metadata */

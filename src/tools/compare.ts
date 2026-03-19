@@ -38,15 +38,7 @@ export function registerCompareTool(server: McpServer): void {
     "gt_compare",
     {
       title: "Compare Libraries Side-by-Side",
-      description: `Compare 2–3 libraries side-by-side to help with "which one should I use?" decisions.
-
-Fetches live documentation for each library and presents the content relevant to the comparison criteria.
-
-Examples:
-- gt_compare({ libraries: ["prisma", "drizzle-orm"] })
-- gt_compare({ libraries: ["trpc", "hono"], criteria: "TypeScript support" })
-- gt_compare({ libraries: ["zod", "valibot", "yup"], criteria: "bundle size DX" })
-- gt_compare({ libraries: ["react", "solid-js"], criteria: "performance rendering" })`,
+      description: `Compare 2–3 libraries side-by-side. Fetches live documentation for each and presents content relevant to the comparison criteria.`,
       inputSchema: InputSchema,
       annotations: {
         readOnlyHint: true,
@@ -54,6 +46,18 @@ Examples:
         idempotentHint: true,
         openWorldHint: true,
       },
+      outputSchema: z.object({
+        libraries: z.array(
+          z.object({
+            id: z.string(),
+            name: z.string(),
+            description: z.string(),
+            docsUrl: z.string(),
+            content: z.string(),
+          }),
+        ),
+        criteria: z.string(),
+      }),
     },
     async ({ libraries, criteria, tokens }) => {
       for (const lib of libraries) {

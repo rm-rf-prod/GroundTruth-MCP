@@ -360,24 +360,9 @@ export function registerAutoScanTool(server: McpServer): void {
     "gt_auto_scan",
     {
       title: "Auto-Scan Project Dependencies",
-      description: `Automatically detect all dependencies in a project and fetch latest best practices for each.
+      description: `Automatically detect all dependencies in a project and fetch latest best practices for each. Say "use gt" to invoke.
 
-Reads: package.json, requirements.txt, pyproject.toml (Poetry + PEP 517), Cargo.toml, go.mod, pom.xml, composer.json, build.gradle — whichever exist.
-
-Use this when you want to:
-- Get current best practices for everything in a project at once
-- Check if you're using the recommended patterns for your entire stack
-- Audit a project for outdated patterns across all dependencies
-- Start a refactor and need context on every library in use
-
-Say "use gt" or "gt scan" to invoke this automatically.
-
-Examples:
-- gt_auto_scan({}) — scan current directory, fetch general best practices
-- gt_auto_scan({ topic: "latest best practices" })
-- gt_auto_scan({ topic: "security vulnerabilities" })
-- gt_auto_scan({ topic: "migration to latest version" })
-- gt_auto_scan({ projectPath: "/path/to/project", topic: "performance" })`,
+Reads: package.json, requirements.txt, pyproject.toml, Cargo.toml, go.mod, pom.xml, composer.json, build.gradle — whichever exist.`,
       inputSchema: InputSchema,
       annotations: {
         readOnlyHint: true,
@@ -385,6 +370,15 @@ Examples:
         idempotentHint: false,
         openWorldHint: true,
       },
+      outputSchema: z.object({
+        projectPath: z.string(),
+        topic: z.string(),
+        filesScanned: z.array(z.string()),
+        totalDependencies: z.number(),
+        matched: z.array(z.string()),
+        unmatched: z.array(z.string()),
+        results: z.array(z.object({ name: z.string(), url: z.string(), content: z.string() })),
+      }),
     },
     async ({ projectPath, topic = "latest best practices", tokensPerLib }) => {
       const resolvedPath = projectPath ?? process.cwd();

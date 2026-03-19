@@ -23,7 +23,7 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit",
-    "version": "node -e \"const fs=require('fs');const v=JSON.parse(fs.readFileSync('package.json','utf8')).version;const c=fs.readFileSync('src/constants.ts','utf8').replace(/SERVER_VERSION = \\\"[^\\\"]+\\\"/,`SERVER_VERSION = \\\"${v}\\\"`);fs.writeFileSync('src/constants.ts',c)\" && npm run update-stats && git add -A",
+    "version": "node -e \"const fs=require('fs');const v=JSON.parse(fs.readFileSync('package.json','utf8')).version;const c=fs.readFileSync('src/constants.ts','utf8').replace(/SERVER_VERSION = \\\"[^\\\"]+\\\"/,`SERVER_VERSION = \\\"${v}\\\"`);fs.writeFileSync('src/constants.ts',c)\" && node scripts/update-changelog.mjs && npm run update-stats && git add -A",
     "postversion": "git push && git push --tags && node scripts/create-release.mjs"
   },
   "engines": {
