@@ -2,6 +2,14 @@
 
 ## [2.3.0] — 2026-03-19
 
+- chore: update README stats
+- feat: v2.3.0 — version-specific docs, devdocs.io, MCP prompts, outputSchema
+- feat: v2.2.0 — license gate, source-map fix
+
+---
+
+## [2.3.0] — 2026-03-19
+
 ### New — version-specific doc retrieval
 
 `gt_get_docs` and `gt_best_practices` now accept an optional `version` parameter. Pass `"14"`, `"3.0.0"`, or `"v18.2.0"` to scope results to a specific release.
