@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.3.1] — 2026-03-19
+
+- chore: rename SERVER_NAME to GroundTruth
+- chore: add release scripts, fix README test badge 534→593
+- fix: restore SERVER_VERSION, replace shell-broken version script with update-version.mjs
+
+---
+
 ## [2.3.0] — 2026-03-19
 
 - chore: update README stats
