@@ -29,6 +29,7 @@ vi.mock("../utils/guard.js", () => ({
   isExtractionAttempt: vi.fn(() => false),
   withNotice: vi.fn((text: string) => `NOTICE\n\n${text}`),
   EXTRACTION_REFUSAL: "EXTRACTION_REFUSED",
+  safeguardPath: vi.fn((p: string) => p),
 }));
 
 // ── Imports after mocks ─────────────────────────────────────────────────────
