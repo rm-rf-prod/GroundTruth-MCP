@@ -3,7 +3,7 @@ import { z } from "zod";
 import { lookupByAlias, lookupById, fuzzySearch } from "../sources/registry.js";
 import { fetchDocs } from "../services/fetcher.js";
 import { extractRelevantContent } from "../utils/extract.js";
-import { isExtractionAttempt, withNotice, EXTRACTION_REFUSAL } from "../utils/guard.js";
+import { isExtractionAttempt, withNotice, EXTRACTION_REFUSAL, safeguardPath } from "../utils/guard.js";
 import { sanitizeContent } from "../utils/sanitize.js";
 import { DEFAULT_TOKEN_LIMIT } from "../constants.js";
 import type { LibraryEntry } from "../types.js";
@@ -381,7 +381,12 @@ Reads: package.json, requirements.txt, pyproject.toml, Cargo.toml, go.mod, pom.x
       }),
     },
     async ({ projectPath, topic = "latest best practices", tokensPerLib }) => {
-      const resolvedPath = projectPath ?? process.cwd();
+      let resolvedPath: string;
+      try {
+        resolvedPath = safeguardPath(projectPath ?? process.cwd());
+      } catch {
+        return { content: [{ type: "text", text: `Invalid project path.` }] };
+      }
 
       if (isExtractionAttempt(topic)) {
         return { content: [{ type: "text", text: EXTRACTION_REFUSAL }] };

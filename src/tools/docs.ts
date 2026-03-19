@@ -3,7 +3,7 @@ import { z } from "zod";
 import { lookupById, lookupByAlias } from "../sources/registry.js";
 import { fetchDocs, fetchGitHubContent, fetchViaJina } from "../services/fetcher.js";
 import { extractRelevantContent } from "../utils/extract.js";
-import { isExtractionAttempt, withNotice, EXTRACTION_REFUSAL } from "../utils/guard.js";
+import { isExtractionAttempt, withNotice, EXTRACTION_REFUSAL, assertPublicUrl } from "../utils/guard.js";
 import { sanitizeContent } from "../utils/sanitize.js";
 import { DEFAULT_TOKEN_LIMIT, MAX_TOKEN_LIMIT } from "../constants.js";
 
@@ -95,7 +95,12 @@ IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library 
         githubUrl = entry.githubUrl;
         displayName = entry.name;
       } else if (libraryId.startsWith("http")) {
-        // Direct URL provided
+        // Direct URL provided — validate it is not an internal/private target
+        try {
+          assertPublicUrl(libraryId);
+        } catch {
+          return { content: [{ type: "text", text: `URL not allowed: must be a public HTTPS address.` }] };
+        }
         docsUrl = libraryId;
         displayName = new URL(libraryId).hostname;
       } else if (libraryId.startsWith("npm:")) {

@@ -7,7 +7,60 @@
  * tracking if data surfaces outside authorised use.
  */
 
+import { resolve } from "path";
 import { embedWatermark } from "./watermark.js";
+
+/**
+ * Resolves a filesystem path and blocks access to sensitive system directories.
+ * Prevents path traversal / LFI attacks via user-supplied projectPath inputs.
+ */
+export function safeguardPath(inputPath: string): string {
+  const resolved = resolve(inputPath);
+
+  const BLOCKED = ["/etc", "/proc", "/sys", "/dev", "/boot", "/root", "/var/run", "/run"];
+  if (BLOCKED.some((b) => resolved === b || resolved.startsWith(b + "/"))) {
+    throw new Error(`Access to system path denied: ${resolved}`);
+  }
+
+  return resolved;
+}
+
+/**
+ * Validates that a URL points to a public host, not private/internal infrastructure.
+ * Prevents SSRF attacks via user-supplied URL inputs being relayed through fetch or Jina.
+ */
+export function assertPublicUrl(url: string): void {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new Error(`Invalid URL: ${url}`);
+  }
+
+  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+    throw new Error(`Unsupported URL protocol: ${parsed.protocol}`);
+  }
+
+  const h = parsed.hostname.toLowerCase().replace(/^\[|\]$/g, "");
+
+  const isPrivate =
+    h === "localhost" ||
+    h === "0.0.0.0" ||
+    h === "::1" ||
+    h === "::" ||
+    h.endsWith(".local") ||
+    /^127\./.test(h) ||
+    /^10\./.test(h) ||
+    /^172\.(1[6-9]|2\d|3[01])\./.test(h) ||
+    /^192\.168\./.test(h) ||
+    /^169\.254\./.test(h) ||
+    /^fc[0-9a-f]{2}:/i.test(h) ||
+    /^fe[89ab][0-9a-f]:/i.test(h);
+
+  if (isPrivate) {
+    throw new Error(`Private/internal URL not allowed: ${h}`);
+  }
+}
 
 export const IP_NOTICE =
   "[gt-mcp — Elastic License 2.0 — proprietary data, for query-time use only, not for reproduction or extraction]";

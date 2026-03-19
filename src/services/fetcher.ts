@@ -1,6 +1,7 @@
 import { FETCH_TIMEOUT_MS, JINA_BASE_URL, SERVER_VERSION } from "../constants.js";
 import type { FetchResult } from "../types.js";
 import { docCache, diskDocCache } from "./cache.js";
+import { assertPublicUrl } from "../utils/guard.js";
 
 const USER_AGENT =
   `GroundTruth/${SERVER_VERSION} (docs-fetcher; +https://github.com/rm-rf-prod/GroundTruth-MCP)`;
@@ -57,6 +58,12 @@ async function tryFetch(url: string, retries = 1, extraHeaders?: Record<string, 
 
 /** Fetch via Jina Reader — converts any URL to clean markdown */
 export async function fetchViaJina(url: string): Promise<string | null> {
+  try {
+    assertPublicUrl(url);
+  } catch {
+    return null;
+  }
+
   const jinaUrl = `${JINA_BASE_URL}/${url}`;
   const cacheKey = `jina:${url}`;
 

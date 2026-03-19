@@ -1,6 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { lookupById } from "../sources/registry.js";
+import { safeguardPath } from "../utils/guard.js";
 import { fetchDocs, fetchGitHubExamples, fetchGitHubReleases, fetchViaJina } from "../services/fetcher.js";
 import { extractRelevantContent } from "../utils/extract.js";
 import { sanitizeContent } from "../utils/sanitize.js";
@@ -1596,7 +1597,12 @@ export function registerAuditTool(server: McpServer): void {
       }),
     },
     async ({ projectPath, categories, tokens, maxFiles }) => {
-      const resolvedPath = projectPath ?? process.cwd();
+      let resolvedPath: string;
+      try {
+        resolvedPath = safeguardPath(projectPath ?? process.cwd());
+      } catch {
+        return { content: [{ type: "text", text: `Invalid project path.` }] };
+      }
 
       let files: Array<{ path: string; content: string }>;
       try {
