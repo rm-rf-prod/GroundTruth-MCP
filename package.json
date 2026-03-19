@@ -1,0 +1,63 @@
+{
+  "name": "@groundtruth-mcp/gt-mcp",
+  "version": "2.1.0",
+  "description": "Self-hosted MCP server for live docs and best practices. Context7 alternative — 363+ libraries, no rate limits, code audit tool.",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "@groundtruth-mcp/gt-mcp": "dist/index.js",
+    "gt-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc && javascript-obfuscator dist --output dist --compact true --string-array true --string-array-encoding rc4 --string-array-threshold 0.9 --split-strings true --split-strings-chunk-length 10",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "clean": "rm -rf dist",
+    "update-stats": "node scripts/update-stats.mjs",
+    "prepublishOnly": "npm run clean && npm run build && npm run update-stats",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit",
+    "version": "node -e \"const fs=require('fs');const v=JSON.parse(fs.readFileSync('package.json','utf8')).version;const c=fs.readFileSync('src/constants.ts','utf8').replace(/SERVER_VERSION = \\\"[^\\\"]+\\\"/,`SERVER_VERSION = \\\"${v}\\\"`);fs.writeFileSync('src/constants.ts',c)\" && npm run update-stats && git add -A",
+    "postversion": "git push && git push --tags && node scripts/create-release.mjs"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "documentation",
+    "claude",
+    "cursor",
+    "best-practices",
+    "devtools",
+    "llms-txt",
+    "context7-alternative"
+  ],
+  "author": "rm-rf-prod",
+  "license": "Elastic-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rm-rf-prod/GroundTruth-MCP"
+  },
+  "homepage": "https://github.com/rm-rf-prod/GroundTruth-MCP#readme",
+  "bugs": {
+    "url": "https://github.com/rm-rf-prod/GroundTruth-MCP/issues"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.27.1",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "@vitest/coverage-v8": "^4.1.0",
+    "javascript-obfuscator": "^5.3.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.0"
+  }
+}
