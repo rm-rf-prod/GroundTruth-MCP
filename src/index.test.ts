@@ -10,12 +10,13 @@ vi.mock("@modelcontextprotocol/sdk/server/stdio.js", () => ({
 vi.mock("@modelcontextprotocol/sdk/server/mcp.js", () => ({
   // Use a regular function (not arrow) so new McpServer() works as a constructor
   McpServer: vi.fn().mockImplementation(function McpServerMock(
-    this: { _name: string; _version: string; registerTool: unknown; connect: unknown },
+    this: { _name: string; _version: string; registerTool: unknown; prompt: unknown; connect: unknown },
     meta: { name: string; version: string },
   ) {
     this._name = meta.name;
     this._version = meta.version;
     this.registerTool = vi.fn();
+    this.prompt = vi.fn();
     this.connect = vi.fn().mockResolvedValue(undefined);
   }),
 }));
@@ -37,6 +38,15 @@ vi.mock("./tools/search.js", () => ({
 }));
 vi.mock("./tools/audit.js", () => ({
   registerAuditTool: vi.fn(),
+}));
+vi.mock("./tools/changelog.js", () => ({
+  registerChangelogTool: vi.fn(),
+}));
+vi.mock("./tools/compat.js", () => ({
+  registerCompatTool: vi.fn(),
+}));
+vi.mock("./tools/compare.js", () => ({
+  registerCompareTool: vi.fn(),
 }));
 
 // ── process.exit guard ──────────────────────────────────────────────────────
@@ -62,6 +72,9 @@ import { registerBestPracticesTool } from "./tools/best-practices.js";
 import { registerAutoScanTool } from "./tools/auto-scan.js";
 import { registerSearchTool } from "./tools/search.js";
 import { registerAuditTool } from "./tools/audit.js";
+import { registerChangelogTool } from "./tools/changelog.js";
+import { registerCompatTool } from "./tools/compat.js";
+import { registerCompareTool } from "./tools/compare.js";
 import { SERVER_NAME, SERVER_VERSION } from "./constants.js";
 
 // ── Tests ───────────────────────────────────────────────────────────────────
@@ -117,7 +130,19 @@ describe("index.ts bootstrap", () => {
       expect(registerAuditTool).toHaveBeenCalledOnce();
     });
 
-    it("calls all 6 registration functions", () => {
+    it("calls registerChangelogTool", () => {
+      expect(registerChangelogTool).toHaveBeenCalledOnce();
+    });
+
+    it("calls registerCompatTool", () => {
+      expect(registerCompatTool).toHaveBeenCalledOnce();
+    });
+
+    it("calls registerCompareTool", () => {
+      expect(registerCompareTool).toHaveBeenCalledOnce();
+    });
+
+    it("calls all 9 registration functions", () => {
       const allCalled = [
         registerResolveTool,
         registerDocsTool,
@@ -125,6 +150,9 @@ describe("index.ts bootstrap", () => {
         registerAutoScanTool,
         registerSearchTool,
         registerAuditTool,
+        registerChangelogTool,
+        registerCompatTool,
+        registerCompareTool,
       ].every((fn) => vi.mocked(fn).mock.calls.length > 0);
       expect(allCalled).toBe(true);
     });
@@ -137,6 +165,46 @@ describe("index.ts bootstrap", () => {
       expect(vi.mocked(registerAutoScanTool)).toHaveBeenCalledWith(serverInstance);
       expect(vi.mocked(registerSearchTool)).toHaveBeenCalledWith(serverInstance);
       expect(vi.mocked(registerAuditTool)).toHaveBeenCalledWith(serverInstance);
+      expect(vi.mocked(registerChangelogTool)).toHaveBeenCalledWith(serverInstance);
+      expect(vi.mocked(registerCompatTool)).toHaveBeenCalledWith(serverInstance);
+      expect(vi.mocked(registerCompareTool)).toHaveBeenCalledWith(serverInstance);
+    });
+  });
+
+  describe("MCP prompts", () => {
+    it("registers 5 prompts total", () => {
+      const serverInstance = vi.mocked(McpServer).mock.results[0]!.value as { prompt: ReturnType<typeof vi.fn> };
+      expect(serverInstance.prompt).toHaveBeenCalledTimes(5);
+    });
+
+    it("registers audit-my-project prompt", () => {
+      const serverInstance = vi.mocked(McpServer).mock.results[0]!.value as { prompt: ReturnType<typeof vi.fn> };
+      const names = serverInstance.prompt.mock.calls.map((c: unknown[]) => c[0]);
+      expect(names).toContain("audit-my-project");
+    });
+
+    it("registers upgrade-check prompt", () => {
+      const serverInstance = vi.mocked(McpServer).mock.results[0]!.value as { prompt: ReturnType<typeof vi.fn> };
+      const names = serverInstance.prompt.mock.calls.map((c: unknown[]) => c[0]);
+      expect(names).toContain("upgrade-check");
+    });
+
+    it("registers best-practices-scan prompt", () => {
+      const serverInstance = vi.mocked(McpServer).mock.results[0]!.value as { prompt: ReturnType<typeof vi.fn> };
+      const names = serverInstance.prompt.mock.calls.map((c: unknown[]) => c[0]);
+      expect(names).toContain("best-practices-scan");
+    });
+
+    it("registers compare-libraries prompt", () => {
+      const serverInstance = vi.mocked(McpServer).mock.results[0]!.value as { prompt: ReturnType<typeof vi.fn> };
+      const names = serverInstance.prompt.mock.calls.map((c: unknown[]) => c[0]);
+      expect(names).toContain("compare-libraries");
+    });
+
+    it("registers security-check prompt", () => {
+      const serverInstance = vi.mocked(McpServer).mock.results[0]!.value as { prompt: ReturnType<typeof vi.fn> };
+      const names = serverInstance.prompt.mock.calls.map((c: unknown[]) => c[0]);
+      expect(names).toContain("security-check");
     });
   });
 

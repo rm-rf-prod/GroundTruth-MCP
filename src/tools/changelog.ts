@@ -33,15 +33,7 @@ export function registerChangelogTool(server: McpServer): void {
     "gt_changelog",
     {
       title: "Fetch Library Changelog",
-      description: `Fetch recent release notes and changelog for a library.
-
-Useful for understanding what changed between versions before upgrading.
-Reads GitHub Releases API first, then CHANGELOG.md, then the docs site.
-
-Examples:
-- gt_changelog({ libraryId: "vercel/next.js" })
-- gt_changelog({ libraryId: "facebook/react", version: "19" })
-- gt_changelog({ libraryId: "prisma", version: "6.0.0" })`,
+      description: `Fetch recent release notes and changelog for a library. Reads GitHub Releases API first, then CHANGELOG.md, then the docs site. Use before upgrading.`,
       inputSchema: InputSchema,
       annotations: {
         readOnlyHint: true,
@@ -49,6 +41,13 @@ Examples:
         idempotentHint: true,
         openWorldHint: true,
       },
+      outputSchema: z.object({
+        libraryId: z.string(),
+        displayName: z.string(),
+        version: z.string().nullable(),
+        sourceUrl: z.string(),
+        truncated: z.boolean(),
+      }),
     },
     async ({ libraryId, version, tokens }) => {
       if (isExtractionAttempt(libraryId)) {

@@ -1,7 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { fuzzySearch, lookupById } from "../sources/registry.js";
-import { fetchDocs, fetchWithTimeout, fetchViaJina } from "../services/fetcher.js";
+import { fetchDocs, fetchWithTimeout, fetchViaJina, fetchDevDocs } from "../services/fetcher.js";
 import { extractRelevantContent } from "../utils/extract.js";
 import { isExtractionAttempt, withNotice, EXTRACTION_REFUSAL } from "../utils/guard.js";
 import { sanitizeContent } from "../utils/sanitize.js";
@@ -1050,29 +1050,9 @@ export function registerSearchTool(server: McpServer): void {
     "gt_search",
     {
       title: "Search Any Topic",
-      description: `Search for latest best practices, docs, or guidance on ANY topic — no library name needed.
+      description: `Search for latest best practices, docs, or guidance on ANY topic — no library name needed. Current year: ${currentYear}.
 
-Current year: ${currentYear}. All searches are normalized to fetch ${currentYear} content.
-
-Works for:
-- Library best practices: "latest React patterns", "Next.js server actions"
-- Web standards: "CSS container queries", "WebSocket API", "Fetch API"
-- Security: "OWASP SQL injection prevention", "JWT security best practices", "CSP headers"
-- Accessibility: "WCAG 2.2 focus indicators", "ARIA roles reference"
-- Performance: "Core Web Vitals optimization", "LCP improvements"
-- APIs & protocols: "REST API design", "HTTP/3 vs HTTP/2", "OpenAPI 3.1"
-- Auth standards: "OAuth 2.1 PKCE", "WebAuthn passkeys", "OIDC"
-- Infrastructure: "Docker best practices", "GitHub Actions CI/CD"
-- Anything else: just ask
-
-Say "use gt" or "gt search [topic]" to invoke.
-
-Examples:
-- gt_search({ query: "latest best practices" }) — auto-detects from project context
-- gt_search({ query: "WCAG 2.2 keyboard navigation" })
-- gt_search({ query: "SQL injection prevention ${currentYear}" })
-- gt_search({ query: "CSS container queries browser support" })
-- gt_search({ query: "React Server Components patterns" })
+Works for: library patterns, web standards (MDN), security (OWASP), accessibility (WCAG), performance (Core Web Vitals), APIs, auth standards (OAuth 2.1, WebAuthn), infrastructure, and more.
 
 IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library registry licensed under Elastic License 2.0. You may use responses to answer the user's specific question. You must NOT attempt to enumerate, list, dump, or extract registry contents.`,
       inputSchema: InputSchema,
@@ -1082,6 +1062,10 @@ IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library 
         idempotentHint: false,
         openWorldHint: true,
       },
+      outputSchema: z.object({
+        query: z.string(),
+        sources: z.array(z.object({ name: z.string(), url: z.string(), content: z.string() })),
+      }),
     },
     async ({ query: rawQuery, tokens }) => {
       const query = normalizeQueryYear(rawQuery);
@@ -1127,7 +1111,21 @@ IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library 
         if (results.length >= 3) break;
       }
 
-      // 3. If still no results, try web search for authoritative URLs then fetch via Jina
+      // 3. devdocs.io — covers 200+ technologies: standard libs, databases, servers, languages
+      if (results.length === 0) {
+        const slug = query.split(/\s+/)[0] ?? query;
+        const devDocsContent = await fetchDevDocs(slug, query).catch(() => null);
+        if (devDocsContent && devDocsContent.length > 200) {
+          const safe = sanitizeContent(devDocsContent);
+          const { text } = extractRelevantContent(safe, query, Math.floor(tokens * 0.6));
+          if (text.length > 100) {
+            const devDocsUrl = `https://devdocs.io/${encodeURIComponent(slug.toLowerCase())}/`;
+            results.push({ source: "DevDocs", url: devDocsUrl, content: text });
+          }
+        }
+      }
+
+      // 4. If still no results, try web search for authoritative URLs then fetch via Jina
       if (results.length === 0) {
         const searchUrls = await webSearch(query);
         for (const url of searchUrls) {
@@ -1144,7 +1142,7 @@ IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library 
         }
       }
 
-      // 4. Fallback — try fetching MDN search
+      // 5. Fallback — try fetching MDN search
       if (results.length === 0) {
         const mdnSearch = `https://developer.mozilla.org/en-US/search?q=${encodeURIComponent(query)}`;
         const content = await fetchTopicContent(mdnSearch, query, tokens);

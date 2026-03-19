@@ -189,7 +189,7 @@ describe("fetchViaJina", () => {
 describe("fetchDocs", () => {
   it("returns from memory cache without fetching", async () => {
     const { docCache } = await import("./cache.js");
-    docCache.set("docs:https://example.com/llms.txt", LONG);
+    docCache.set("docs:https://example.com/docs", LONG);
     const result = await fetchDocs("https://example.com/docs", "https://example.com/llms.txt");
     expect(result.content).toBe(LONG);
     expect(mockFetch).not.toHaveBeenCalled();
@@ -198,7 +198,7 @@ describe("fetchDocs", () => {
   it("returns from disk cache without fetching", async () => {
     const { diskDocCache } = await import("./cache.js");
     const disk = diskDocCache as { get: (k: string) => Promise<string | undefined>; set: (k: string, v: string) => Promise<void>; clear: () => void };
-    await disk.set("docs:https://example.com/llms.txt", LONG);
+    await disk.set("docs:https://example.com/docs", LONG);
     const result = await fetchDocs("https://example.com/docs", "https://example.com/llms.txt");
     expect(result.content).toBe(LONG);
     expect(mockFetch).not.toHaveBeenCalled();
@@ -498,8 +498,8 @@ describe("fetchGitHubExamples", () => {
     const r1 = await fetchGitHubExamples("https://github.com/org/examples-cached");
     const r2 = await fetchGitHubExamples("https://github.com/org/examples-cached");
     expect(r1).toBe(r2);
-    // 7 paths × 2 branches = 14 concurrent fetch calls on first invocation; second hits cache
-    expect(mockFetch).toHaveBeenCalledTimes(14);
+    // Batched in groups of 6 — first successful batch returns early; second call hits cache
+    expect(mockFetch).toHaveBeenCalledTimes(6);
   });
 
   it("serves disk cache hit: warms memory cache and returns without fetching", async () => {

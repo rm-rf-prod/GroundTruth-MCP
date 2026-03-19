@@ -1571,35 +1571,7 @@ export function registerAuditTool(server: McpServer): void {
     "gt_audit",
     {
       title: "Audit Project Code",
-      description: `Scan all source files in a project for real code issues, then fetch live best-practice fixes from official docs and GitHub for each issue type.
-
-This is the all-in-one tool for "find all bugs, layout issues, UX issues and fix them with latest best practices".
-
-Detects 60+ issue types across 9 categories:
-
-- layout: images without dimensions, raw <img> vs next/image, 100vh mobile viewport bug, missing font-display, render-blocking scripts, CSS @import chains
-- performance: missing lazy loading, useEffect data fetching anti-pattern, barrel file tree-shaking prevention, missing Suspense streaming, document.querySelector in React, inline object/array props, missing fetchpriority on LCP image
-- accessibility: missing alt text (WCAG 1.1.1), onClick on div/span (WCAG 2.1.1), icon-only button missing aria-label, input without label, outline:none focus removal, positive tabIndex, role=button on non-button, href='#' placeholder links, missing lang attribute, prefers-reduced-motion ignored
-- security: unsafe HTML injection (XSS), dynamic code execution (RCE), SQL injection via template literal, command injection in child_process, SSRF via user-controlled fetch URL, path traversal in fs functions, NEXT_PUBLIC_ secret exposure, hardcoded API keys/tokens, unvalidated Server Actions, implied eval in setTimeout, CORS wildcard
-- react: forwardRef deprecated (React 19), useFormState renamed to useActionState, array index as key, missing event listener cleanup, conditional hook call (Rules of Hooks), component called as function, side effects at render scope
-- nextjs: sync cookies()/headers()/params without await (Next.js 16), use client on layout, Tailwind v3 @tailwind directives, Route Handler without error handling, middleware.ts not renamed to proxy.ts (Next.js 16), page without metadata export
-- typescript: any type, non-null assertion (!), missing return types, @ts-ignore suppressor, floating Promises, require() instead of import, double assertion (as unknown as T)
-- node: console.log in production, synchronous fs operations (event loop blocking), unhandled callback errors, process.exit() without cleanup, plain HTTP fetch
-- python: SQL injection via f-string/format(), eval()/exec() with dynamic input, subprocess shell=True, os.system() command injection, bare except clause, pickle.loads() from untrusted source, MD5/SHA1 for passwords, requests verify=False, mutable default arguments, print() in production, open() path traversal
-
-Each issue includes file + line number, problem description, fix instruction, and live docs fetched from official sources (OWASP, MDN, typescript-eslint.io, react.dev, web.dev, OWASP Python Cheat Sheet).
-
-Skips generated files: .test., .spec., .d.ts, __tests__/, .stories.
-Skips commented-out code to reduce false positives (// and # comment lines).
-Supports .ts, .tsx, .js, .jsx, .css, .scss, .html, .mjs, and .py files.
-
-Say "gt audit" or "find all issues and fix with gt" to invoke.
-
-Examples:
-- gt_audit({}) — full audit of current project
-- gt_audit({ categories: ["accessibility", "security"] })
-- gt_audit({ categories: ["python", "security"], maxFiles: 100 })
-- gt_audit({ categories: ["layout", "performance", "node"], maxFiles: 100 })`,
+      description: `Scan all source files in a project for real code issues across 9 categories (layout, performance, accessibility, security, react, nextjs, typescript, node, python), then fetch live best-practice fixes from official docs for each issue type. Returns file + line locations so every issue can be fixed directly.`,
       inputSchema: InputSchema,
       annotations: {
         readOnlyHint: true,
@@ -1607,6 +1579,21 @@ Examples:
         idempotentHint: false,
         openWorldHint: true,
       },
+      outputSchema: z.object({
+        projectPath: z.string(),
+        filesScanned: z.number(),
+        totalIssues: z.number(),
+        uniqueIssueTypes: z.number(),
+        issues: z.array(
+          z.object({
+            title: z.string(),
+            severity: z.string(),
+            category: z.string(),
+            count: z.number(),
+            locations: z.array(z.string()),
+          }),
+        ),
+      }),
     },
     async ({ projectPath, categories, tokens, maxFiles }) => {
       const resolvedPath = projectPath ?? process.cwd();

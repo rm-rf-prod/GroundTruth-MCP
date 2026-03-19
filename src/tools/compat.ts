@@ -35,16 +35,7 @@ export function registerCompatTool(server: McpServer): void {
     "gt_compat",
     {
       title: "Check Browser/Runtime Compatibility",
-      description: `Check browser, Node.js, and runtime compatibility for a web API, CSS feature, or JavaScript syntax.
-
-Fetches live data from MDN Web Docs and caniuse.com.
-
-Examples:
-- gt_compat({ feature: "CSS container queries" })
-- gt_compat({ feature: "Array.at()" })
-- gt_compat({ feature: "Web Bluetooth API" })
-- gt_compat({ feature: "CSS :has() selector", environments: ["safari", "firefox"] })
-- gt_compat({ feature: "AbortController" })`,
+      description: `Check browser, Node.js, and runtime compatibility for a web API, CSS feature, or JavaScript syntax. Fetches live data from MDN Web Docs and caniuse.com.`,
       inputSchema: InputSchema,
       annotations: {
         readOnlyHint: true,
@@ -52,6 +43,11 @@ Examples:
         idempotentHint: true,
         openWorldHint: true,
       },
+      outputSchema: z.object({
+        feature: z.string(),
+        environments: z.array(z.string()),
+        sources: z.array(z.string()),
+      }),
     },
     async ({ feature, environments, tokens }) => {
       if (isExtractionAttempt(feature)) {

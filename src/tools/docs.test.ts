@@ -12,6 +12,7 @@ vi.mock("../sources/registry.js", () => ({
 vi.mock("../services/fetcher.js", () => ({
   fetchDocs: vi.fn(),
   fetchGitHubContent: vi.fn(),
+  fetchViaJina: vi.fn(),
 }));
 
 vi.mock("../utils/extract.js", () => ({
@@ -34,13 +35,13 @@ vi.mock("../utils/guard.js", () => ({
 // ── Imports after mocks ─────────────────────────────────────────────────────
 
 import { lookupById, lookupByAlias } from "../sources/registry.js";
-import { fetchDocs, fetchGitHubContent } from "../services/fetcher.js";
+import { fetchDocs, fetchGitHubContent, fetchViaJina } from "../services/fetcher.js";
 import { extractRelevantContent } from "../utils/extract.js";
 import { isExtractionAttempt } from "../utils/guard.js";
 
 // ── Handler capture ─────────────────────────────────────────────────────────
 
-type HandlerInput = { libraryId: string; topic?: string; tokens?: number };
+type HandlerInput = { libraryId: string; topic?: string; version?: string; tokens?: number };
 type HandlerResult = {
   content: Array<{ type: string; text: string }>;
   structuredContent?: Record<string, unknown>;
@@ -83,6 +84,7 @@ beforeEach(() => {
   vi.mocked(lookupByAlias).mockReset();
   vi.mocked(fetchDocs).mockReset();
   vi.mocked(fetchGitHubContent).mockReset();
+  vi.mocked(fetchViaJina).mockReset().mockResolvedValue(null);
   vi.mocked(isExtractionAttempt).mockReset().mockReturnValue(false);
   vi.mocked(extractRelevantContent).mockImplementation((content, _topic, _tokens) => ({
     text: content,
@@ -320,6 +322,81 @@ describe("gt_get_docs handler", () => {
         expect.any(String),
         expect.any(Number),
       );
+    });
+  });
+
+  describe("version param", () => {
+    it("prepends v to version when not already prefixed", async () => {
+      vi.mocked(lookupById).mockReturnValue(makeEntry());
+      vi.mocked(fetchViaJina).mockResolvedValueOnce("x".repeat(201));
+      await handler({ libraryId: "facebook/react", version: "18.2.0" });
+      expect(fetchViaJina).toHaveBeenCalledWith(
+        expect.stringContaining("/v18.2.0/README.md"),
+      );
+    });
+
+    it("does not double-prepend v when version already starts with v", async () => {
+      vi.mocked(lookupById).mockReturnValue(makeEntry());
+      vi.mocked(fetchViaJina).mockResolvedValueOnce("x".repeat(201));
+      await handler({ libraryId: "facebook/react", version: "v18.2.0" });
+      expect(fetchViaJina).toHaveBeenCalledWith(
+        expect.stringContaining("/v18.2.0/README.md"),
+      );
+      expect(fetchViaJina).not.toHaveBeenCalledWith(
+        expect.stringContaining("/vv18.2.0/README.md"),
+      );
+    });
+
+    it("uses GitHub tag README when content is longer than 200 chars", async () => {
+      vi.mocked(lookupById).mockReturnValue(makeEntry());
+      vi.mocked(fetchViaJina).mockResolvedValueOnce("x".repeat(201));
+      const result = await handler({ libraryId: "facebook/react", version: "18.2.0" });
+      expect(fetchDocs).not.toHaveBeenCalled();
+      expect(result.content[0]!.text).toContain("github-readme");
+    });
+
+    it("falls through to npm version page when GitHub tag content is short", async () => {
+      vi.mocked(lookupById).mockReturnValue(makeEntry());
+      vi.mocked(fetchViaJina)
+        .mockResolvedValueOnce("short")
+        .mockResolvedValueOnce("x".repeat(201));
+      await handler({ libraryId: "facebook/react", version: "18.2.0" });
+      expect(fetchViaJina).toHaveBeenCalledTimes(2);
+      expect(fetchViaJina).toHaveBeenLastCalledWith(
+        expect.stringContaining("npmjs.com/package"),
+      );
+    });
+
+    it("tries npm version page directly when no githubUrl", async () => {
+      vi.mocked(lookupById).mockReturnValue(makeEntry({ githubUrl: undefined }));
+      vi.mocked(fetchViaJina).mockResolvedValueOnce("x".repeat(201));
+      await handler({ libraryId: "facebook/react", version: "18.2.0" });
+      expect(fetchViaJina).toHaveBeenCalledWith(
+        expect.stringContaining("npmjs.com/package/react/v/18.2.0"),
+      );
+    });
+
+    it("npm version page success skips fetchDocs", async () => {
+      vi.mocked(lookupById).mockReturnValue(makeEntry({ githubUrl: undefined }));
+      vi.mocked(fetchViaJina).mockResolvedValueOnce("x".repeat(201));
+      await handler({ libraryId: "facebook/react", version: "18.2.0" });
+      expect(fetchDocs).not.toHaveBeenCalled();
+    });
+
+    it("falls through to fetchDocs when both version fetches return null", async () => {
+      vi.mocked(lookupById).mockReturnValue(makeEntry());
+      vi.mocked(fetchViaJina).mockResolvedValue(null);
+      vi.mocked(fetchDocs).mockResolvedValue(makeFetchResult());
+      await handler({ libraryId: "facebook/react", version: "18.2.0" });
+      expect(fetchDocs).toHaveBeenCalled();
+    });
+
+    it("falls through to fetchDocs when both version fetches return short content", async () => {
+      vi.mocked(lookupById).mockReturnValue(makeEntry());
+      vi.mocked(fetchViaJina).mockResolvedValue("too short");
+      vi.mocked(fetchDocs).mockResolvedValue(makeFetchResult());
+      await handler({ libraryId: "facebook/react", version: "18.2.0" });
+      expect(fetchDocs).toHaveBeenCalled();
     });
   });
 
