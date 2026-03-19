@@ -1,10 +1,8 @@
 # Changelog
 
-## [2.1.0] — 2026-03-19
+## [2.2.0] — 2026-03-19
 
-### Tools
-
-Nine tools total:
+### Tools — Nine total
 
 - `gt_resolve_library` — find a library by name, get its registry entry and docs URL
 - `gt_get_docs` — fetch live docs for a specific topic within a library
@@ -65,16 +63,6 @@ Every audit pattern, every manifest parser, every tool, every utility — fully 
 
 Three jobs on push and pull request to `main`: `typecheck` (tsc --noEmit), `test` (vitest run --coverage), `build` (tsc + obfuscator + npm audit). Build requires both to pass. Action SHAs pinned for supply chain integrity, Node.js 24 native runtimes throughout.
 
-### Security
+### Install
 
-- Extraction guard (`gt_resolve_library`, `gt_get_docs`, `gt_best_practices`, `gt_search`, `gt_auto_scan`) blocks bulk enumeration and dump queries
-- Cryptographic watermarking: every registry response carries a 64-bit installation fingerprint (invisible Unicode, survives copy-paste) for forensic IP tracing
-- ELv2 IP notice prepended to all registry responses
-- Obfuscated build output in published npm package
-
-### Build
-
-- `npm run build` — TypeScript compile + javascript-obfuscator in-place over dist/
-- `npm run dev` — tsx watch, no obfuscation
-- `SERVER_VERSION` in `src/constants.ts` auto-synced on `npm version` via lifecycle hook
-- Dynamic README stats computed from source on every version bump
+Running `npm install` displays your install ID and the Elastic License 2.0 terms. Free for personal and internal use. Commercial redistribution or hosting as a service requires a commercial license.
