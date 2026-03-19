@@ -37,15 +37,21 @@ const BIT1 = "\u2062"; // INVISIBLE TIMES
 // Persistent installation key file — created once per server instance
 const INSTALL_KEY_FILE = join(homedir(), ".gt-mcp-install.key");
 
+let _cachedInstallId: string | undefined;
+
 /**
  * Returns the 8-hex-char installation ID for this server instance.
- * Creates and persists a new one on first call.
+ * Creates and persists a new one on first call. Result is module-cached.
  */
 export function getInstallId(): string {
+  if (_cachedInstallId !== undefined) return _cachedInstallId;
   if (existsSync(INSTALL_KEY_FILE)) {
     const raw = readFileSync(INSTALL_KEY_FILE, "utf-8").trim();
     // Validate stored ID is 8 lowercase hex chars
-    if (/^[0-9a-f]{8}$/.test(raw)) return raw;
+    if (/^[0-9a-f]{8}$/.test(raw)) {
+      _cachedInstallId = raw;
+      return raw;
+    }
   }
   // Generate a new 4-byte (8 hex char) installation ID
   const id = randomBytes(4).toString("hex");
@@ -54,6 +60,7 @@ export function getInstallId(): string {
   } catch {
     // Read-only fs or container environment — use the generated ID for this session only
   }
+  _cachedInstallId = id;
   return id;
 }
 

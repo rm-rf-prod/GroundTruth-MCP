@@ -1,4 +1,5 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { FetchResult } from "../types.js";
 import { z } from "zod";
 import { lookupById, lookupByAlias } from "../sources/registry.js";
 import { fetchDocs, fetchGitHubContent, fetchViaJina } from "../services/fetcher.js";
@@ -120,7 +121,7 @@ IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library 
         displayName = libraryId;
       }
 
-      let fetchResult;
+      let fetchResult: FetchResult | undefined;
 
       // Version-specific fetch: try GitHub tag README first, then npm versioned page
       if (version && githubUrl) {

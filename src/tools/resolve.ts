@@ -46,7 +46,7 @@ async function resolveFromNpm(packageName: string): Promise<LibraryMatch | null>
   if (!pkg.name) return null;
 
   const homepage = pkg.homepage?.replace(/\/+$/, "") ?? "";
-  const githubUrl = extractGithubUrl((pkg as unknown as Record<string, unknown>)["repository"]);
+  const githubUrl = extractGithubUrl(pkg.repository);
 
   const result: LibraryMatch = {
     id: `npm:${pkg.name}`,

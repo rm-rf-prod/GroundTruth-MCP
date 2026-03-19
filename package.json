@@ -23,6 +23,7 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit",
+    "lint": "eslint src",
     "version": "node scripts/update-version.mjs && node scripts/update-changelog.mjs && npm run update-stats && git add -A",
     "postversion": "git push && git push --tags && node scripts/create-release.mjs",
     "release": "npm version minor && npm publish --access public",
@@ -59,7 +60,10 @@
   },
   "devDependencies": {
     "@types/node": "^25.5.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
     "@vitest/coverage-v8": "^4.1.0",
+    "eslint": "^9.0.0",
     "javascript-obfuscator": "^5.3.0",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",

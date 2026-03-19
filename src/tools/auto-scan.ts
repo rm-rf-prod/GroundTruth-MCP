@@ -1,5 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import { readFile } from "fs/promises";
+import { join } from "path";
 import { lookupByAlias, lookupById, fuzzySearch } from "../sources/registry.js";
 import { fetchDocs } from "../services/fetcher.js";
 import { extractRelevantContent } from "../utils/extract.js";
@@ -39,7 +41,6 @@ export interface DependencySource {
 
 async function readFileIfExists(filePath: string): Promise<string | null> {
   try {
-    const { readFile } = await import("fs/promises");
     return await readFile(filePath, "utf-8");
   } catch {
     return null;
@@ -47,7 +48,6 @@ async function readFileIfExists(filePath: string): Promise<string | null> {
 }
 
 export async function detectDependencies(projectPath: string): Promise<DependencySource[]> {
-  const { join } = await import("path");
   const sources: DependencySource[] = [];
 
   // package.json (Node.js)
