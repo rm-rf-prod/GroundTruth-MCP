@@ -1,6 +1,6 @@
 {
   "name": "@groundtruth-mcp/gt-mcp",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Self-hosted MCP server for live docs and best practices. Context7 alternative — 363+ libraries, no rate limits, code audit tool.",
   "type": "module",
   "main": "dist/index.js",
@@ -9,10 +9,12 @@
     "gt-mcp": "dist/index.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "postinstall.mjs"
   ],
   "scripts": {
-    "build": "tsc && javascript-obfuscator dist --output dist --compact true --string-array true --string-array-encoding rc4 --string-array-threshold 0.9 --split-strings true --split-strings-chunk-length 10",
+    "postinstall": "node postinstall.mjs",
+    "build": "tsc && find dist -name '*.js.map' -delete && javascript-obfuscator dist --output dist --compact true --string-array true --string-array-encoding rc4 --string-array-threshold 0.9 --split-strings true --split-strings-chunk-length 10",
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
     "clean": "rm -rf dist",
