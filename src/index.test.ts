@@ -100,8 +100,8 @@ describe("index.ts bootstrap", () => {
       expect(call?.[1]).toHaveProperty("instructions");
     });
 
-    it("SERVER_NAME is gt-mcp-server", () => {
-      expect(SERVER_NAME).toBe("gt-mcp-server");
+    it("SERVER_NAME is GroundTruth", () => {
+      expect(SERVER_NAME).toBe("GroundTruth");
     });
   });
 
