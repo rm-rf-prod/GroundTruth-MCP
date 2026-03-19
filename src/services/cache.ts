@@ -1,7 +1,7 @@
 import type { CacheEntry, LibraryMatch } from "../types.js";
 import { CACHE_TTL_MS, DISK_CACHE_DIR } from "../constants.js";
 import { createHash } from "crypto";
-import { readFile, writeFile, mkdir, stat } from "fs/promises";
+import { readFile, writeFile, mkdir, unlink } from "fs/promises";
 import { join } from "path";
 
 class LRUCache<T> {
@@ -89,7 +89,7 @@ export class DiskCache {
       const entry = JSON.parse(content) as DiskCacheFile;
       if (Date.now() > entry.expiresAt) {
         // Expired — delete async, don't await
-        import("fs/promises").then(({ unlink }) => unlink(filePath).catch(() => void 0));
+        unlink(filePath).catch(() => void 0);
         return undefined;
       }
       return entry.data;
@@ -113,8 +113,6 @@ export class DiskCache {
     if (!(await this.ensureDir())) return false;
     const filePath = this.keyToPath(key);
     try {
-      const s = await stat(filePath);
-      if (!s.isFile()) return false;
       const content = await readFile(filePath, "utf-8");
       const entry = JSON.parse(content) as DiskCacheFile;
       return Date.now() <= entry.expiresAt;

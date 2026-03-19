@@ -1,5 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import { readdir, readFile, stat } from "fs/promises";
+import { join, extname, relative } from "path";
 import { lookupById } from "../sources/registry.js";
 import { safeguardPath } from "../utils/guard.js";
 import { fetchDocs, fetchGitHubExamples, fetchGitHubReleases, fetchViaJina } from "../services/fetcher.js";
@@ -99,21 +101,39 @@ const CMD_INJECT_RE = new RegExp(
 /** Skip generated, test, and declaration files — patterns don't apply there */
 const SKIP_FILE_RE = /(?:\.test\.[jt]sx?|\.spec\.[jt]sx?|\.d\.ts|__tests__[/\\]|\.stories\.[jt]sx?)$/;
 
-/** Build a Set of char offsets that fall inside block comments to reduce false positives */
-export function buildCommentMap(content: string): Set<number> {
-  const inside = new Set<number>();
+/** Range-based comment map — O(n) build, O(log n) lookup, O(ranges) memory */
+class CommentMap {
+  private readonly ranges: [number, number][];
+  constructor(ranges: [number, number][]) { this.ranges = ranges; }
+  has(pos: number): boolean {
+    let lo = 0, hi = this.ranges.length - 1;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      const r = this.ranges[mid]!;
+      if (pos < r[0]) hi = mid - 1;
+      else if (pos > r[1]) lo = mid + 1;
+      else return true;
+    }
+    return false;
+  }
+  get size(): number { return this.ranges.length; }
+}
+
+/** Build a CommentMap of block-comment ranges to reduce false positives */
+export function buildCommentMap(content: string): CommentMap {
+  const ranges: [number, number][] = [];
   let i = 0;
   while (i < content.length) {
     if (content[i] === "/" && content[i + 1] === "*") {
       const end = content.indexOf("*/", i + 2);
-      const stop = end === -1 ? content.length : end + 2;
-      for (let j = i; j < stop; j++) inside.add(j);
-      i = stop;
+      const stop = end === -1 ? content.length - 1 : end + 1;
+      ranges.push([i, stop]);
+      i = stop + 1;
     } else {
       i++;
     }
   }
-  return inside;
+  return new CommentMap(ranges);
 }
 
 export const AUDIT_PATTERNS: AuditPattern[] = [
@@ -1370,9 +1390,6 @@ async function readProjectFiles(
   projectPath: string,
   maxFiles: number,
 ): Promise<Array<{ path: string; content: string }>> {
-  const { readdir, readFile, stat } = await import("fs/promises");
-  const { join, extname, relative } = await import("path");
-
   const SOURCE_EXT = new Set([".ts", ".tsx", ".js", ".jsx", ".css", ".scss", ".html", ".mjs", ".py", ".vue", ".svelte"]);
   const SKIP_DIRS = new Set([
     "node_modules", ".git", ".next", "dist", "build", ".turbo",

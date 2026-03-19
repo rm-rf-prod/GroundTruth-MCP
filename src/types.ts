@@ -28,7 +28,7 @@ export interface LibraryMatch {
 export interface DocResult {
   content: string;
   sourceUrl: string;
-  sourceType: "llms-txt" | "llms-full-txt" | "jina" | "github-readme" | "direct";
+  sourceType: "llms-txt" | "llms-full-txt" | "jina" | "github-readme" | "direct" | "npm";
   libraryId: string;
   topic: string;
   truncated: boolean;
