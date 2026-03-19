@@ -1,5 +1,5 @@
 export const SERVER_NAME = "gt-mcp-server";
-export const SERVER_VERSION = "2.2.0";
+export const undefined;
 
 // Known size of the full private registry (updated with each release that adds entries)
 export const REGISTRY_BADGE_SIZE = 363;
