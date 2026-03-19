@@ -74,7 +74,7 @@ describe("fetchWithTimeout", () => {
     expect(mockFetch).toHaveBeenCalledOnce();
     const [, options] = mockFetch.mock.calls[0]!;
     expect((options as RequestInit).headers).toMatchObject({
-      "User-Agent": expect.stringContaining("gt-mcp-server"),
+      "User-Agent": expect.stringContaining("GroundTruth"),
     });
   });
 
