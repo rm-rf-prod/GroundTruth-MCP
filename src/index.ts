@@ -2,6 +2,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { SERVER_NAME, SERVER_VERSION } from "./constants.js";
+import { getInstallId } from "./utils/watermark.js";
 import { registerResolveTool } from "./tools/resolve.js";
 import { registerDocsTool } from "./tools/docs.js";
 import { registerBestPracticesTool } from "./tools/best-practices.js";
@@ -67,7 +68,7 @@ registerCompareTool(server);
 async function main(): Promise<void> {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error(`${SERVER_NAME} v${SERVER_VERSION} running via stdio`);
+  console.error(`${SERVER_NAME} v${SERVER_VERSION} running via stdio [${getInstallId()}]`);
 }
 
 main().catch((err: unknown) => {
