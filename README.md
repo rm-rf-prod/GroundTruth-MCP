@@ -1,10 +1,10 @@
-<pre align="center">
-   ██████  ████████     ███    ███   ██████  ██████
-  ██          ██        ████  ████  ██       ██   ██
-  ██   ███    ██        ██ ████ ██  ██       ██████
-  ██    ██    ██        ██  ██  ██  ██       ██
-   ██████     ██        ██      ██   ██████  ██
-</pre>
+<p align="center">
+<code>██████&nbsp;&nbsp;████████&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;███&nbsp;&nbsp;&nbsp;&nbsp;███&nbsp;&nbsp;&nbsp;██████&nbsp;&nbsp;██████</code><br/>
+<code>██&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;██&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;████&nbsp;&nbsp;████&nbsp;&nbsp;██&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;██&nbsp;&nbsp;&nbsp;██</code><br/>
+<code>██&nbsp;&nbsp;&nbsp;███&nbsp;&nbsp;&nbsp;&nbsp;██&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;██&nbsp;████&nbsp;██&nbsp;&nbsp;██&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;██████</code><br/>
+<code>██&nbsp;&nbsp;&nbsp;&nbsp;██&nbsp;&nbsp;&nbsp;&nbsp;██&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;██&nbsp;&nbsp;██&nbsp;&nbsp;██&nbsp;&nbsp;██&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;██</code><br/>
+<code>&nbsp;██████&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;██&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;██&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;██&nbsp;&nbsp;&nbsp;██████&nbsp;&nbsp;██</code>
+</p>
 
 <h3 align="center">Your AI assistant just mass-produced deprecated code again.<br/>You merged it because the formatting was clean.<br/><br/>GroundTruth fixes that.</h3>
 
