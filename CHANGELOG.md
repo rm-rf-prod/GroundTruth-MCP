@@ -1,5 +1,29 @@
 # Changelog
 
+## [2.5.0] — 2026-03-21
+
+### New tools
+- **`gt_examples`** — search GitHub for real-world code examples of any library or pattern. Returns code snippets from popular open-source projects with repository attribution. Requires `GT_GITHUB_TOKEN` for higher rate limits.
+
+### New features
+- **Lockfile version detection** — `gt_auto_scan` now reads `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`, and `Cargo.lock` to detect exact installed versions. Versions are passed to the documentation fetch query for more targeted results.
+- **crates.io fallback** — `gt_resolve_library` now falls back to crates.io for Rust crates when no registry match is found.
+- **Go pkg.go.dev fallback** — `gt_resolve_library` now falls back to pkg.go.dev for Go modules.
+- **llms.txt probing** — npm and PyPI fallback resolution now probes the package homepage for `llms.txt` and `llms-full.txt` files, improving documentation quality for unregistered libraries.
+- **Content integrity hashing** — all fetched documents now include a SHA-256 content hash (16-char prefix) and fetch timestamp in the response, enabling change detection across sessions.
+- **Configurable concurrency** — `gt_auto_scan` parallel fetch limit is now configurable via `GT_CONCURRENCY` env var (default: 6, was hardcoded 4).
+
+### Types
+- `LibraryMatch` gains `llmsFullTxtUrl` field and `source` union expanded with `"crates"` and `"go"`
+- `FetchResult` gains `contentHash` and `fetchedAt` fields
+- `DiskCacheFile` gains `contentHash` field
+
+### Stats
+- 676 tests across 22 files (up from 565)
+- 10 MCP tools (up from 9)
+
+---
+
 ## [2.4.1] — 2026-03-21
 
 - feat: expand registry with Google, AI providers, vector DBs + version check system
