@@ -1,0 +1,1913 @@
+{
+  "vercel/turborepo": {
+    "bestPracticesPaths": [
+      "/repo/docs/getting-started",
+      "/repo/docs/guides",
+      "/repo/docs"
+    ],
+    "urlPatterns": [
+      "/repo/docs/{slug}",
+      "/repo/docs/guides/{slug}"
+    ]
+  },
+  "nx/nx": {
+    "bestPracticesPaths": [
+      "/docs/getting-started",
+      "/docs/guides",
+      "/docs"
+    ],
+    "urlPatterns": [
+      "/docs/{slug}",
+      "/docs/guides/{slug}"
+    ]
+  },
+  "redis/docs": {
+    "bestPracticesPaths": [
+      "/docs/getting-started",
+      "/docs/guides",
+      "/docs"
+    ],
+    "urlPatterns": [
+      "/docs/{slug}",
+      "/docs/guides/{slug}"
+    ]
+  },
+  "mongodb/docs": {
+    "bestPracticesPaths": [
+      "/docs/getting-started",
+      "/docs/guides",
+      "/docs"
+    ],
+    "urlPatterns": [
+      "/docs/{slug}",
+      "/docs/guides/{slug}"
+    ]
+  },
+  "sqlite/docs": {
+    "bestPracticesPaths": [
+      "/docs.html/getting-started",
+      "/docs.html/guides",
+      "/docs.html"
+    ],
+    "urlPatterns": [
+      "/docs.html/{slug}",
+      "/docs/guides.html/{slug}"
+    ]
+  },
+  "lucide-icons/lucide": {
+    "bestPracticesPaths": [
+      "/guide/getting-started",
+      "/guide/guides",
+      "/guide"
+    ],
+    "urlPatterns": [
+      "/guide/{slug}"
+    ]
+  },
+  "jsx-email/react-email": {
+    "bestPracticesPaths": [
+      "/docs/getting-started",
+      "/docs/guides",
+      "/docs"
+    ],
+    "urlPatterns": [
+      "/docs/{slug}",
+      "/docs/guides/{slug}"
+    ]
+  },
+  "contentlayer/contentlayer": {
+    "bestPracticesPaths": [
+      "/docs/getting-started",
+      "/docs/guides",
+      "/docs"
+    ],
+    "urlPatterns": [
+      "/docs/{slug}",
+      "/docs/guides/{slug}"
+    ]
+  },
+  "wagmi/wagmi": {
+    "bestPracticesPaths": [
+      "/react/getting-started/getting-started",
+      "/react/getting-started/guides",
+      "/react/getting-started"
+    ],
+    "urlPatterns": [
+      "/react/getting-started/{slug}"
+    ]
+  },
+  "changesets/changesets": {
+    "bestPracticesPaths": [
+      "/changesets/changesets/blob/main/docs#readme"
+    ],
+    "urlPatterns": [
+      "/changesets/changesets/blob/main/docs/{slug}"
+    ]
+  },
+  "chakra-ui/chakra-ui": {
+    "bestPracticesPaths": [
+      "/docs/get-started/installation/getting-started",
+      "/docs/get-started/installation/guides",
+      "/docs/get-started/installation"
+    ],
+    "urlPatterns": [
+      "/docs/get-started/installation/{slug}",
+      "/docs/guides/get-started/installation/{slug}"
+    ]
+  },
+  "mantinedev/mantine": {
+    "bestPracticesPaths": [
+      "/getting-started/getting-started",
+      "/getting-started/guides",
+      "/getting-started"
+    ],
+    "urlPatterns": [
+      "/getting-started/{slug}"
+    ]
+  },
+  "mui/material-ui": {
+    "bestPracticesPaths": [
+      "/material-ui/getting-started/getting-started",
+      "/material-ui/getting-started/guides",
+      "/material-ui/getting-started"
+    ],
+    "urlPatterns": [
+      "/material-ui/getting-started/{slug}"
+    ]
+  },
+  "tailwindlabs/headlessui": {
+    "bestPracticesPaths": [
+      "/getting-started",
+      "/guides"
+    ],
+    "urlPatterns": [
+      "/{slug}"
+    ]
+  },
+  "saadeghi/daisyui": {
+    "bestPracticesPaths": [
+      "/docs/install/getting-started",
+      "/docs/install/guides",
+      "/docs/install"
+    ],
+    "urlPatterns": [
+      "/docs/install/{slug}",
+      "/docs/guides/install/{slug}"
+    ]
+  },
+  "ant-design/ant-design": {
+    "bestPracticesPaths": [
+      "/docs/react/getting-started/getting-started",
+      "/docs/react/getting-started/guides",
+      "/docs/react/getting-started"
+    ],
+    "urlPatterns": [
+      "/docs/react/getting-started/{slug}",
+      "/docs/guides/react/getting-started/{slug}"
+    ]
+  },
+  "greensock/gsap": {
+    "bestPracticesPaths": [
+      "/docs/v3/getting-started",
+      "/docs/v3/guides",
+      "/docs/v3"
+    ],
+    "urlPatterns": [
+      "/docs/v3/{slug}",
+      "/docs/guides/v3/{slug}"
+    ]
+  },
+  "pmndrs/react-spring": {
+    "bestPracticesPaths": [
+      "/docs/getting-started/getting-started",
+      "/docs/getting-started/guides",
+      "/docs/getting-started"
+    ],
+    "urlPatterns": [
+      "/docs/getting-started/{slug}",
+      "/docs/guides/getting-started/{slug}"
+    ]
+  },
+  "juliangarnier/anime": {
+    "bestPracticesPaths": [
+      "/documentation/getting-started",
+      "/documentation/guides",
+      "/documentation"
+    ],
+    "urlPatterns": [
+      "/documentation/{slug}"
+    ]
+  },
+  "d3/d3": {
+    "bestPracticesPaths": [
+      "/getting-started/getting-started",
+      "/getting-started/guides",
+      "/getting-started"
+    ],
+    "urlPatterns": [
+      "/getting-started/{slug}"
+    ]
+  },
+  "chartjs/chart.js": {
+    "bestPracticesPaths": [
+      "/docs/latest/getting-started",
+      "/docs/latest/guides",
+      "/docs/latest"
+    ],
+    "urlPatterns": [
+      "/docs/latest/{slug}",
+      "/docs/guides/latest/{slug}"
+    ]
+  },
+  "recharts/recharts": {
+    "bestPracticesPaths": [
+      "/en-US/guide/getting-started",
+      "/en-US/guide/guides",
+      "/en-US/guide"
+    ],
+    "urlPatterns": [
+      "/en-US/guide/{slug}"
+    ]
+  },
+  "pmndrs/drei": {
+    "bestPracticesPaths": [
+      "/getting-started",
+      "/guides"
+    ],
+    "urlPatterns": [
+      "/{slug}"
+    ]
+  },
+  "codemirror/dev": {
+    "bestPracticesPaths": [
+      "/docs/getting-started",
+      "/docs/guides",
+      "/docs"
+    ],
+    "urlPatterns": [
+      "/docs/{slug}",
+      "/docs/guides/{slug}"
+    ]
+  },
+  "nicolo-ribaudo/lucia": {
+    "bestPracticesPaths": [
+      "/getting-started",
+      "/guides"
+    ],
+    "urlPatterns": [
+      "/{slug}"
+    ]
+  },
+  "convex-dev/convex": {
+    "bestPracticesPaths": [
+      "/getting-started",
+      "/guides"
+    ],
+    "urlPatterns": [
+      "/{slug}"
+    ]
+  },
+  "tursodatabase/libsql": {
+    "bestPracticesPaths": [
+      "/sdk/ts/reference/getting-started",
+      "/sdk/ts/reference/guides",
+      "/sdk/ts/reference"
+    ],
+    "urlPatterns": [
+      "/sdk/ts/reference/{slug}"
+    ]
+  },
+  "planetscale/database-js": {
+    "bestPracticesPaths": [
+      "/docs/getting-started",
+      "/docs/guides",
+      "/docs"
+    ],
+    "urlPatterns": [
+      "/docs/{slug}",
+      "/docs/guides/{slug}"
+    ]
+  },
+  "googleapis/google-api-nodejs-client": {
+    "bestPracticesPaths": [
+      "/nodejs/googleapis/latest/getting-started",
+      "/nodejs/googleapis/latest/guides",
+      "/nodejs/googleapis/latest"
+    ],
+    "urlPatterns": [
+      "/nodejs/googleapis/latest/{slug}"
+    ]
+  },
+  "css-modules/css-modules": {
+    "bestPracticesPaths": [
+      "/css-modules/css-modules/blob/master/docs/composition.md#readme"
+    ],
+    "urlPatterns": [
+      "/css-modules/css-modules/blob/master/docs/composition.md/{slug}"
+    ]
+  },
+  "styled-components/styled-components": {
+    "bestPracticesPaths": [
+      "/docs/getting-started",
+      "/docs/guides",
+      "/docs"
+    ],
+    "urlPatterns": [
+      "/docs/{slug}",
+      "/docs/guides/{slug}"
+    ]
+  },
+  "langchain-ai/langchainjs": {
+    "bestPracticesPaths": [
+      "/docs/introduction/getting-started",
+      "/docs/introduction/guides",
+      "/docs/introduction"
+    ],
+    "urlPatterns": [
+      "/docs/introduction/{slug}",
+      "/docs/guides/introduction/{slug}"
+    ]
+  },
+  "run-llama/llamaindex-ts": {
+    "bestPracticesPaths": [
+      "/docs/llamaindex/getting-started",
+      "/docs/llamaindex/guides",
+      "/docs/llamaindex"
+    ],
+    "urlPatterns": [
+      "/docs/llamaindex/{slug}",
+      "/docs/guides/llamaindex/{slug}"
+    ]
+  },
+  "huggingface/transformers.js": {
+    "bestPracticesPaths": [
+      "/docs/transformers.js/index/getting-started",
+      "/docs/transformers.js/index/guides",
+      "/docs/transformers.js/index"
+    ],
+    "urlPatterns": [
+      "/docs/transformers.js/index/{slug}",
+      "/docs/guides/transformers.js/index/{slug}"
+    ]
+  },
+  "ollama/ollama-js": {
+    "bestPracticesPaths": [
+      "/ollama/ollama/blob/main/docs/api.md#readme"
+    ],
+    "urlPatterns": [
+      "/ollama/ollama/blob/main/docs/api.md/{slug}"
+    ]
+  },
+  "ionic-team/capacitor": {
+    "bestPracticesPaths": [
+      "/docs/getting-started",
+      "/docs/guides",
+      "/docs"
+    ],
+    "urlPatterns": [
+      "/docs/{slug}",
+      "/docs/guides/{slug}"
+    ]
+  },
+  "ionic-team/ionic-framework": {
+    "bestPracticesPaths": [
+      "/docs/getting-started",
+      "/docs/guides",
+      "/docs"
+    ],
+    "urlPatterns": [
+      "/docs/{slug}",
+      "/docs/guides/{slug}"
+    ]
+  },
+  "sqlalchemy/sqlalchemy": {
+    "bestPracticesPaths": [
+      "/en/20/getting-started",
+      "/en/20/guides",
+      "/en/20"
+    ],
+    "urlPatterns": [
+      "/en/20/{slug}"
+    ]
+  },
+  "celery/celery": {
+    "bestPracticesPaths": [
+      "/en/stable/getting-started",
+      "/en/stable/guides",
+      "/en/stable"
+    ],
+    "urlPatterns": [
+      "/en/stable/{slug}"
+    ]
+  },
+  "encode/httpx": {
+    "bestPracticesPaths": [
+      "/getting-started",
+      "/guides"
+    ],
+    "urlPatterns": [
+      "/{slug}"
+    ]
+  },
+  "psf/requests": {
+    "bestPracticesPaths": [
+      "/en/latest/getting-started",
+      "/en/latest/guides",
+      "/en/latest"
+    ],
+    "urlPatterns": [
+      "/en/latest/{slug}"
+    ]
+  },
+  "numpy/numpy": {
+    "bestPracticesPaths": [
+      "/doc/stable/reference/getting-started",
+      "/doc/stable/reference/guides",
+      "/doc/stable/reference"
+    ],
+    "urlPatterns": [
+      "/doc/stable/reference/{slug}"
+    ]
+  },
+  "pandas-dev/pandas": {
+    "bestPracticesPaths": [
+      "/docs/getting-started",
+      "/docs/guides",
+      "/docs"
+    ],
+    "urlPatterns": [
+      "/docs/{slug}",
+      "/docs/guides/{slug}"
+    ]
+  },
+  "pytorch/pytorch": {
+    "bestPracticesPaths": [
+      "/docs/stable/getting-started",
+      "/docs/stable/guides",
+      "/docs/stable"
+    ],
+    "urlPatterns": [
+      "/docs/stable/{slug}",
+      "/docs/guides/stable/{slug}"
+    ]
+  },
+  "nolimits4web/swiper": {
+    "bestPracticesPaths": [
+      "/get-started/getting-started",
+      "/get-started/guides",
+      "/get-started"
+    ],
+    "urlPatterns": [
+      "/get-started/{slug}"
+    ]
+  },
+  "davidjerleke/embla-carousel": {
+    "bestPracticesPaths": [
+      "/get-started/getting-started",
+      "/get-started/guides",
+      "/get-started"
+    ],
+    "urlPatterns": [
+      "/get-started/{slug}"
+    ]
+  },
+  "amannn/next-intl": {
+    "bestPracticesPaths": [
+      "/docs/getting-started/getting-started",
+      "/docs/getting-started/guides",
+      "/docs/getting-started"
+    ],
+    "urlPatterns": [
+      "/docs/getting-started/{slug}",
+      "/docs/guides/getting-started/{slug}"
+    ]
+  },
+  "emilkowalski/sonner": {
+    "bestPracticesPaths": [
+      "/getting-started",
+      "/guides"
+    ],
+    "urlPatterns": [
+      "/{slug}"
+    ]
+  },
+  "joe-bell/cva": {
+    "bestPracticesPaths": [
+      "/docs/getting-started",
+      "/docs/guides",
+      "/docs"
+    ],
+    "urlPatterns": [
+      "/docs/{slug}",
+      "/docs/guides/{slug}"
+    ]
+  },
+  "pacocoursey/cmdk": {
+    "bestPracticesPaths": [
+      "/getting-started",
+      "/guides"
+    ],
+    "urlPatterns": [
+      "/{slug}"
+    ]
+  },
+  "pacocoursey/next-themes": {
+    "bestPracticesPaths": [
+      "/pacocoursey/next-themes#readme"
+    ],
+    "urlPatterns": [
+      "/pacocoursey/next-themes/{slug}"
+    ]
+  },
+  "darkroomstudio/lenis": {
+    "bestPracticesPaths": [
+      "/getting-started",
+      "/guides"
+    ],
+    "urlPatterns": [
+      "/{slug}"
+    ]
+  },
+  "cure53/dompurify": {
+    "bestPracticesPaths": [
+      "/cure53/DOMPurify#readme"
+    ],
+    "urlPatterns": [
+      "/cure53/DOMPurify/{slug}"
+    ]
+  },
+  "panva/jose": {
+    "bestPracticesPaths": [
+      "/panva/jose/tree/main#readme"
+    ],
+    "urlPatterns": [
+      "/panva/jose/tree/main/{slug}"
+    ]
+  },
+  "krisk/fuse": {
+    "bestPracticesPaths": [
+      "/getting-started/installation.html/getting-started",
+      "/getting-started/installation.html/guides",
+      "/getting-started/installation.html"
+    ],
+    "urlPatterns": [
+      "/getting-started/installation.html/{slug}"
+    ]
+  },
+  "remarkjs/remark": {
+    "bestPracticesPaths": [
+      "/getting-started",
+      "/guides"
+    ],
+    "urlPatterns": [
+      "/{slug}"
+    ]
+  },
+  "nicolo-ribaudo/bcryptjs": {
+    "bestPracticesPaths": [
+      "/dcodeIO/bcrypt.js#readme"
+    ],
+    "urlPatterns": [
+      "/dcodeIO/bcrypt.js/{slug}"
+    ]
+  },
+  "simplewebauthn/server": {
+    "bestPracticesPaths": [
+      "/docs/getting-started",
+      "/docs/guides",
+      "/docs"
+    ],
+    "urlPatterns": [
+      "/docs/{slug}",
+      "/docs/guides/{slug}"
+    ]
+  },
+  "nicolo-ribaudo/web-vitals": {
+    "bestPracticesPaths": [
+      "/GoogleChrome/web-vitals#readme"
+    ],
+    "urlPatterns": [
+      "/GoogleChrome/web-vitals/{slug}"
+    ]
+  },
+  "formkit/auto-animate": {
+    "bestPracticesPaths": [
+      "/getting-started",
+      "/guides"
+    ],
+    "urlPatterns": [
+      "/{slug}"
+    ]
+  },
+  "vercel/og": {
+    "bestPracticesPaths": [
+      "/docs/functions/og-image-generation/getting-started",
+      "/docs/functions/og-image-generation/guides",
+      "/docs/functions/og-image-generation"
+    ],
+    "urlPatterns": [
+      "/docs/functions/og-image-generation/{slug}",
+      "/docs/guides/functions/og-image-generation/{slug}"
+    ]
+  },
+  "vercel/analytics": {
+    "bestPracticesPaths": [
+      "/docs/analytics/getting-started",
+      "/docs/analytics/guides",
+      "/docs/analytics"
+    ],
+    "urlPatterns": [
+      "/docs/analytics/{slug}",
+      "/docs/guides/analytics/{slug}"
+    ]
+  },
+  "vercel/speed-insights": {
+    "bestPracticesPaths": [
+      "/docs/speed-insights/getting-started",
+      "/docs/speed-insights/guides",
+      "/docs/speed-insights"
+    ],
+    "urlPatterns": [
+      "/docs/speed-insights/{slug}",
+      "/docs/guides/speed-insights/{slug}"
+    ]
+  },
+  "lovell/sharp": {
+    "bestPracticesPaths": [
+      "/getting-started",
+      "/guides"
+    ],
+    "urlPatterns": [
+      "/{slug}"
+    ]
+  },
+  "nicolo-ribaudo/pdf-lib": {
+    "bestPracticesPaths": [
+      "/getting-started",
+      "/guides"
+    ],
+    "urlPatterns": [
+      "/{slug}"
+    ]
+  },
+  "soldair/node-qrcode": {
+    "bestPracticesPaths": [
+      "/soldair/node-qrcode#readme"
+    ],
+    "urlPatterns": [
+      "/soldair/node-qrcode/{slug}"
+    ]
+  },
+  "upstash/qstash": {
+    "bestPracticesPaths": [
+      "/docs/qstash/overall/getstarted/getting-started",
+      "/docs/qstash/overall/getstarted/guides",
+      "/docs/qstash/overall/getstarted"
+    ],
+    "urlPatterns": [
+      "/docs/qstash/overall/getstarted/{slug}",
+      "/docs/guides/qstash/overall/getstarted/{slug}"
+    ]
+  },
+  "upstash/ratelimit": {
+    "bestPracticesPaths": [
+      "/docs/redis/sdks/ratelimit-ts/overview/getting-started",
+      "/docs/redis/sdks/ratelimit-ts/overview/guides",
+      "/docs/redis/sdks/ratelimit-ts/overview"
+    ],
+    "urlPatterns": [
+      "/docs/redis/sdks/ratelimit-ts/overview/{slug}",
+      "/docs/guides/redis/sdks/ratelimit-ts/overview/{slug}"
+    ]
+  },
+  "leaflet/leaflet": {
+    "bestPracticesPaths": [
+      "/docs/start-introduction/getting-started",
+      "/docs/start-introduction/guides",
+      "/docs/start-introduction"
+    ],
+    "urlPatterns": [
+      "/docs/start-introduction/{slug}",
+      "/docs/guides/start-introduction/{slug}"
+    ]
+  },
+  "serwist/serwist": {
+    "bestPracticesPaths": [
+      "/docs/next/getting-started",
+      "/docs/next/guides",
+      "/docs/next"
+    ],
+    "urlPatterns": [
+      "/docs/next/{slug}",
+      "/docs/guides/next/{slug}"
+    ]
+  },
+  "marsidev/react-turnstile": {
+    "bestPracticesPaths": [
+      "/marsidev/react-turnstile#readme"
+    ],
+    "urlPatterns": [
+      "/marsidev/react-turnstile/{slug}"
+    ]
+  },
+  "ReactiveX/rxjs": {
+    "bestPracticesPaths": [
+      "/guide/overview/getting-started",
+      "/guide/overview/guides",
+      "/guide/overview"
+    ],
+    "urlPatterns": [
+      "/guide/overview/{slug}"
+    ]
+  },
+  "team-telnyx/telnyx-webrtc": {
+    "bestPracticesPaths": [
+      "/docs/webrtc/getting-started",
+      "/docs/webrtc/guides",
+      "/docs/webrtc"
+    ],
+    "urlPatterns": [
+      "/docs/webrtc/{slug}",
+      "/docs/guides/webrtc/{slug}"
+    ]
+  },
+  "remotion-dev/remotion": {
+    "bestPracticesPaths": [
+      "/docs/getting-started",
+      "/docs/guides",
+      "/docs"
+    ],
+    "urlPatterns": [
+      "/docs/{slug}",
+      "/docs/guides/{slug}"
+    ]
+  },
+  "software-mansion/react-native-gesture-handler": {
+    "bestPracticesPaths": [
+      "/react-native-gesture-handler/docs/getting-started",
+      "/react-native-gesture-handler/docs/guides",
+      "/react-native-gesture-handler/docs"
+    ],
+    "urlPatterns": [
+      "/react-native-gesture-handler/docs/{slug}",
+      "/react-native-gesture-handler/docs/guides/{slug}"
+    ]
+  },
+  "mrousavy/react-native-mmkv": {
+    "bestPracticesPaths": [
+      "/mrousavy/react-native-mmkv#readme"
+    ],
+    "urlPatterns": [
+      "/mrousavy/react-native-mmkv/{slug}"
+    ]
+  },
+  "shopify/react-native-skia": {
+    "bestPracticesPaths": [
+      "/react-native-skia/docs/getting-started/installation/getting-started",
+      "/react-native-skia/docs/getting-started/installation/guides",
+      "/react-native-skia/docs/getting-started/installation"
+    ],
+    "urlPatterns": [
+      "/react-native-skia/docs/getting-started/installation/{slug}",
+      "/react-native-skia/docs/guides/getting-started/installation/{slug}"
+    ]
+  },
+  "motify/moti": {
+    "bestPracticesPaths": [
+      "/docs/getting-started",
+      "/docs/guides",
+      "/docs"
+    ],
+    "urlPatterns": [
+      "/docs/{slug}",
+      "/docs/guides/{slug}"
+    ]
+  },
+  "lottie-react-native/lottie-react-native": {
+    "bestPracticesPaths": [
+      "/lottie/getting-started",
+      "/lottie/guides",
+      "/lottie"
+    ],
+    "urlPatterns": [
+      "/lottie/{slug}"
+    ]
+  },
+  "nativewind/nativewind": {
+    "bestPracticesPaths": [
+      "/getting-started/expo-router/getting-started",
+      "/getting-started/expo-router/guides",
+      "/getting-started/expo-router"
+    ],
+    "urlPatterns": [
+      "/getting-started/expo-router/{slug}"
+    ]
+  },
+  "victory/victory-native": {
+    "bestPracticesPaths": [
+      "/open-source/victory/docs/victory-native/getting-started",
+      "/open-source/victory/docs/victory-native/guides",
+      "/open-source/victory/docs/victory-native"
+    ],
+    "urlPatterns": [
+      "/open-source/victory/docs/victory-native/{slug}",
+      "/open-source/victory/docs/guides/victory-native/{slug}"
+    ]
+  },
+  "nozbe/watermelondb": {
+    "bestPracticesPaths": [
+      "/docs/getting-started",
+      "/docs/guides",
+      "/docs"
+    ],
+    "urlPatterns": [
+      "/docs/{slug}",
+      "/docs/guides/{slug}"
+    ]
+  },
+  "react-native-firebase/react-native-firebase": {
+    "bestPracticesPaths": [
+      "/getting-started",
+      "/guides"
+    ],
+    "urlPatterns": [
+      "/{slug}"
+    ]
+  },
+  "react-native-keyboard-controller/react-native-keyboard-controller": {
+    "bestPracticesPaths": [
+      "/react-native-keyboard-controller/docs/installation/getting-started",
+      "/react-native-keyboard-controller/docs/installation/guides",
+      "/react-native-keyboard-controller/docs/installation"
+    ],
+    "urlPatterns": [
+      "/react-native-keyboard-controller/docs/installation/{slug}",
+      "/react-native-keyboard-controller/docs/guides/installation/{slug}"
+    ]
+  },
+  "mrousavy/react-native-svg": {
+    "bestPracticesPaths": [
+      "/software-mansion/react-native-svg/blob/main/USAGE.md#readme"
+    ],
+    "urlPatterns": [
+      "/software-mansion/react-native-svg/blob/main/USAGE.md/{slug}"
+    ]
+  },
+  "pmndrs/react-postprocessing": {
+    "bestPracticesPaths": [
+      "/pmndrs/react-postprocessing#readme"
+    ],
+    "urlPatterns": [
+      "/pmndrs/react-postprocessing/{slug}"
+    ]
+  },
+  "axiomhq/next-axiom": {
+    "bestPracticesPaths": [
+      "/docs/send-data/nextjs/getting-started",
+      "/docs/send-data/nextjs/guides",
+      "/docs/send-data/nextjs"
+    ],
+    "urlPatterns": [
+      "/docs/send-data/nextjs/{slug}",
+      "/docs/guides/send-data/nextjs/{slug}"
+    ]
+  },
+  "jonschlinkert/gray-matter": {
+    "bestPracticesPaths": [
+      "/jonschlinkert/gray-matter#readme"
+    ],
+    "urlPatterns": [
+      "/jonschlinkert/gray-matter/{slug}"
+    ]
+  },
+  "contentful/contentful.js": {
+    "bestPracticesPaths": [
+      "/developers/docs/getting-started",
+      "/developers/docs/guides",
+      "/developers/docs"
+    ],
+    "urlPatterns": [
+      "/developers/docs/{slug}",
+      "/developers/docs/guides/{slug}"
+    ]
+  },
+  "urql-graphql/urql": {
+    "bestPracticesPaths": [
+      "/goto/docs/getting-started",
+      "/goto/docs/guides",
+      "/goto/docs"
+    ],
+    "urlPatterns": [
+      "/goto/docs/{slug}",
+      "/goto/docs/guides/{slug}"
+    ]
+  },
+  "pinecone-io/pinecone-ts-client": {
+    "bestPracticesPaths": [
+      "/reference/typescript-sdk/getting-started",
+      "/reference/typescript-sdk/guides",
+      "/reference/typescript-sdk"
+    ],
+    "urlPatterns": [
+      "/reference/typescript-sdk/{slug}"
+    ]
+  },
+  "qdrant/qdrant-js": {
+    "bestPracticesPaths": [
+      "/documentation/interfaces/client-libraries/getting-started",
+      "/documentation/interfaces/client-libraries/guides",
+      "/documentation/interfaces/client-libraries"
+    ],
+    "urlPatterns": [
+      "/documentation/interfaces/client-libraries/{slug}"
+    ]
+  },
+  "electric-sql/electric": {
+    "bestPracticesPaths": [
+      "/docs/getting-started",
+      "/docs/guides",
+      "/docs"
+    ],
+    "urlPatterns": [
+      "/docs/{slug}",
+      "/docs/guides/{slug}"
+    ]
+  },
+  "sindresorhus/ky": {
+    "bestPracticesPaths": [
+      "/sindresorhus/ky#readme"
+    ],
+    "urlPatterns": [
+      "/sindresorhus/ky/{slug}"
+    ]
+  },
+  "lukeed/clsx": {
+    "bestPracticesPaths": [
+      "/lukeed/clsx#readme"
+    ],
+    "urlPatterns": [
+      "/lukeed/clsx/{slug}"
+    ]
+  },
+  "dcastil/tailwind-merge": {
+    "bestPracticesPaths": [
+      "/dcastil/tailwind-merge#readme"
+    ],
+    "urlPatterns": [
+      "/dcastil/tailwind-merge/{slug}"
+    ]
+  },
+  "ianstormtaylor/slate": {
+    "bestPracticesPaths": [
+      "/getting-started",
+      "/guides"
+    ],
+    "urlPatterns": [
+      "/{slug}"
+    ]
+  },
+  "unifiedjs/unified": {
+    "bestPracticesPaths": [
+      "/learn/getting-started",
+      "/learn/guides",
+      "/learn"
+    ],
+    "urlPatterns": [
+      "/learn/{slug}"
+    ]
+  },
+  "mdx-js/mdx": {
+    "bestPracticesPaths": [
+      "/docs/getting-started",
+      "/docs/guides",
+      "/docs"
+    ],
+    "urlPatterns": [
+      "/docs/{slug}",
+      "/docs/guides/{slug}"
+    ]
+  },
+  "fuma-nama/fumadocs": {
+    "bestPracticesPaths": [
+      "/docs/getting-started",
+      "/docs/guides",
+      "/docs"
+    ],
+    "urlPatterns": [
+      "/docs/{slug}",
+      "/docs/guides/{slug}"
+    ]
+  },
+  "langchain-ai/langchain": {
+    "bestPracticesPaths": [
+      "/docs/introduction/getting-started",
+      "/docs/introduction/guides",
+      "/docs/introduction"
+    ],
+    "urlPatterns": [
+      "/docs/introduction/{slug}",
+      "/docs/guides/introduction/{slug}"
+    ]
+  },
+  "run-llama/llama_index": {
+    "bestPracticesPaths": [
+      "/en/stable/getting-started",
+      "/en/stable/guides",
+      "/en/stable"
+    ],
+    "urlPatterns": [
+      "/en/stable/{slug}"
+    ]
+  },
+  "crewAIInc/crewAI": {
+    "bestPracticesPaths": [
+      "/introduction/getting-started",
+      "/introduction/guides",
+      "/introduction"
+    ],
+    "urlPatterns": [
+      "/introduction/{slug}"
+    ]
+  },
+  "langchain-ai/langgraph": {
+    "bestPracticesPaths": [
+      "/langgraph/tutorials/introduction/getting-started",
+      "/langgraph/tutorials/introduction/guides",
+      "/langgraph/tutorials/introduction"
+    ],
+    "urlPatterns": [
+      "/langgraph/tutorials/introduction/{slug}"
+    ]
+  },
+  "huggingface/transformers": {
+    "bestPracticesPaths": [
+      "/docs/transformers/getting-started",
+      "/docs/transformers/guides",
+      "/docs/transformers"
+    ],
+    "urlPatterns": [
+      "/docs/transformers/{slug}",
+      "/docs/guides/transformers/{slug}"
+    ]
+  },
+  "go-chi/chi": {
+    "bestPracticesPaths": [
+      "/getting-started",
+      "/guides"
+    ],
+    "urlPatterns": [
+      "/{slug}"
+    ]
+  },
+  "tokio-rs/axum": {
+    "bestPracticesPaths": [
+      "/axum/latest/axum"
+    ],
+    "urlPatterns": [
+      "/axum/latest/axum"
+    ]
+  },
+  "actix/actix-web": {
+    "bestPracticesPaths": [
+      "/docs/getting-started",
+      "/docs/guides",
+      "/docs"
+    ],
+    "urlPatterns": [
+      "/docs/{slug}",
+      "/docs/guides/{slug}"
+    ]
+  },
+  "launchbadge/sqlx": {
+    "bestPracticesPaths": [
+      "/sqlx/latest/sqlx"
+    ],
+    "urlPatterns": [
+      "/sqlx/latest/sqlx"
+    ]
+  },
+  "tokio-rs/tokio": {
+    "bestPracticesPaths": [
+      "/tokio/tutorial/getting-started",
+      "/tokio/tutorial/guides",
+      "/tokio/tutorial"
+    ],
+    "urlPatterns": [
+      "/tokio/tutorial/{slug}"
+    ]
+  },
+  "nuxt/content": {
+    "bestPracticesPaths": [
+      "/getting-started",
+      "/guides"
+    ],
+    "urlPatterns": [
+      "/{slug}"
+    ]
+  },
+  "nodemailer/nodemailer": {
+    "bestPracticesPaths": [
+      "/about/getting-started",
+      "/about/guides",
+      "/about"
+    ],
+    "urlPatterns": [
+      "/about/{slug}"
+    ]
+  },
+  "ariakit/ariakit": {
+    "bestPracticesPaths": [
+      "/guide/getting-started",
+      "/guide/guides",
+      "/guide"
+    ],
+    "urlPatterns": [
+      "/guide/{slug}"
+    ]
+  },
+  "chakra-ui/zag": {
+    "bestPracticesPaths": [
+      "/overview/introduction/getting-started",
+      "/overview/introduction/guides",
+      "/overview/introduction"
+    ],
+    "urlPatterns": [
+      "/overview/introduction/{slug}"
+    ]
+  },
+  "chakra-ui/panda": {
+    "bestPracticesPaths": [
+      "/docs/overview/getting-started/getting-started",
+      "/docs/overview/getting-started/guides",
+      "/docs/overview/getting-started"
+    ],
+    "urlPatterns": [
+      "/docs/overview/getting-started/{slug}",
+      "/docs/guides/overview/getting-started/{slug}"
+    ]
+  },
+  "partykit/partykit": {
+    "bestPracticesPaths": [
+      "/getting-started",
+      "/guides"
+    ],
+    "urlPatterns": [
+      "/{slug}"
+    ]
+  },
+  "assistant-ui/assistant-ui": {
+    "bestPracticesPaths": [
+      "/docs/getting-started",
+      "/docs/guides",
+      "/docs"
+    ],
+    "urlPatterns": [
+      "/docs/{slug}",
+      "/docs/guides/{slug}"
+    ]
+  },
+  "scrapy/scrapy": {
+    "bestPracticesPaths": [
+      "/en/latest/getting-started",
+      "/en/latest/guides",
+      "/en/latest"
+    ],
+    "urlPatterns": [
+      "/en/latest/{slug}"
+    ]
+  },
+  "encode/uvicorn": {
+    "bestPracticesPaths": [
+      "/getting-started",
+      "/guides"
+    ],
+    "urlPatterns": [
+      "/{slug}"
+    ]
+  },
+  "benoitc/gunicorn": {
+    "bestPracticesPaths": [
+      "/en/stable/getting-started",
+      "/en/stable/guides",
+      "/en/stable"
+    ],
+    "urlPatterns": [
+      "/en/stable/{slug}"
+    ]
+  },
+  "python-poetry/poetry": {
+    "bestPracticesPaths": [
+      "/docs/getting-started",
+      "/docs/guides",
+      "/docs"
+    ],
+    "urlPatterns": [
+      "/docs/{slug}",
+      "/docs/guides/{slug}"
+    ]
+  },
+  "sqlalchemy/alembic": {
+    "bestPracticesPaths": [
+      "/en/latest/getting-started",
+      "/en/latest/guides",
+      "/en/latest"
+    ],
+    "urlPatterns": [
+      "/en/latest/{slug}"
+    ]
+  },
+  "tiangolo/sqlmodel": {
+    "bestPracticesPaths": [
+      "/getting-started",
+      "/guides"
+    ],
+    "urlPatterns": [
+      "/{slug}"
+    ]
+  },
+  "tiangolo/typer": {
+    "bestPracticesPaths": [
+      "/getting-started",
+      "/guides"
+    ],
+    "urlPatterns": [
+      "/{slug}"
+    ]
+  },
+  "serde-rs/serde": {
+    "bestPracticesPaths": [
+      "/getting-started",
+      "/guides"
+    ],
+    "urlPatterns": [
+      "/{slug}"
+    ]
+  },
+  "seanmonstar/reqwest": {
+    "bestPracticesPaths": [
+      "/reqwest/latest/reqwest/"
+    ],
+    "urlPatterns": [
+      "/reqwest/latest/{slug}/"
+    ]
+  },
+  "clap-rs/clap": {
+    "bestPracticesPaths": [
+      "/clap/latest/clap/"
+    ],
+    "urlPatterns": [
+      "/clap/latest/{slug}/"
+    ]
+  },
+  "diesel-rs/diesel": {
+    "bestPracticesPaths": [
+      "/guides/getting-started",
+      "/guides/guides",
+      "/guides"
+    ],
+    "urlPatterns": [
+      "/guides/{slug}"
+    ]
+  },
+  "SeaQL/sea-orm": {
+    "bestPracticesPaths": [
+      "/SeaORM/docs/index/getting-started",
+      "/SeaORM/docs/index/guides",
+      "/SeaORM/docs/index"
+    ],
+    "urlPatterns": [
+      "/SeaORM/docs/index/{slug}",
+      "/SeaORM/docs/guides/index/{slug}"
+    ]
+  },
+  "seanmonstar/warp": {
+    "bestPracticesPaths": [
+      "/warp/latest/warp/"
+    ],
+    "urlPatterns": [
+      "/warp/latest/{slug}/"
+    ]
+  },
+  "rwf2/Rocket": {
+    "bestPracticesPaths": [
+      "/guide/getting-started",
+      "/guide/guides",
+      "/guide"
+    ],
+    "urlPatterns": [
+      "/guide/{slug}"
+    ]
+  },
+  "tower-rs/tower": {
+    "bestPracticesPaths": [
+      "/tower/latest/tower/"
+    ],
+    "urlPatterns": [
+      "/tower/latest/{slug}/"
+    ]
+  },
+  "hyperium/tonic": {
+    "bestPracticesPaths": [
+      "/tonic/latest/tonic/"
+    ],
+    "urlPatterns": [
+      "/tonic/latest/{slug}/"
+    ]
+  },
+  "tokio-rs/tracing": {
+    "bestPracticesPaths": [
+      "/tracing/latest/tracing/"
+    ],
+    "urlPatterns": [
+      "/tracing/latest/{slug}/"
+    ]
+  },
+  "dtolnay/anyhow": {
+    "bestPracticesPaths": [
+      "/anyhow/latest/anyhow/"
+    ],
+    "urlPatterns": [
+      "/anyhow/latest/{slug}/"
+    ]
+  },
+  "dtolnay/thiserror": {
+    "bestPracticesPaths": [
+      "/thiserror/latest/thiserror/"
+    ],
+    "urlPatterns": [
+      "/thiserror/latest/{slug}/"
+    ]
+  },
+  "labstack/echo": {
+    "bestPracticesPaths": [
+      "/docs/getting-started",
+      "/docs/guides",
+      "/docs"
+    ],
+    "urlPatterns": [
+      "/docs/{slug}",
+      "/docs/guides/{slug}"
+    ]
+  },
+  "spf13/cobra": {
+    "bestPracticesPaths": [
+      "/getting-started",
+      "/guides"
+    ],
+    "urlPatterns": [
+      "/{slug}"
+    ]
+  },
+  "spf13/viper": {
+    "bestPracticesPaths": [
+      "/spf13/viper#readme"
+    ],
+    "urlPatterns": [
+      "/spf13/viper/{slug}"
+    ]
+  },
+  "stretchr/testify": {
+    "bestPracticesPaths": [
+      "/github.com/stretchr/testify#readme"
+    ],
+    "urlPatterns": [
+      "/github.com/stretchr/testify/{slug}"
+    ]
+  },
+  "rs/zerolog": {
+    "bestPracticesPaths": [
+      "/github.com/rs/zerolog#readme"
+    ],
+    "urlPatterns": [
+      "/github.com/rs/zerolog/{slug}"
+    ]
+  },
+  "uber-go/zap": {
+    "bestPracticesPaths": [
+      "/go.uber.org/zap"
+    ],
+    "urlPatterns": [
+      "/go.uber.org/zap/{slug}"
+    ]
+  },
+  "jackc/pgx": {
+    "bestPracticesPaths": [
+      "/github.com/jackc/pgx/v5#readme"
+    ],
+    "urlPatterns": [
+      "/github.com/jackc/pgx/v5/{slug}"
+    ]
+  },
+  "sqlc-dev/sqlc": {
+    "bestPracticesPaths": [
+      "/en/stable/getting-started",
+      "/en/stable/guides",
+      "/en/stable"
+    ],
+    "urlPatterns": [
+      "/en/stable/{slug}"
+    ]
+  },
+  "hibernate/hibernate-orm": {
+    "bestPracticesPaths": [
+      "/orm/documentation/getting-started",
+      "/orm/documentation/guides",
+      "/orm/documentation"
+    ],
+    "urlPatterns": [
+      "/orm/documentation/{slug}"
+    ]
+  },
+  "tauri-apps/tauri": {
+    "bestPracticesPaths": [
+      "/start/getting-started",
+      "/start/guides",
+      "/start"
+    ],
+    "urlPatterns": [
+      "/start/{slug}"
+    ]
+  },
+  "electron/electron": {
+    "bestPracticesPaths": [
+      "/docs/latest/getting-started",
+      "/docs/latest/guides",
+      "/docs/latest"
+    ],
+    "urlPatterns": [
+      "/docs/latest/{slug}",
+      "/docs/guides/latest/{slug}"
+    ]
+  },
+  "wix/Detox": {
+    "bestPracticesPaths": [
+      "/Detox/getting-started",
+      "/Detox/guides",
+      "/Detox"
+    ],
+    "urlPatterns": [
+      "/Detox/{slug}"
+    ]
+  },
+  "dottxt-ai/outlines": {
+    "bestPracticesPaths": [
+      "/outlines/getting-started",
+      "/outlines/guides",
+      "/outlines"
+    ],
+    "urlPatterns": [
+      "/outlines/{slug}"
+    ]
+  },
+  "vllm-project/vllm": {
+    "bestPracticesPaths": [
+      "/en/latest/getting-started",
+      "/en/latest/guides",
+      "/en/latest"
+    ],
+    "urlPatterns": [
+      "/en/latest/{slug}"
+    ]
+  },
+  "microsoft/semantic-kernel": {
+    "bestPracticesPaths": [
+      "/en-us/semantic-kernel/getting-started",
+      "/en-us/semantic-kernel/guides",
+      "/en-us/semantic-kernel"
+    ],
+    "urlPatterns": [
+      "/en-us/semantic-kernel/{slug}"
+    ]
+  },
+  "railwayapp/cli": {
+    "bestPracticesPaths": [
+      "/getting-started",
+      "/guides"
+    ],
+    "urlPatterns": [
+      "/{slug}"
+    ]
+  },
+  "netlify/cli": {
+    "bestPracticesPaths": [
+      "/getting-started",
+      "/guides"
+    ],
+    "urlPatterns": [
+      "/{slug}"
+    ]
+  },
+  "aquasecurity/trivy": {
+    "bestPracticesPaths": [
+      "/trivy/getting-started",
+      "/trivy/guides",
+      "/trivy"
+    ],
+    "urlPatterns": [
+      "/trivy/{slug}"
+    ]
+  },
+  "PyCQA/bandit": {
+    "bestPracticesPaths": [
+      "/en/latest/getting-started",
+      "/en/latest/guides",
+      "/en/latest"
+    ],
+    "urlPatterns": [
+      "/en/latest/{slug}"
+    ]
+  },
+  "symfony/symfony": {
+    "bestPracticesPaths": [
+      "/doc/current/index.html/getting-started",
+      "/doc/current/index.html/guides",
+      "/doc/current/index.html"
+    ],
+    "urlPatterns": [
+      "/doc/current/index.html/{slug}"
+    ]
+  },
+  "sinatra/sinatra": {
+    "bestPracticesPaths": [
+      "/documentation.html/getting-started",
+      "/documentation.html/guides",
+      "/documentation.html"
+    ],
+    "urlPatterns": [
+      "/documentation.html/{slug}"
+    ]
+  },
+  "dotnet/aspnetcore": {
+    "bestPracticesPaths": [
+      "/en-us/aspnet/core/getting-started",
+      "/en-us/aspnet/core/guides",
+      "/en-us/aspnet/core"
+    ],
+    "urlPatterns": [
+      "/en-us/aspnet/core/{slug}"
+    ]
+  },
+  "dotnet/efcore": {
+    "bestPracticesPaths": [
+      "/en-us/ef/core/getting-started",
+      "/en-us/ef/core/guides",
+      "/en-us/ef/core"
+    ],
+    "urlPatterns": [
+      "/en-us/ef/core/{slug}"
+    ]
+  },
+  "dotnet/maui": {
+    "bestPracticesPaths": [
+      "/en-us/dotnet/maui/getting-started",
+      "/en-us/dotnet/maui/guides",
+      "/en-us/dotnet/maui"
+    ],
+    "urlPatterns": [
+      "/en-us/dotnet/maui/{slug}"
+    ]
+  },
+  "nicolo-ribaudo/swiftui": {
+    "bestPracticesPaths": [
+      "/documentation/swiftui/getting-started",
+      "/documentation/swiftui/guides",
+      "/documentation/swiftui"
+    ],
+    "urlPatterns": [
+      "/documentation/swiftui/{slug}"
+    ]
+  },
+  "Alamofire/Alamofire": {
+    "bestPracticesPaths": [
+      "/Alamofire/getting-started",
+      "/Alamofire/guides",
+      "/Alamofire"
+    ],
+    "urlPatterns": [
+      "/Alamofire/{slug}"
+    ]
+  },
+  "apache/spark": {
+    "bestPracticesPaths": [
+      "/docs/latest/getting-started",
+      "/docs/latest/guides",
+      "/docs/latest"
+    ],
+    "urlPatterns": [
+      "/docs/latest/{slug}",
+      "/docs/guides/latest/{slug}"
+    ]
+  },
+  "apache/airflow": {
+    "bestPracticesPaths": [
+      "/docs/getting-started",
+      "/docs/guides",
+      "/docs"
+    ],
+    "urlPatterns": [
+      "/docs/{slug}",
+      "/docs/guides/{slug}"
+    ]
+  },
+  "dagster-io/dagster": {
+    "bestPracticesPaths": [
+      "/getting-started",
+      "/guides"
+    ],
+    "urlPatterns": [
+      "/{slug}"
+    ]
+  },
+  "prefecthq/prefect": {
+    "bestPracticesPaths": [
+      "/getting-started",
+      "/guides"
+    ],
+    "urlPatterns": [
+      "/{slug}"
+    ]
+  },
+  "dbt-labs/dbt-core": {
+    "bestPracticesPaths": [
+      "/docs/introduction/getting-started",
+      "/docs/introduction/guides",
+      "/docs/introduction"
+    ],
+    "urlPatterns": [
+      "/docs/introduction/{slug}",
+      "/docs/guides/introduction/{slug}"
+    ]
+  },
+  "mrdoob/three.js": {
+    "bestPracticesPaths": [
+      "/docs/getting-started",
+      "/docs/guides",
+      "/docs"
+    ],
+    "urlPatterns": [
+      "/docs/{slug}",
+      "/docs/guides/{slug}"
+    ]
+  },
+  "pixijs/pixijs": {
+    "bestPracticesPaths": [
+      "/release/docs/index.html/getting-started",
+      "/release/docs/index.html/guides",
+      "/release/docs/index.html"
+    ],
+    "urlPatterns": [
+      "/release/docs/index.html/{slug}",
+      "/release/docs/guides/index.html/{slug}"
+    ]
+  },
+  "phoenixframework/phoenix_live_view": {
+    "bestPracticesPaths": [
+      "/phoenix_live_view/Phoenix.LiveView.html/getting-started",
+      "/phoenix_live_view/Phoenix.LiveView.html/guides",
+      "/phoenix_live_view/Phoenix.LiveView.html"
+    ],
+    "urlPatterns": [
+      "/phoenix_live_view/Phoenix.LiveView.html/{slug}"
+    ]
+  },
+  "postmanlabs/postman": {
+    "bestPracticesPaths": [
+      "/docs/getting-started",
+      "/docs/guides",
+      "/docs"
+    ],
+    "urlPatterns": [
+      "/docs/{slug}",
+      "/docs/guides/{slug}"
+    ]
+  },
+  "Kong/insomnia": {
+    "bestPracticesPaths": [
+      "/getting-started",
+      "/guides"
+    ],
+    "urlPatterns": [
+      "/{slug}"
+    ]
+  },
+  "keycloak/keycloak": {
+    "bestPracticesPaths": [
+      "/documentation/getting-started",
+      "/documentation/guides",
+      "/documentation"
+    ],
+    "urlPatterns": [
+      "/documentation/{slug}"
+    ]
+  },
+  "ory/hydra": {
+    "bestPracticesPaths": [
+      "/docs/hydra/getting-started",
+      "/docs/hydra/guides",
+      "/docs/hydra"
+    ],
+    "urlPatterns": [
+      "/docs/hydra/{slug}",
+      "/docs/guides/hydra/{slug}"
+    ]
+  },
+  "ethers-io/ethers.js": {
+    "bestPracticesPaths": [
+      "/v6/getting-started",
+      "/v6/guides",
+      "/v6"
+    ],
+    "urlPatterns": [
+      "/v6/{slug}"
+    ]
+  },
+  "wevm/viem": {
+    "bestPracticesPaths": [
+      "/docs/getting-started/getting-started",
+      "/docs/getting-started/guides",
+      "/docs/getting-started"
+    ],
+    "urlPatterns": [
+      "/docs/getting-started/{slug}",
+      "/docs/guides/getting-started/{slug}"
+    ]
+  },
+  "vercel/pkg": {
+    "bestPracticesPaths": [
+      "/vercel/pkg#readme"
+    ],
+    "urlPatterns": [
+      "/vercel/pkg/{slug}"
+    ]
+  },
+  "chalk/chalk": {
+    "bestPracticesPaths": [
+      "/chalk/chalk#readme"
+    ],
+    "urlPatterns": [
+      "/chalk/chalk/{slug}"
+    ]
+  },
+  "SBoudrias/Inquirer.js": {
+    "bestPracticesPaths": [
+      "/SBoudrias/Inquirer.js#readme"
+    ],
+    "urlPatterns": [
+      "/SBoudrias/Inquirer.js/{slug}"
+    ]
+  },
+  "yargs/yargs": {
+    "bestPracticesPaths": [
+      "/docs/getting-started",
+      "/docs/guides",
+      "/docs"
+    ],
+    "urlPatterns": [
+      "/docs/{slug}",
+      "/docs/guides/{slug}"
+    ]
+  },
+  "FFmpeg/FFmpeg": {
+    "bestPracticesPaths": [
+      "/documentation.html/getting-started",
+      "/documentation.html/guides",
+      "/documentation.html"
+    ],
+    "urlPatterns": [
+      "/documentation.html/{slug}"
+    ]
+  },
+  "nicolo-ribaudo/puppeteer": {
+    "bestPracticesPaths": [
+      "/getting-started",
+      "/guides"
+    ],
+    "urlPatterns": [
+      "/{slug}"
+    ]
+  },
+  "keystonejs/keystone": {
+    "bestPracticesPaths": [
+      "/docs/getting-started",
+      "/docs/guides",
+      "/docs"
+    ],
+    "urlPatterns": [
+      "/docs/{slug}",
+      "/docs/guides/{slug}"
+    ]
+  },
+  "directus/directus": {
+    "bestPracticesPaths": [
+      "/getting-started",
+      "/guides"
+    ],
+    "urlPatterns": [
+      "/{slug}"
+    ]
+  },
+  "ghost/ghost": {
+    "bestPracticesPaths": [
+      "/docs/getting-started",
+      "/docs/guides",
+      "/docs"
+    ],
+    "urlPatterns": [
+      "/docs/{slug}",
+      "/docs/guides/{slug}"
+    ]
+  },
+  "mailgun/mailgun-js": {
+    "bestPracticesPaths": [
+      "/docs/mailgun/api-reference/getting-started",
+      "/docs/mailgun/api-reference/guides",
+      "/docs/mailgun/api-reference"
+    ],
+    "urlPatterns": [
+      "/docs/mailgun/api-reference/{slug}",
+      "/docs/guides/mailgun/api-reference/{slug}"
+    ]
+  },
+  "plausible/analytics": {
+    "bestPracticesPaths": [
+      "/docs/getting-started",
+      "/docs/guides",
+      "/docs"
+    ],
+    "urlPatterns": [
+      "/docs/{slug}",
+      "/docs/guides/{slug}"
+    ]
+  },
+  "edmundhung/conform": {
+    "bestPracticesPaths": [
+      "/getting-started",
+      "/guides"
+    ],
+    "urlPatterns": [
+      "/{slug}"
+    ]
+  },
+  "imgproxy/imgproxy": {
+    "bestPracticesPaths": [
+      "/getting-started",
+      "/guides"
+    ],
+    "urlPatterns": [
+      "/{slug}"
+    ]
+  },
+  "uploadthing/uploadthing": {
+    "bestPracticesPaths": [
+      "/getting-started",
+      "/guides"
+    ],
+    "urlPatterns": [
+      "/{slug}"
+    ]
+  },
+  "agenda/agenda": {
+    "bestPracticesPaths": [
+      "/agenda/agenda#readme"
+    ],
+    "urlPatterns": [
+      "/agenda/agenda/{slug}"
+    ]
+  },
+  "node-cron/node-cron": {
+    "bestPracticesPaths": [
+      "/node-cron/node-cron#readme"
+    ],
+    "urlPatterns": [
+      "/node-cron/node-cron/{slug}"
+    ]
+  },
+  "nicolo-ribaudo/react-pdf": {
+    "bestPracticesPaths": [
+      "/getting-started",
+      "/guides"
+    ],
+    "urlPatterns": [
+      "/{slug}"
+    ]
+  },
+  "arktypeio/arktype": {
+    "bestPracticesPaths": [
+      "/docs/getting-started",
+      "/docs/guides",
+      "/docs"
+    ],
+    "urlPatterns": [
+      "/docs/{slug}",
+      "/docs/guides/{slug}"
+    ]
+  },
+  "sinclairzx81/typebox": {
+    "bestPracticesPaths": [
+      "/sinclairzx81/typebox#readme"
+    ],
+    "urlPatterns": [
+      "/sinclairzx81/typebox/{slug}"
+    ]
+  }
+}

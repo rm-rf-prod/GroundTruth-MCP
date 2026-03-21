@@ -1,0 +1,474 @@
+{
+  "vitejs/vite": {
+    "bestPracticesPaths": ["/guide/features", "/guide/performance", "/guide/build", "/guide/ssr", "/guide/env-and-mode"],
+    "urlPatterns": ["/guide/{slug}", "/config/{slug}"]
+  },
+  "sveltejs/svelte": {
+    "bestPracticesPaths": ["/docs/svelte/best-practices", "/docs/kit/performance", "/docs/kit/accessibility"],
+    "urlPatterns": ["/docs/svelte/{slug}", "/docs/kit/{slug}"]
+  },
+  "sveltejs/kit": {
+    "bestPracticesPaths": ["/docs/kit/performance", "/docs/kit/accessibility", "/docs/kit/routing"],
+    "urlPatterns": ["/docs/kit/{slug}"]
+  },
+  "vuejs/vue": {
+    "bestPracticesPaths": ["/guide/best-practices/performance", "/guide/best-practices/security", "/guide/best-practices/accessibility", "/guide/best-practices/production-deployment"],
+    "urlPatterns": ["/guide/{slug}", "/api/{slug}"]
+  },
+  "nuxt/nuxt": {
+    "bestPracticesPaths": ["/docs/guide/best-practices/performance", "/docs/guide/concepts/rendering", "/docs/guide/directory-structure"],
+    "urlPatterns": ["/docs/guide/{slug}", "/docs/api/{slug}"]
+  },
+  "remix-run/remix": {
+    "bestPracticesPaths": ["/docs/guides/streaming", "/docs/guides/performance", "/docs/guides/testing"],
+    "urlPatterns": ["/docs/{slug}", "/docs/guides/{slug}"]
+  },
+  "remix-run/react-router": {
+    "bestPracticesPaths": ["/docs/start/framework/routing", "/docs/start/framework/data-loading"],
+    "urlPatterns": ["/docs/{slug}", "/docs/start/{slug}"]
+  },
+  "honojs/hono": {
+    "bestPracticesPaths": ["/docs/guides/best-practices", "/docs/guides/middleware", "/docs/guides/testing"],
+    "urlPatterns": ["/docs/{slug}", "/docs/guides/{slug}"]
+  },
+  "fastify/fastify": {
+    "bestPracticesPaths": ["/docs/latest/Guides/Getting-Started", "/docs/latest/Guides/Testing", "/docs/latest/Guides/Plugins-Guide"],
+    "urlPatterns": ["/docs/latest/{slug}", "/docs/latest/Guides/{slug}"]
+  },
+  "elysiajs/elysia": {
+    "bestPracticesPaths": ["/patterns/best-practices", "/essential/best-practice"],
+    "urlPatterns": ["/{slug}", "/essential/{slug}"]
+  },
+  "unjs/nitro": {
+    "bestPracticesPaths": ["/guide", "/deploy"],
+    "urlPatterns": ["/guide/{slug}", "/deploy/{slug}"]
+  },
+  "nestjs/nest": {
+    "bestPracticesPaths": ["/techniques/performance", "/security/authentication", "/techniques/caching", "/fundamentals/testing"],
+    "urlPatterns": ["/techniques/{slug}", "/fundamentals/{slug}", "/security/{slug}"]
+  },
+  "biomejs/biome": {
+    "bestPracticesPaths": ["/guides/getting-started", "/guides/integrate-in-vcs", "/linter/rules"],
+    "urlPatterns": ["/guides/{slug}", "/linter/{slug}"]
+  },
+  "rollup/rollup": {
+    "bestPracticesPaths": ["/guide/en/#tree-shaking", "/guide/en/#big-list-of-options"],
+    "urlPatterns": ["/guide/en/{slug}"]
+  },
+  "webpack/webpack": {
+    "bestPracticesPaths": ["/guides/code-splitting/", "/guides/tree-shaking/", "/guides/caching/", "/guides/production/"],
+    "urlPatterns": ["/guides/{slug}", "/concepts/{slug}"]
+  },
+  "pnpm/pnpm": {
+    "bestPracticesPaths": ["/motivation", "/workspaces"],
+    "urlPatterns": ["/{slug}"]
+  },
+  "nodejs/node": {
+    "bestPracticesPaths": ["/en/learn/getting-started/introduction-to-nodejs", "/en/docs/guides"],
+    "urlPatterns": ["/en/learn/{slug}", "/en/docs/{slug}"]
+  },
+  "oven-sh/bun": {
+    "bestPracticesPaths": ["/docs", "/guides"],
+    "urlPatterns": ["/docs/{slug}", "/guides/{slug}"]
+  },
+  "denoland/deno": {
+    "bestPracticesPaths": ["/runtime/fundamentals/", "/runtime/contributing/style_guide/"],
+    "urlPatterns": ["/runtime/{slug}", "/deploy/{slug}"]
+  },
+  "vercel/vercel": {
+    "bestPracticesPaths": ["/docs/deployments/best-practices", "/docs/security/best-practices", "/docs/functions/configuring-functions"],
+    "urlPatterns": ["/docs/{slug}", "/docs/functions/{slug}"]
+  },
+  "cloudflare/workers": {
+    "bestPracticesPaths": ["/workers/get-started/guide/", "/workers/best-practices/"],
+    "urlPatterns": ["/workers/{slug}", "/pages/{slug}"]
+  },
+  "eslint/eslint": {
+    "bestPracticesPaths": ["/docs/latest/use/configure/", "/docs/latest/use/getting-started"],
+    "urlPatterns": ["/docs/latest/{slug}", "/docs/latest/rules/{slug}"]
+  },
+  "prettier/prettier": {
+    "bestPracticesPaths": ["/docs/en/options", "/docs/en/configuration"],
+    "urlPatterns": ["/docs/en/{slug}"]
+  },
+  "pmndrs/zustand": {
+    "bestPracticesPaths": ["/guides/updating-state", "/guides/typescript", "/guides/testing", "/guides/flux-inspired-practice"],
+    "urlPatterns": ["/guides/{slug}"]
+  },
+  "reduxjs/redux-toolkit": {
+    "bestPracticesPaths": ["/usage/usage-guide", "/tutorials/typescript", "/usage/usage-with-typescript"],
+    "urlPatterns": ["/usage/{slug}", "/tutorials/{slug}"]
+  },
+  "pmndrs/jotai": {
+    "bestPracticesPaths": ["/docs/guides/typescript", "/docs/guides/testing", "/docs/guides/performance"],
+    "urlPatterns": ["/docs/guides/{slug}", "/docs/utilities/{slug}"]
+  },
+  "tanstack/query": {
+    "bestPracticesPaths": ["/query/latest/docs/framework/react/guides/important-defaults", "/query/latest/docs/framework/react/guides/caching", "/query/latest/docs/framework/react/guides/optimistic-updates", "/query/latest/docs/framework/react/guides/testing"],
+    "urlPatterns": ["/query/latest/docs/framework/react/{slug}", "/query/latest/docs/framework/react/guides/{slug}"]
+  },
+  "vercel/swr": {
+    "bestPracticesPaths": ["/docs/getting-started", "/docs/advanced/performance", "/docs/middleware"],
+    "urlPatterns": ["/docs/{slug}", "/docs/advanced/{slug}"]
+  },
+  "pmndrs/valtio": {
+    "bestPracticesPaths": ["/docs/how-tos/how-to-use-with-context"],
+    "urlPatterns": ["/docs/{slug}"]
+  },
+  "mobxjs/mobx": {
+    "bestPracticesPaths": ["/best/pitfalls.html", "/guides/react-optimizations.html"],
+    "urlPatterns": ["/{slug}", "/guides/{slug}"]
+  },
+  "statelyai/xstate": {
+    "bestPracticesPaths": ["/docs/xstate", "/docs/typescript"],
+    "urlPatterns": ["/docs/{slug}"]
+  },
+  "vuejs/pinia": {
+    "bestPracticesPaths": ["/core-concepts/", "/cookbook/testing.html"],
+    "urlPatterns": ["/core-concepts/{slug}", "/cookbook/{slug}"]
+  },
+  "react-hook-form/react-hook-form": {
+    "bestPracticesPaths": ["/docs/useform", "/docs/useformcontext", "/docs/usewatch"],
+    "urlPatterns": ["/docs/{slug}"]
+  },
+  "jaredpalmer/formik": {
+    "bestPracticesPaths": ["/docs/overview", "/docs/guides/validation"],
+    "urlPatterns": ["/docs/{slug}", "/docs/guides/{slug}"]
+  },
+  "jquense/yup": {
+    "bestPracticesPaths": ["/docs/schema-basics"],
+    "urlPatterns": ["/docs/{slug}"]
+  },
+  "fabian-hiller/valibot": {
+    "bestPracticesPaths": ["/guides/introduction/", "/guides/migrate-from-zod/"],
+    "urlPatterns": ["/guides/{slug}"]
+  },
+  "effect-ts/effect": {
+    "bestPracticesPaths": ["/docs/introduction", "/docs/error-management/expected-errors"],
+    "urlPatterns": ["/docs/{slug}"]
+  },
+  "neondatabase/neon": {
+    "bestPracticesPaths": ["/docs/guides/branching-intro", "/docs/introduction/connection-pooling"],
+    "urlPatterns": ["/docs/{slug}", "/docs/guides/{slug}"]
+  },
+  "upstash/redis": {
+    "bestPracticesPaths": ["/docs/redis/overall/getstarted", "/docs/redis/features/restapi"],
+    "urlPatterns": ["/docs/redis/{slug}"]
+  },
+  "nextauthjs/next-auth": {
+    "bestPracticesPaths": ["/getting-started", "/getting-started/providers", "/concepts/session-management", "/getting-started/deployment"],
+    "urlPatterns": ["/getting-started/{slug}", "/concepts/{slug}"]
+  },
+  "better-auth/better-auth": {
+    "bestPracticesPaths": ["/docs/installation", "/docs/authentication/email-password"],
+    "urlPatterns": ["/docs/{slug}", "/docs/authentication/{slug}"]
+  },
+  "stripe/stripe-node": {
+    "bestPracticesPaths": ["/docs/payments/accept-a-payment", "/docs/webhooks", "/docs/security/guide", "/docs/billing/subscriptions/overview"],
+    "urlPatterns": ["/docs/{slug}", "/docs/payments/{slug}"]
+  },
+  "resend/resend-node": {
+    "bestPracticesPaths": ["/docs/introduction", "/docs/send-with-react", "/docs/idempotency"],
+    "urlPatterns": ["/docs/{slug}"]
+  },
+  "clerk/javascript": {
+    "bestPracticesPaths": ["/docs/quickstarts/nextjs", "/docs/references/nextjs/auth", "/docs/organizations/overview"],
+    "urlPatterns": ["/docs/{slug}", "/docs/quickstarts/{slug}"]
+  },
+  "facebook/react-native": {
+    "bestPracticesPaths": ["/docs/performance", "/docs/style", "/docs/testing-overview", "/architecture/overview"],
+    "urlPatterns": ["/docs/{slug}", "/docs/components/{slug}"]
+  },
+  "typeorm/typeorm": {
+    "bestPracticesPaths": ["/connection", "/migrations", "/performance-tips"],
+    "urlPatterns": ["/{slug}"]
+  },
+  "Automattic/mongoose": {
+    "bestPracticesPaths": ["/docs/guide.html", "/docs/best_practices.html", "/docs/indexes.html"],
+    "urlPatterns": ["/docs/{slug}"]
+  },
+  "knex/knex": {
+    "bestPracticesPaths": ["/guide/", "/guide/migrations.html"],
+    "urlPatterns": ["/guide/{slug}"]
+  },
+  "kysely-org/kysely": {
+    "bestPracticesPaths": ["/docs/getting-started", "/docs/migrations"],
+    "urlPatterns": ["/docs/{slug}"]
+  },
+  "socketio/socket.io": {
+    "bestPracticesPaths": ["/docs/v4/", "/docs/v4/performance-tuning/", "/docs/v4/rooms/"],
+    "urlPatterns": ["/docs/v4/{slug}"]
+  },
+  "jestjs/jest": {
+    "bestPracticesPaths": ["/docs/getting-started", "/docs/configuration", "/docs/mock-functions"],
+    "urlPatterns": ["/docs/{slug}"]
+  },
+  "testing-library/react-testing-library": {
+    "bestPracticesPaths": ["/docs/guiding-principles", "/docs/queries/about"],
+    "urlPatterns": ["/docs/{slug}"]
+  },
+  "cypress-io/cypress": {
+    "bestPracticesPaths": ["/guides/core-concepts/best-practices", "/guides/guides/network-requests"],
+    "urlPatterns": ["/guides/{slug}", "/guides/core-concepts/{slug}"]
+  },
+  "mswjs/msw": {
+    "bestPracticesPaths": ["/docs/best-practices/", "/docs/concepts/request-handler"],
+    "urlPatterns": ["/docs/{slug}"]
+  },
+  "axios/axios": {
+    "bestPracticesPaths": ["/docs/intro", "/docs/interceptors", "/docs/cancellation"],
+    "urlPatterns": ["/docs/{slug}"]
+  },
+  "getsentry/sentry": {
+    "bestPracticesPaths": ["/platforms/javascript/", "/platforms/javascript/performance/", "/platforms/javascript/session-replay/"],
+    "urlPatterns": ["/platforms/javascript/{slug}"]
+  },
+  "open-telemetry/opentelemetry-js": {
+    "bestPracticesPaths": ["/docs/languages/js/getting-started/nodejs/", "/docs/concepts/observability-primer/"],
+    "urlPatterns": ["/docs/languages/js/{slug}"]
+  },
+  "pinojs/pino": {
+    "bestPracticesPaths": ["/docs/web", "/docs/asynchronous"],
+    "urlPatterns": ["/docs/{slug}"]
+  },
+  "apollographql/apollo-client": {
+    "bestPracticesPaths": ["/docs/react/caching/overview/", "/docs/react/performance/performance/"],
+    "urlPatterns": ["/docs/react/{slug}"]
+  },
+  "sanity/sanity": {
+    "bestPracticesPaths": ["/docs/getting-started", "/docs/studio"],
+    "urlPatterns": ["/docs/{slug}"]
+  },
+  "strapi/strapi": {
+    "bestPracticesPaths": ["/dev-docs/intro", "/dev-docs/configurations/", "/dev-docs/plugins-development"],
+    "urlPatterns": ["/dev-docs/{slug}"]
+  },
+  "payloadcms/payload": {
+    "bestPracticesPaths": ["/docs/getting-started/what-is-payload", "/docs/configuration/overview", "/docs/access-control/overview"],
+    "urlPatterns": ["/docs/{slug}"]
+  },
+  "ueberdosis/tiptap": {
+    "bestPracticesPaths": ["/docs/editor/getting-started/overview", "/docs/editor/extensions", "/docs/editor/api/commands"],
+    "urlPatterns": ["/docs/editor/{slug}"]
+  },
+  "facebook/lexical": {
+    "bestPracticesPaths": ["/docs/intro", "/docs/concepts/nodes"],
+    "urlPatterns": ["/docs/{slug}"]
+  },
+  "framer/motion": {
+    "bestPracticesPaths": ["/docs/", "/docs/animate"],
+    "urlPatterns": ["/docs/{slug}"]
+  },
+  "tiangolo/fastapi": {
+    "bestPracticesPaths": ["/tutorial/", "/advanced/", "/deployment/", "/async/"],
+    "urlPatterns": ["/tutorial/{slug}", "/advanced/{slug}"]
+  },
+  "django/django": {
+    "bestPracticesPaths": ["/en/stable/topics/security/", "/en/stable/topics/performance/", "/en/stable/topics/testing/"],
+    "urlPatterns": ["/en/stable/topics/{slug}/", "/en/stable/ref/{slug}/"]
+  },
+  "pallets/flask": {
+    "bestPracticesPaths": ["/en/stable/quickstart/", "/en/stable/patterns/", "/en/stable/deploying/"],
+    "urlPatterns": ["/en/stable/{slug}/"]
+  },
+  "pydantic/pydantic": {
+    "bestPracticesPaths": ["/latest/concepts/models/", "/latest/concepts/validators/", "/latest/concepts/performance/"],
+    "urlPatterns": ["/latest/concepts/{slug}", "/latest/api/{slug}"]
+  },
+  "spring-projects/spring-boot": {
+    "bestPracticesPaths": ["/docs/current/reference/html/getting-started.html", "/docs/current/reference/html/howto.html"],
+    "urlPatterns": ["/docs/current/reference/html/{slug}"]
+  },
+  "spring-projects/spring-security": {
+    "bestPracticesPaths": ["/reference/servlet/authentication/index.html", "/reference/servlet/authorization/index.html"],
+    "urlPatterns": ["/reference/{slug}"]
+  },
+  "ktorio/ktor": {
+    "bestPracticesPaths": ["/docs/server-create-new-project.html", "/docs/server-auto-reload.html"],
+    "urlPatterns": ["/docs/{slug}"]
+  },
+  "laravel/laravel": {
+    "bestPracticesPaths": ["/docs/routing", "/docs/eloquent", "/docs/deployment", "/docs/security"],
+    "urlPatterns": ["/docs/{slug}"]
+  },
+  "rails/rails": {
+    "bestPracticesPaths": ["/getting_started.html", "/security.html", "/active_record_basics.html"],
+    "urlPatterns": ["/{slug}"]
+  },
+  "ansible/ansible": {
+    "bestPracticesPaths": ["/latest/playbook_guide/index.html", "/latest/tips_tricks/index.html"],
+    "urlPatterns": ["/latest/{slug}"]
+  },
+  "hashicorp/terraform": {
+    "bestPracticesPaths": ["/terraform/language", "/terraform/language/best-practices"],
+    "urlPatterns": ["/terraform/{slug}"]
+  },
+  "helm/helm": {
+    "bestPracticesPaths": ["/docs/chart_best_practices/", "/docs/topics/charts/"],
+    "urlPatterns": ["/docs/{slug}"]
+  },
+  "grafana/grafana": {
+    "bestPracticesPaths": ["/docs/grafana/latest/dashboards/", "/docs/grafana/latest/alerting/"],
+    "urlPatterns": ["/docs/grafana/latest/{slug}"]
+  },
+  "prometheus/prometheus": {
+    "bestPracticesPaths": ["/docs/practices/naming/", "/docs/practices/alerting/"],
+    "urlPatterns": ["/docs/{slug}"]
+  },
+  "pytest-dev/pytest": {
+    "bestPracticesPaths": ["/en/stable/how-to/", "/en/stable/reference/fixtures.html"],
+    "urlPatterns": ["/en/stable/{slug}"]
+  },
+  "astral-sh/ruff": {
+    "bestPracticesPaths": ["/configuration/", "/rules/"],
+    "urlPatterns": ["/ruff/{slug}"]
+  },
+  "streamlit/streamlit": {
+    "bestPracticesPaths": ["/develop/concepts", "/develop/api-reference"],
+    "urlPatterns": ["/develop/{slug}"]
+  },
+  "pola-rs/polars": {
+    "bestPracticesPaths": ["/user-guide/", "/user-guide/lazy/optimizations/"],
+    "urlPatterns": ["/user-guide/{slug}"]
+  },
+  "wandb/wandb": {
+    "bestPracticesPaths": ["/guides", "/guides/track"],
+    "urlPatterns": ["/guides/{slug}"]
+  },
+  "mlflow/mlflow": {
+    "bestPracticesPaths": ["/docs/latest/tracking.html", "/docs/latest/model-registry.html"],
+    "urlPatterns": ["/docs/latest/{slug}"]
+  },
+  "deepset-ai/haystack": {
+    "bestPracticesPaths": ["/docs/pipelines", "/docs/components"],
+    "urlPatterns": ["/docs/{slug}"]
+  },
+  "gradio-app/gradio": {
+    "bestPracticesPaths": ["/docs/interface", "/guides/quickstart"],
+    "urlPatterns": ["/docs/{slug}", "/guides/{slug}"]
+  },
+  "BerriAI/litellm": {
+    "bestPracticesPaths": ["/docs/", "/docs/proxy/quick_start"],
+    "urlPatterns": ["/docs/{slug}"]
+  },
+  "temporalio/sdk-typescript": {
+    "bestPracticesPaths": ["/develop/typescript", "/develop/typescript/core-application"],
+    "urlPatterns": ["/develop/typescript/{slug}"]
+  },
+  "inngest/inngest": {
+    "bestPracticesPaths": ["/docs/guides/", "/docs/features/inngest-functions"],
+    "urlPatterns": ["/docs/{slug}"]
+  },
+  "PostHog/posthog": {
+    "bestPracticesPaths": ["/docs/getting-started", "/docs/product-analytics"],
+    "urlPatterns": ["/docs/{slug}"]
+  },
+  "solidjs/solid": {
+    "bestPracticesPaths": ["/concepts/signals", "/guides/state-management"],
+    "urlPatterns": ["/concepts/{slug}", "/guides/{slug}"]
+  },
+  "bigskysoftware/htmx": {
+    "bestPracticesPaths": ["/docs/", "/examples/"],
+    "urlPatterns": ["/docs/{slug}", "/examples/{slug}"]
+  },
+  "BuilderIO/qwik": {
+    "bestPracticesPaths": ["/docs/concepts/think-qwik/", "/docs/components/overview/"],
+    "urlPatterns": ["/docs/{slug}", "/docs/concepts/{slug}"]
+  },
+  "preactjs/preact": {
+    "bestPracticesPaths": ["/guide/v10/getting-started", "/guide/v10/hooks"],
+    "urlPatterns": ["/guide/v10/{slug}"]
+  },
+  "phoenixframework/phoenix": {
+    "bestPracticesPaths": ["/overview.html", "/deployment.html"],
+    "urlPatterns": ["/phoenix/{slug}"]
+  },
+  "storybookjs/storybook": {
+    "bestPracticesPaths": ["/docs/get-started", "/docs/writing-stories", "/docs/writing-tests"],
+    "urlPatterns": ["/docs/{slug}"]
+  },
+  "react-navigation/react-navigation": {
+    "bestPracticesPaths": ["/docs/getting-started", "/docs/auth-flow", "/docs/performance"],
+    "urlPatterns": ["/docs/{slug}"]
+  },
+  "shopify/flash-list": {
+    "bestPracticesPaths": ["/docs/", "/docs/performance-troubleshooting"],
+    "urlPatterns": ["/docs/{slug}"]
+  },
+  "software-mansion/react-native-reanimated": {
+    "bestPracticesPaths": ["/docs/", "/docs/fundamentals/getting-started/"],
+    "urlPatterns": ["/docs/{slug}", "/docs/fundamentals/{slug}"]
+  },
+  "immerjs/immer": {
+    "bestPracticesPaths": ["/docs/introduction", "/docs/pitfalls"],
+    "urlPatterns": ["/docs/{slug}"]
+  },
+  "aws/aws-sdk-js-v3": {
+    "bestPracticesPaths": ["/developer-guide/", "/developer-guide/getting-started-nodejs.html"],
+    "urlPatterns": ["/developer-guide/{slug}"]
+  },
+  "firebase/firebase-js-sdk": {
+    "bestPracticesPaths": ["/docs/web/setup", "/docs/firestore/best-practices", "/docs/auth/web/start"],
+    "urlPatterns": ["/docs/{slug}"]
+  },
+  "trpc/trpc": {
+    "bestPracticesPaths": ["/docs/server/procedures", "/docs/client/nextjs", "/docs/server/middlewares"],
+    "urlPatterns": ["/docs/server/{slug}", "/docs/client/{slug}"]
+  },
+  "modelcontextprotocol/typescript-sdk": {
+    "bestPracticesPaths": ["/docs/concepts/tools", "/docs/concepts/resources"],
+    "urlPatterns": ["/docs/{slug}", "/docs/concepts/{slug}"]
+  },
+  "seleniumhq/selenium": {
+    "bestPracticesPaths": ["/documentation/webdriver/", "/documentation/test_practices/"],
+    "urlPatterns": ["/documentation/{slug}"]
+  },
+  "cockroachdb/cockroach": {
+    "bestPracticesPaths": ["/docs/stable/performance-best-practices-overview.html"],
+    "urlPatterns": ["/docs/stable/{slug}"]
+  },
+  "meilisearch/meilisearch": {
+    "bestPracticesPaths": ["/docs/learn/getting_started", "/docs/learn/fine_tuning_results"],
+    "urlPatterns": ["/docs/{slug}", "/docs/learn/{slug}"]
+  },
+  "typesense/typesense": {
+    "bestPracticesPaths": ["/docs/guide/", "/docs/guide/ranking-and-relevance.html"],
+    "urlPatterns": ["/docs/{slug}", "/docs/guide/{slug}"]
+  },
+  "ClickHouse/ClickHouse": {
+    "bestPracticesPaths": ["/docs/en/best-practices", "/docs/en/guides"],
+    "urlPatterns": ["/docs/en/{slug}"]
+  },
+  "pulumi/pulumi": {
+    "bestPracticesPaths": ["/docs/concepts/", "/docs/using-pulumi/testing/"],
+    "urlPatterns": ["/docs/{slug}"]
+  },
+  "hashicorp/vault": {
+    "bestPracticesPaths": ["/vault/docs", "/vault/tutorials"],
+    "urlPatterns": ["/vault/{slug}"]
+  },
+  "caddyserver/caddy": {
+    "bestPracticesPaths": ["/docs/", "/docs/caddyfile"],
+    "urlPatterns": ["/docs/{slug}"]
+  },
+  "traefik/traefik": {
+    "bestPracticesPaths": ["/traefik/", "/traefik/getting-started/quick-start/"],
+    "urlPatterns": ["/traefik/{slug}"]
+  },
+  "taskforcesh/bullmq": {
+    "bestPracticesPaths": ["/guide/introduction", "/patterns/producer-consumer"],
+    "urlPatterns": ["/guide/{slug}", "/patterns/{slug}"]
+  },
+  "i18next/i18next": {
+    "bestPracticesPaths": ["/overview/getting-started", "/overview/configuration"],
+    "urlPatterns": ["/overview/{slug}"]
+  },
+  "date-fns/date-fns": {
+    "bestPracticesPaths": ["/docs/Getting-Started", "/docs/I18n"],
+    "urlPatterns": ["/docs/{slug}"]
+  },
+  "iamkun/dayjs": {
+    "bestPracticesPaths": ["/docs/en/installation/installation", "/docs/en/plugin/plugin"],
+    "urlPatterns": ["/docs/en/{slug}"]
+  }
+}

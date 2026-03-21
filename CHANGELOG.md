@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.6.0] — 2026-03-21
+
+- feat: registry deep coverage — 100% bestPracticesPaths and urlPatterns
+
+---
+
 ## [2.5.7] — 2026-03-21
 
 ### Registry deep coverage enhancement
