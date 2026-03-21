@@ -23,3 +23,16 @@ if (after === before) {
 
 writeFileSync(constantsPath, after, "utf-8");
 console.log(`update-version: SERVER_VERSION → ${version}`);
+
+const serverJsonPath = join(root, "server.json");
+try {
+  const serverJson = JSON.parse(readFileSync(serverJsonPath, "utf-8"));
+  serverJson.version = version;
+  for (const pkg of serverJson.packages || []) {
+    pkg.version = version;
+  }
+  writeFileSync(serverJsonPath, JSON.stringify(serverJson, null, 2) + "\n", "utf-8");
+  console.log(`update-version: server.json → ${version}`);
+} catch {
+  console.log(`update-version: server.json not found, skipping`);
+}
