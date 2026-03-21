@@ -133,6 +133,12 @@ const BEST_PRACTICES_URLS: Record<string, string[]> = {
     "https://supabase.com/docs/guides/auth/overview",
     "https://supabase.com/docs/guides/performance",
     "https://supabase.com/docs/guides/database/postgres/best-practices",
+    "https://supabase.com/docs/guides/realtime",
+    "https://supabase.com/docs/guides/realtime/presence",
+    "https://supabase.com/docs/guides/realtime/broadcast",
+    "https://supabase.com/docs/guides/storage",
+    "https://supabase.com/docs/guides/functions",
+    "https://supabase.com/docs/guides/auth/server-side/nextjs",
   ],
   "neondatabase/neon": [
     "https://neon.tech/docs/guides/branching-intro",
@@ -733,15 +739,34 @@ async function fetchBestPracticesContent(
   githubUrl: string | undefined,
   topic: string,
   tokens: number,
+  bestPracticesPaths?: string[],
 ): Promise<{ text: string; sourceUrl: string; truncated: boolean }> {
+  // Build URLs from registry bestPracticesPaths and merge with known URLs
+  const registryUrls: string[] = [];
+  if (bestPracticesPaths && bestPracticesPaths.length > 0) {
+    try {
+      const origin = new URL(docsUrl).origin;
+      for (const p of bestPracticesPaths) {
+        registryUrls.push(p.startsWith("http") ? p : `${origin}${p}`);
+      }
+    } catch { /* invalid docsUrl */ }
+  }
+
   // 1. Race known best-practices URLs in parallel
-  const knownUrls = BEST_PRACTICES_URLS[libraryId];
+  const knownUrls = [...(BEST_PRACTICES_URLS[libraryId] ?? []), ...registryUrls]
+    .filter((u, i, arr) => arr.indexOf(u) === i);
   if (knownUrls && knownUrls.length > 0) {
     const targetUrls = topic
-      ? [
-          ...knownUrls.filter((u) => u.toLowerCase().includes(topic.toLowerCase().split(" ")[0] ?? "")),
-          ...knownUrls,
-        ].filter((u, i, arr) => arr.indexOf(u) === i) // deduplicate
+      ? (() => {
+          const words = topic.toLowerCase().split(/\s+/).filter((w) => w.length > 2);
+          const scored = knownUrls.map((u) => {
+            const lower = u.toLowerCase();
+            const score = words.filter((w) => lower.includes(w)).length;
+            return { url: u, score };
+          });
+          scored.sort((a, b) => b.score - a.score);
+          return scored.map((s) => s.url).filter((u, i, arr) => arr.indexOf(u) === i);
+        })()
       : knownUrls;
 
     const hit = await raceUrls(targetUrls.slice(0, 5));
@@ -753,6 +778,29 @@ async function fetchBestPracticesContent(
         tokens,
       );
       return { text: extracted, sourceUrl: hit.url, truncated };
+    }
+  }
+
+  // 1b. If topic provided, try constructing docs URL from topic slug
+  if (topic) {
+    const topicOrigin = (() => { try { return new URL(docsUrl).origin; } catch { return null; } })();
+    if (topicOrigin) {
+      const slug = topic.toLowerCase().replace(/\s+/g, "/").replace(/[^a-z0-9/-]/g, "");
+      const topicUrls = [
+        `${topicOrigin}/docs/guides/${slug}`,
+        `${topicOrigin}/docs/${slug}`,
+        `${docsUrl}/${slug}`,
+      ];
+      const topicHit = await raceUrls(topicUrls);
+      if (topicHit) {
+        const safe = sanitizeContent(topicHit.content);
+        const { text: extracted, truncated } = extractRelevantContent(
+          safe,
+          topic || "best practices patterns guide",
+          tokens,
+        );
+        return { text: extracted, sourceUrl: topicHit.url, truncated };
+      }
     }
   }
 
@@ -873,6 +921,7 @@ IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library 
         entry.githubUrl,
         effectiveTopic,
         tokens,
+        entry.bestPracticesPaths,
       );
 
       const header = [
