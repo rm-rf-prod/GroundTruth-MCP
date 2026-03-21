@@ -16,7 +16,7 @@
   <a href="https://www.npmjs.com/package/@groundtruth-mcp/gt-mcp"><img src="https://img.shields.io/npm/v/@groundtruth-mcp/gt-mcp?color=00d4aa&label=npm" alt="npm version" /></a>
   <a href="https://github.com/rm-rf-prod/GroundTruth-MCP/actions/workflows/ci.yml"><img src="https://github.com/rm-rf-prod/GroundTruth-MCP/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-ELv2-orange" alt="Elastic License 2.0" /></a>
-  <img src="https://img.shields.io/badge/libraries-unlimited-teal" alt="Unlimited libraries" />
+  <img src="https://img.shields.io/badge/libraries-363%2B-teal" alt="Unlimited libraries" />
   <img src="https://img.shields.io/badge/audit_patterns-100%2B-red" alt="100+ audit patterns" />
   <img src="https://img.shields.io/badge/tests-704-brightgreen" alt="704 tests" />
   <img src="https://img.shields.io/badge/node-%3E%3D24-green" alt="Node 24+" />
