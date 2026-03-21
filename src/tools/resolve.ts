@@ -4,7 +4,7 @@ import { fuzzySearch, lookupByAlias } from "../sources/registry.js";
 import { fetchNpmPackage, fetchPypiPackage, fetchWithTimeout, fetchViaJina } from "../services/fetcher.js";
 import { resolveCache } from "../services/cache.js";
 import type { LibraryMatch, NpmPackageInfo, PypiPackageInfo } from "../types.js";
-import { isExtractionAttempt, withNotice, EXTRACTION_REFUSAL } from "../utils/guard.js";
+import { isExtractionAttempt, withNotice, EXTRACTION_REFUSAL, assertPublicUrl } from "../utils/guard.js";
 
 const InputSchema = z.object({
   libraryName: z
@@ -33,6 +33,7 @@ interface CratesApiResponse {
 }
 
 async function probeLlmsTxt(homepage: string): Promise<{ llmsTxtUrl?: string; llmsFullTxtUrl?: string }> {
+  try { assertPublicUrl(homepage); } catch { return {}; }
   const result: { llmsTxtUrl?: string; llmsFullTxtUrl?: string } = {};
   try {
     const fullRes = await fetchWithTimeout(`${homepage}/llms-full.txt`, 5000);

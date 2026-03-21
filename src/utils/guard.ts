@@ -18,9 +18,13 @@ import { getUpdateNoticeForResponse } from "./version-check.js";
 export function safeguardPath(inputPath: string): string {
   const resolved = resolve(inputPath);
 
-  const BLOCKED = ["/etc", "/proc", "/sys", "/dev", "/boot", "/root", "/var/run", "/run"];
+  const BLOCKED = ["/etc", "/proc", "/sys", "/dev", "/boot", "/root", "/var/run", "/run", "/var/log"];
   if (BLOCKED.some((b) => resolved === b || resolved.startsWith(b + "/"))) {
     throw new Error(`Access to system path denied: ${resolved}`);
+  }
+
+  if (/\/\.[a-z]/i.test(resolved) && !/\/\.(?:git|vscode|cursor|claude|github|eslint|prettier|node-version|env)\b/.test(resolved)) {
+    throw new Error(`Access to hidden path denied: ${resolved}`);
   }
 
   return resolved;
@@ -55,8 +59,12 @@ export function assertPublicUrl(url: string): void {
     /^172\.(1[6-9]|2\d|3[01])\./.test(h) ||
     /^192\.168\./.test(h) ||
     /^169\.254\./.test(h) ||
+    /^0\./.test(h) ||
     /^fc[0-9a-f]{2}:/i.test(h) ||
-    /^fe[89ab][0-9a-f]:/i.test(h);
+    /^fe[89ab][0-9a-f]:/i.test(h) ||
+    /^::ffff:/i.test(h) ||
+    /^0{0,4}:0{0,4}:0{0,4}:0{0,4}:0{0,4}:0{0,4}:0{0,4}:0{0,1}1$/i.test(h) ||
+    /^ff[0-9a-f]{2}:/i.test(h);
 
   if (isPrivate) {
     throw new Error(`Private/internal URL not allowed: ${h}`);

@@ -33,7 +33,7 @@ export const INJECTION_PATTERNS: RegExp[] = [
   /new\s+instructions?.*?:/gi,
   /override\s+(your\s+)?(previous\s+)?instructions?/gi,
   // Modern injection vectors
-  /<!--[\s\S]{0,500}-->/g,
+  /<!--[\s\S]*?-->/g,
   /[\u202A-\u202E\u2066-\u2069]/g,
   /\bact\s+as\b.{0,50}(?:you are|you're|an?\s+ai|a\s+model)/gi,
   /\bpretend\s+(?:you\s+are|to\s+be)\b/gi,

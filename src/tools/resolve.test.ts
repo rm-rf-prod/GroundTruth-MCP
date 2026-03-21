@@ -29,6 +29,7 @@ vi.mock("../services/cache.js", () => ({
 vi.mock("../utils/guard.js", () => ({
   isExtractionAttempt: vi.fn(() => false),
   withNotice: vi.fn((text: string) => `NOTICE\n\n${text}`),
+  assertPublicUrl: vi.fn(),
   EXTRACTION_REFUSAL: "EXTRACTION_REFUSED",
 }));
 

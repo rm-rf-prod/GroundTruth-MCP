@@ -11,6 +11,7 @@ export default defineConfig({
       include: ["src/**/*.ts"],
       exclude: ["src/**/*.test.ts", "src/index.ts"],
     },
+    restoreMocks: true,
     // ESM-native — no transform needed
     pool: "forks",
   },
