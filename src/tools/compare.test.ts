@@ -41,7 +41,7 @@ vi.mock("../services/cache.js", () => ({
 // ── Imports after mocks ──────────────────────────────────────────────────────
 
 import { lookupById, lookupByAlias, fuzzySearch } from "../sources/registry.js";
-import { fetchDocs } from "../services/fetcher.js";
+import { fetchDocs, fetchViaJina, isIndexContent, rankIndexLinks } from "../services/fetcher.js";
 import { isExtractionAttempt } from "../utils/guard.js";
 import { docCache } from "../services/cache.js";
 import { extractRelevantContent } from "../utils/extract.js";
@@ -282,6 +282,25 @@ describe("gt_compare handler", () => {
       vi.mocked(docCache.get).mockReturnValue("CACHED_DOCS");
       await handler({ libraries: ["prisma", "drizzle-orm"] });
       expect(fetchDocs).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("deep link follow", () => {
+    it("follows deep links when library docs is an index page", async () => {
+      const prisma = makeEntry("prisma/prisma", "Prisma");
+      const drizzle = makeEntry("drizzle-team/drizzle-orm", "Drizzle ORM");
+      vi.mocked(lookupByAlias).mockImplementation((name) => {
+        if (name === "prisma") return prisma;
+        if (name === "drizzle-orm") return drizzle;
+        return undefined;
+      });
+      vi.mocked(fetchDocs).mockResolvedValue(makeFetchResult());
+      vi.mocked(isIndexContent).mockReturnValueOnce(true).mockReturnValue(false);
+      vi.mocked(rankIndexLinks).mockReturnValueOnce(["https://example.com/deep"]).mockReturnValue([]);
+      vi.mocked(fetchViaJina).mockResolvedValue("y".repeat(400));
+      const result = await handler({ libraries: ["prisma", "drizzle-orm"], criteria: "test" });
+      expect(fetchViaJina).toHaveBeenCalledWith("https://example.com/deep");
+      expect(result.content[0]!.text).toBeDefined();
     });
   });
 

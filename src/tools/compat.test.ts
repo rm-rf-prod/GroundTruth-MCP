@@ -164,6 +164,16 @@ describe("gt_compat handler", () => {
     });
   });
 
+  describe("environments filter header", () => {
+    it("includes environment filter in output header when environments provided", async () => {
+      vi.mocked(fetchViaJina).mockResolvedValue(MDN_CONTENT);
+      const result = await handler({ feature: "fetch API", environments: ["chrome", "firefox"] });
+      expect(result.content[0]!.text).toContain("Focused on:");
+      expect(result.content[0]!.text).toContain("chrome");
+      expect(result.content[0]!.text).toContain("firefox");
+    });
+  });
+
   describe("empty result", () => {
     it("returns no-data message when all fetches return empty", async () => {
       vi.mocked(fetchViaJina).mockResolvedValue(null);

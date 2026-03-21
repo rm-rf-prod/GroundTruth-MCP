@@ -229,6 +229,17 @@ describe("gt_changelog handler", () => {
     });
   });
 
+  describe("version not found", () => {
+    it("returns full content when requested version not found", async () => {
+      vi.mocked(lookupById).mockReturnValue(makeEntry());
+      vi.mocked(fetchGitHubReleases).mockResolvedValue(RELEASES_CONTENT);
+      const result = await handler({ libraryId: "vercel/next.js", version: "99.99.99" });
+      expect(result.content[0]!.text).toBeDefined();
+      expect(result.content[0]!.text).not.toBe("EXTRACTION_REFUSED");
+      expect(result.content[0]!.text).not.toContain("No changelog found");
+    });
+  });
+
   describe("cache writing", () => {
     it("caches successful response", async () => {
       vi.mocked(lookupById).mockReturnValue(makeEntry());
