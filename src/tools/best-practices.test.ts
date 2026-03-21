@@ -38,7 +38,7 @@ vi.mock("../utils/guard.js", () => ({
 // ── Imports after mocks ─────────────────────────────────────────────────────
 
 import { lookupById, lookupByAlias } from "../sources/registry.js";
-import { fetchDocs, fetchViaJina, fetchGitHubContent, fetchGitHubExamples } from "../services/fetcher.js";
+import { fetchDocs, fetchViaJina, fetchGitHubContent, fetchGitHubExamples, isIndexContent, rankIndexLinks } from "../services/fetcher.js";
 import { isExtractionAttempt } from "../utils/guard.js";
 
 // ── Handler capture ─────────────────────────────────────────────────────────
@@ -180,6 +180,29 @@ describe("gt_best_practices handler", () => {
       const result = await handler({ libraryId: "test/no-known-bp" });
       expect(fetchDocs).toHaveBeenCalled();
       expect(result.structuredContent!.sourceUrl).toBe("https://nextjs.org/llms.txt");
+    });
+  });
+
+  describe("isIndexContent deep link follow in step 3", () => {
+    it("follows deep links when step 3 fetchDocs content is an index page", async () => {
+      const entry = makeEntry({ id: "test/index-content-lib" });
+      vi.mocked(lookupById).mockReturnValue(entry);
+      // Generic BP path races call fetchViaJina for all suffixes in parallel — return null for
+      // all except the specific deep-link URL which gets called after isIndexContent=true
+      vi.mocked(fetchViaJina).mockImplementation(async (url: string) => {
+        if (url === "https://example.com/deep-bp") return "z".repeat(400);
+        return null;
+      });
+      vi.mocked(isIndexContent).mockReturnValueOnce(true);
+      vi.mocked(rankIndexLinks).mockReturnValueOnce(["https://example.com/deep-bp"]);
+      vi.mocked(fetchDocs).mockResolvedValue({
+        content: "index page content",
+        url: "https://nextjs.org/docs",
+        sourceType: "direct",
+      });
+      const result = await handler({ libraryId: "test/index-content-lib" });
+      expect(fetchViaJina).toHaveBeenCalledWith("https://example.com/deep-bp");
+      expect(result.content[0]!.text).toBeDefined();
     });
   });
 

@@ -19,7 +19,7 @@
 - `DiskCacheFile` gains `contentHash` field
 
 ### Stats
-- 676 tests across 22 files (up from 565)
+- 704 tests across 22 files (up from 565)
 - 10 MCP tools (up from 9)
 
 ---
@@ -167,7 +167,7 @@ Source files scanned: `.ts`, `.tsx`, `.js`, `.jsx`, `.css`, `.html`, `.py`. Test
 
 ### Tests — 565 across 19 files
 
-Every audit pattern, every manifest parser, every tool, every utility — fully covered. Tests run in CI on every push and pull request to `main`.
+565 tests across 19 files. Tests run in CI on every push and pull request to `main`.
 
 ### CI
 

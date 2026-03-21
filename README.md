@@ -15,7 +15,7 @@
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-ELv2-orange" alt="Elastic License 2.0" /></a>
   <img src="https://img.shields.io/badge/libraries-unlimited-teal" alt="Unlimited libraries" />
   <img src="https://img.shields.io/badge/audit_patterns-100%2B-red" alt="100+ audit patterns" />
-  <img src="https://img.shields.io/badge/tests-676-brightgreen" alt="676 tests" />
+  <img src="https://img.shields.io/badge/tests-704-brightgreen" alt="704 tests" />
   <img src="https://img.shields.io/badge/node-%3E%3D24-green" alt="Node 24+" />
   <img src="https://img.shields.io/badge/status-active%20development-blue" alt="Active Development" />
 </p>
@@ -428,7 +428,7 @@ The two tools approach the same problem from different angles. Context7 embeds d
 
 ## Tests
 
-676 tests across 22 files. Every audit pattern has a test. Every manifest parser has a test. If a pattern ships without a test, the CI pipeline says no before any human has to.
+704 tests across 22 files. Every audit pattern has a test. Every manifest parser has a test. If a pattern ships without a test, the CI pipeline says no before any human has to.
 
 ```bash
 npm test                # run all tests
@@ -490,6 +490,14 @@ To stay updated:
 The library registry lives in `src/sources/registry.ts`. Adding a library is a PR with `id`, `name`, `docsUrl`, and `llmsTxtUrl` if the project publishes one. If you've been frustrated by a library not being covered, that's the fix — it takes about five minutes.
 
 Issues and requests: [github.com/rm-rf-prod/GroundTruth-MCP/issues](https://github.com/rm-rf-prod/GroundTruth-MCP/issues)
+
+---
+
+## Full documentation
+
+Want the full technical breakdown? Architecture, every tool's input schema, every audit pattern, the fetch pipeline, caching internals, the obfuscation build, and how the registry works?
+
+**[Read the full docs](./docs/DOCUMENTATION.md)** — everything in one place, for the people who actually read documentation before using a tool.
 
 ---
 

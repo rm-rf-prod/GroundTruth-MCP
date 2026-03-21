@@ -252,6 +252,34 @@ describe("gt_resolve_library handler", () => {
       expect(matches[0]!.githubUrl).toBe("https://github.com/org/gh-pkg");
     });
 
+    it("extracts GitHub URL from string repository field", async () => {
+      vi.mocked(lookupByAlias).mockReturnValue(undefined);
+      vi.mocked(fuzzySearch).mockReturnValue([]);
+      vi.mocked(fetchNpmPackage).mockResolvedValue({
+        name: "string-repo-pkg",
+        description: "test",
+        homepage: "https://example.com",
+        repository: "git+https://github.com/org/string-repo-pkg.git",
+      });
+      vi.mocked(fetchWithTimeout).mockResolvedValue({ ok: false } as Response);
+      const result = await handler({ libraryName: "string-repo-pkg" });
+      const match = (result.structuredContent as { matches: Array<{ githubUrl: string }> }).matches[0];
+      expect(match!.githubUrl).toBe("https://github.com/org/string-repo-pkg");
+    });
+
+    it("handles network errors during llms.txt probing gracefully", async () => {
+      vi.mocked(lookupByAlias).mockReturnValue(undefined);
+      vi.mocked(fuzzySearch).mockReturnValue([]);
+      vi.mocked(fetchNpmPackage).mockResolvedValue({
+        name: "error-probe-pkg",
+        description: "test",
+        homepage: "https://example.com",
+      });
+      vi.mocked(fetchWithTimeout).mockRejectedValue(new Error("network error"));
+      const result = await handler({ libraryName: "error-probe-pkg" });
+      expect(result.content[0]!.text).toContain("error-probe-pkg");
+    });
+
     it("skips npm and tries pypi when npm returns null", async () => {
       vi.mocked(lookupByAlias).mockReturnValue(null);
       vi.mocked(fuzzySearch).mockReturnValue([]);
