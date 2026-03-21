@@ -11,7 +11,8 @@ coverage/
 # Private registry — full 230+ entry version, never commit
 docs/private/
 
-# Internal docs — handoffs, TODOs, analysis files
+# Internal docs — publishing guide, handoffs, TODOs, analysis files
+docs/PUBLISHING.md
 docs/HANDOFF-*.md
 docs/TODO-*.md
 docs/GEO-ANALYSIS.md
