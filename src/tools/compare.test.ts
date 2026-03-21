@@ -12,6 +12,9 @@ vi.mock("../sources/registry.js", () => ({
 
 vi.mock("../services/fetcher.js", () => ({
   fetchDocs: vi.fn(),
+  fetchViaJina: vi.fn().mockResolvedValue(null),
+  isIndexContent: vi.fn().mockReturnValue(false),
+  rankIndexLinks: vi.fn().mockReturnValue([]),
 }));
 
 vi.mock("../utils/extract.js", () => ({

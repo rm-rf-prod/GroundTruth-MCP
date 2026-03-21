@@ -114,11 +114,58 @@ export async function fetchViaJina(url: string): Promise<string | null> {
   }
 }
 
+/**
+ * Detect if content is a TOC/index page (list of links) rather than actual documentation.
+ * These are common in llms.txt files that serve as directories rather than content.
+ */
+export function isIndexContent(content: string): boolean {
+  const lines = content.split("\n").filter((l) => l.trim().length > 0);
+  if (lines.length < 5) return false;
+  const linkLines = lines.filter((l) => /^\s*-?\s*\[.+\]\(https?:\/\/.+\)/.test(l));
+  return linkLines.length / lines.length > 0.5;
+}
+
+/**
+ * Extract URLs from an index/TOC page and score them against a topic query.
+ * Returns the best-matching URLs sorted by relevance.
+ */
+export function rankIndexLinks(content: string, topic: string): string[] {
+  const links: Array<{ url: string; text: string; score: number }> = [];
+  const re = /\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g;
+  let match;
+  while ((match = re.exec(content)) !== null) {
+    if (match[1] && match[2]) {
+      links.push({ url: match[2], text: match[1].toLowerCase(), score: 0 });
+    }
+  }
+
+  if (!topic || links.length === 0) return links.slice(0, 3).map((l) => l.url);
+
+  const queryWords = topic
+    .toLowerCase()
+    .split(/[\s,]+/)
+    .filter((w) => w.length > 2);
+
+  for (const link of links) {
+    const combined = link.text + " " + link.url.toLowerCase();
+    for (const word of queryWords) {
+      if (combined.includes(word)) link.score += 10;
+    }
+  }
+
+  return links
+    .filter((l) => l.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3)
+    .map((l) => l.url);
+}
+
 /** Try llms.txt, then llms-full.txt, then Jina, then direct HTML */
 export async function fetchDocs(
   docsUrl: string,
   llmsTxtUrl?: string,
   llmsFullTxtUrl?: string,
+  _topic?: string,
 ): Promise<FetchResult> {
   const cacheKey = `docs:${docsUrl}`;
 

@@ -1,7 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { fuzzySearch, lookupById } from "../sources/registry.js";
-import { fetchDocs, fetchWithTimeout, fetchViaJina, fetchDevDocs } from "../services/fetcher.js";
+import { fetchDocs, fetchWithTimeout, fetchViaJina, fetchDevDocs, isIndexContent, rankIndexLinks } from "../services/fetcher.js";
 import { extractRelevantContent } from "../utils/extract.js";
 import { isExtractionAttempt, withNotice, EXTRACTION_REFUSAL } from "../utils/guard.js";
 import { sanitizeContent } from "../utils/sanitize.js";
@@ -251,7 +251,7 @@ const TOPIC_URL_MAP: Array<{ patterns: string[]; urls: string[]; name: string }>
   },
   {
     patterns: ["http/3", "http3", "quic", "http2", "http/2"],
-    urls: ["https://developer.mozilla.org/en-US/docs/Web/HTTP/Connection_management_in_HTTP_1.x"],
+    urls: ["https://developer.mozilla.org/en-US/docs/Web/HTTP/Evolution_of_HTTP"],
     name: "HTTP/2 and HTTP/3",
   },
   {
@@ -263,11 +263,6 @@ const TOPIC_URL_MAP: Array<{ patterns: string[]; urls: string[]; name: string }>
     patterns: ["openapi", "swagger", "api specification", "api documentation"],
     urls: ["https://swagger.io/docs/specification/v3_0/about/"],
     name: "OpenAPI 3.1",
-  },
-  {
-    patterns: ["graphql", "graphql spec", "graphql best practices"],
-    urls: ["https://graphql.org/learn/"],
-    name: "GraphQL",
   },
   // HTML
   {
@@ -287,43 +282,6 @@ const TOPIC_URL_MAP: Array<{ patterns: string[]; urls: string[]; name: string }>
       "https://ogp.me/",
     ],
     name: "Meta Tags / Open Graph",
-  },
-  // Infrastructure & DevOps
-  {
-    patterns: ["docker", "dockerfile", "container", "docker compose"],
-    urls: ["https://docs.docker.com/get-started/"],
-    name: "Docker",
-  },
-  {
-    patterns: ["kubernetes", "k8s", "pod", "deployment yaml"],
-    urls: ["https://kubernetes.io/docs/concepts/"],
-    name: "Kubernetes",
-  },
-  {
-    patterns: ["github actions", "ci/cd", "workflow yaml", "github workflow"],
-    urls: ["https://docs.github.com/en/actions/writing-workflows"],
-    name: "GitHub Actions",
-  },
-  {
-    patterns: ["terraform", "infrastructure as code", "iac"],
-    urls: ["https://developer.hashicorp.com/terraform/docs"],
-    name: "Terraform",
-  },
-  // Databases
-  {
-    patterns: ["postgresql", "postgres", "psql", "pg"],
-    urls: ["https://www.postgresql.org/docs/current/"],
-    name: "PostgreSQL",
-  },
-  {
-    patterns: ["redis", "redis cache", "redis commands"],
-    urls: ["https://redis.io/docs/latest/"],
-    name: "Redis",
-  },
-  {
-    patterns: ["mongodb", "mongo", "mongoose", "document database"],
-    urls: ["https://www.mongodb.com/docs/manual/"],
-    name: "MongoDB",
   },
   // Languages
   {
@@ -701,7 +659,6 @@ const TOPIC_URL_MAP: Array<{ patterns: string[]; urls: string[]; name: string }>
     ],
     name: 'GitHub Actions',
   },
-  // Databases
   {
     patterns: ['postgresql', 'postgres', 'pg', 'psql', 'postgres index', 'vacuum analyze'],
     urls: [
@@ -927,6 +884,717 @@ const TOPIC_URL_MAP: Array<{ patterns: string[]; urls: string[]; name: string }>
     ],
     name: 'Load Testing',
   },
+
+  // ─── Google APIs & Services ───────────────────────────────────────────────
+  {
+    patterns: ['google gemini', 'gemini api', 'gemini pro', 'gemini flash', 'google ai studio'],
+    urls: [
+      'https://ai.google.dev/gemini-api/docs',
+      'https://ai.google.dev/gemini-api/docs/get-started/tutorial',
+    ],
+    name: 'Google Gemini API',
+  },
+  {
+    patterns: ['google maps', 'maps api', 'maps javascript api', 'google maps embed', 'google places'],
+    urls: [
+      'https://developers.google.com/maps/documentation/javascript/overview',
+      'https://developers.google.com/maps/documentation/places/web-service',
+    ],
+    name: 'Google Maps API',
+  },
+  {
+    patterns: ['google analytics', 'ga4', 'gtag', 'measurement protocol', 'google analytics 4'],
+    urls: [
+      'https://developers.google.com/analytics/devguides/collection/ga4',
+      'https://developers.google.com/analytics/devguides/reporting/data/v1',
+    ],
+    name: 'Google Analytics 4',
+  },
+  {
+    patterns: ['google ads api', 'google ads scripts', 'adwords api', 'google ads reporting'],
+    urls: [
+      'https://developers.google.com/google-ads/api/docs/start',
+      'https://developers.google.com/google-ads/api/docs/best-practices/overview',
+    ],
+    name: 'Google Ads API',
+  },
+  {
+    patterns: ['google search console', 'search console api', 'google webmaster', 'gsc api'],
+    urls: [
+      'https://developers.google.com/webmaster-tools/v1/api_reference_index',
+      'https://developers.google.com/search/docs/monitor-debug/search-console-about',
+    ],
+    name: 'Google Search Console API',
+  },
+  {
+    patterns: ['google sheets api', 'google spreadsheet api', 'sheets v4'],
+    urls: [
+      'https://developers.google.com/sheets/api/guides/concepts',
+      'https://developers.google.com/sheets/api/quickstart/nodejs',
+    ],
+    name: 'Google Sheets API',
+  },
+  {
+    patterns: ['google drive api', 'google drive sdk', 'drive v3'],
+    urls: [
+      'https://developers.google.com/drive/api/guides/about-sdk',
+      'https://developers.google.com/drive/api/quickstart/nodejs',
+    ],
+    name: 'Google Drive API',
+  },
+  {
+    patterns: ['google calendar api', 'google calendar sdk', 'calendar v3'],
+    urls: [
+      'https://developers.google.com/calendar/api/guides/overview',
+      'https://developers.google.com/calendar/api/quickstart/nodejs',
+    ],
+    name: 'Google Calendar API',
+  },
+  {
+    patterns: ['google oauth', 'google identity', 'google sign in', 'google login', 'google auth'],
+    urls: [
+      'https://developers.google.com/identity/protocols/oauth2',
+      'https://developers.google.com/identity/gsi/web/guides/overview',
+    ],
+    name: 'Google OAuth / Identity',
+  },
+  {
+    patterns: ['google tag manager', 'gtm', 'tag manager api', 'gtm server side'],
+    urls: [
+      'https://developers.google.com/tag-platform/tag-manager',
+      'https://developers.google.com/tag-platform/tag-manager/server-side',
+    ],
+    name: 'Google Tag Manager',
+  },
+  {
+    patterns: ['google recaptcha', 'recaptcha v3', 'recaptcha enterprise', 'captcha google'],
+    urls: [
+      'https://developers.google.com/recaptcha/docs/v3',
+      'https://cloud.google.com/recaptcha-enterprise/docs',
+    ],
+    name: 'Google reCAPTCHA',
+  },
+  {
+    patterns: ['lighthouse', 'pagespeed insights', 'pagespeed api', 'google lighthouse'],
+    urls: [
+      'https://developer.chrome.com/docs/lighthouse/overview',
+      'https://developers.google.com/speed/docs/insights/v5/get-started',
+    ],
+    name: 'Google Lighthouse / PageSpeed',
+  },
+  {
+    patterns: ['firebase firestore', 'cloud firestore', 'firestore rules', 'firestore security'],
+    urls: [
+      'https://firebase.google.com/docs/firestore',
+      'https://firebase.google.com/docs/firestore/security/get-started',
+    ],
+    name: 'Firebase Firestore',
+  },
+  {
+    patterns: ['firebase auth', 'firebase authentication', 'firebase sign in'],
+    urls: [
+      'https://firebase.google.com/docs/auth',
+      'https://firebase.google.com/docs/auth/web/start',
+    ],
+    name: 'Firebase Authentication',
+  },
+  {
+    patterns: ['firebase functions', 'cloud functions firebase', 'firebase cloud functions'],
+    urls: [
+      'https://firebase.google.com/docs/functions',
+      'https://firebase.google.com/docs/functions/get-started',
+    ],
+    name: 'Firebase Cloud Functions',
+  },
+  {
+    patterns: ['firebase hosting', 'firebase deploy'],
+    urls: ['https://firebase.google.com/docs/hosting'],
+    name: 'Firebase Hosting',
+  },
+  {
+    patterns: ['google cloud run', 'cloud run', 'gcp cloud run'],
+    urls: [
+      'https://cloud.google.com/run/docs',
+      'https://cloud.google.com/run/docs/quickstarts',
+    ],
+    name: 'Google Cloud Run',
+  },
+  {
+    patterns: ['google cloud functions', 'gcp functions', 'cloud functions gen2'],
+    urls: [
+      'https://cloud.google.com/functions/docs',
+      'https://cloud.google.com/functions/docs/writing',
+    ],
+    name: 'Google Cloud Functions',
+  },
+  {
+    patterns: ['google cloud storage', 'gcs', 'gcp storage', 'cloud storage bucket'],
+    urls: [
+      'https://cloud.google.com/storage/docs',
+      'https://cloud.google.com/storage/docs/uploading-objects',
+    ],
+    name: 'Google Cloud Storage',
+  },
+  {
+    patterns: ['bigquery', 'google bigquery', 'bq sql', 'bigquery ml'],
+    urls: [
+      'https://cloud.google.com/bigquery/docs',
+      'https://cloud.google.com/bigquery/docs/introduction',
+    ],
+    name: 'Google BigQuery',
+  },
+  {
+    patterns: ['google pub sub', 'pubsub', 'cloud pub/sub', 'gcp pubsub'],
+    urls: [
+      'https://cloud.google.com/pubsub/docs',
+      'https://cloud.google.com/pubsub/docs/overview',
+    ],
+    name: 'Google Pub/Sub',
+  },
+  {
+    patterns: ['google vertex ai', 'vertex ai', 'vertex ai studio', 'vertex ml'],
+    urls: [
+      'https://cloud.google.com/vertex-ai/docs',
+      'https://cloud.google.com/vertex-ai/docs/start/introduction-unified-platform',
+    ],
+    name: 'Google Vertex AI',
+  },
+  {
+    patterns: ['google cloud vision', 'vision api', 'google ocr', 'image recognition google'],
+    urls: ['https://cloud.google.com/vision/docs'],
+    name: 'Google Cloud Vision API',
+  },
+  {
+    patterns: ['google cloud speech', 'speech to text google', 'google stt', 'google tts', 'google text to speech'],
+    urls: [
+      'https://cloud.google.com/speech-to-text/docs',
+      'https://cloud.google.com/text-to-speech/docs',
+    ],
+    name: 'Google Cloud Speech APIs',
+  },
+  {
+    patterns: ['google translate api', 'cloud translation', 'google translation api'],
+    urls: ['https://cloud.google.com/translate/docs'],
+    name: 'Google Cloud Translation',
+  },
+  {
+    patterns: ['google natural language', 'google nlp', 'cloud natural language api'],
+    urls: ['https://cloud.google.com/natural-language/docs'],
+    name: 'Google Cloud Natural Language',
+  },
+  {
+    patterns: ['google youtube api', 'youtube data api', 'youtube iframe api', 'youtube embed'],
+    urls: [
+      'https://developers.google.com/youtube/v3/getting-started',
+      'https://developers.google.com/youtube/iframe_api_reference',
+    ],
+    name: 'YouTube API',
+  },
+  {
+    patterns: ['gmail api', 'google gmail api', 'send email gmail api'],
+    urls: ['https://developers.google.com/gmail/api/guides'],
+    name: 'Gmail API',
+  },
+  {
+    patterns: ['google workspace', 'google apps script', 'apps script'],
+    urls: [
+      'https://developers.google.com/apps-script',
+      'https://developers.google.com/workspace',
+    ],
+    name: 'Google Workspace / Apps Script',
+  },
+  {
+    patterns: ['material design', 'material ui', 'md3', 'material design 3', 'material web'],
+    urls: [
+      'https://m3.material.io',
+      'https://m3.material.io/develop/web',
+    ],
+    name: 'Material Design 3',
+  },
+  {
+    patterns: ['google fonts api', 'google web fonts', 'fonts.googleapis'],
+    urls: ['https://developers.google.com/fonts/docs/getting_started'],
+    name: 'Google Fonts API',
+  },
+  {
+    patterns: ['google search api', 'custom search api', 'google programmable search'],
+    urls: ['https://developers.google.com/custom-search/v1/overview'],
+    name: 'Google Custom Search API',
+  },
+  {
+    patterns: ['google seo', 'google search guidelines', 'google webmaster guidelines', 'google ranking'],
+    urls: [
+      'https://developers.google.com/search/docs/essentials',
+      'https://developers.google.com/search/docs/appearance/google-discover',
+    ],
+    name: 'Google Search Guidelines',
+  },
+  {
+    patterns: ['google chrome extensions', 'chrome extension api', 'manifest v3', 'chrome web store'],
+    urls: [
+      'https://developer.chrome.com/docs/extensions/get-started',
+      'https://developer.chrome.com/docs/extensions/reference/api',
+    ],
+    name: 'Chrome Extensions',
+  },
+  {
+    patterns: ['gke', 'google kubernetes engine', 'gcp kubernetes'],
+    urls: [
+      'https://cloud.google.com/kubernetes-engine/docs',
+      'https://cloud.google.com/kubernetes-engine/docs/concepts/kubernetes-engine-overview',
+    ],
+    name: 'Google Kubernetes Engine',
+  },
+  {
+    patterns: ['google cloud iam', 'gcp iam', 'google iam', 'google service account'],
+    urls: [
+      'https://cloud.google.com/iam/docs',
+      'https://cloud.google.com/iam/docs/overview',
+    ],
+    name: 'Google Cloud IAM',
+  },
+  {
+    patterns: ['flutter', 'dart flutter', 'flutter widget', 'flutter state management'],
+    urls: [
+      'https://docs.flutter.dev',
+      'https://docs.flutter.dev/cookbook',
+    ],
+    name: 'Flutter',
+  },
+  {
+    patterns: ['angular', 'angular signals', 'angular component', 'angular routing'],
+    urls: [
+      'https://angular.dev',
+      'https://angular.dev/overview',
+    ],
+    name: 'Angular',
+  },
+
+  // ─── Anthropic / Claude API (comprehensive) ──────────────────────────────
+  {
+    patterns: ['claude api', 'anthropic api', 'claude messages', 'anthropic messages api'],
+    urls: [
+      'https://docs.anthropic.com/en/docs/quickstart',
+      'https://docs.anthropic.com/en/api/messages',
+    ],
+    name: 'Anthropic Claude API',
+  },
+  {
+    patterns: ['claude tool use', 'anthropic tool use', 'claude function calling', 'anthropic tools'],
+    urls: ['https://docs.anthropic.com/en/docs/build-with-claude/tool-use'],
+    name: 'Claude Tool Use',
+  },
+  {
+    patterns: ['claude prompt caching', 'anthropic caching', 'cache_control anthropic'],
+    urls: ['https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching'],
+    name: 'Claude Prompt Caching',
+  },
+  {
+    patterns: ['claude vision', 'anthropic vision', 'claude image', 'anthropic image analysis'],
+    urls: ['https://docs.anthropic.com/en/docs/build-with-claude/vision'],
+    name: 'Claude Vision',
+  },
+  {
+    patterns: ['claude extended thinking', 'anthropic thinking', 'claude reasoning', 'thinking tokens'],
+    urls: ['https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking'],
+    name: 'Claude Extended Thinking',
+  },
+  {
+    patterns: ['claude computer use', 'anthropic computer use', 'claude desktop automation'],
+    urls: ['https://docs.anthropic.com/en/docs/build-with-claude/computer-use'],
+    name: 'Claude Computer Use',
+  },
+  {
+    patterns: ['claude streaming', 'anthropic streaming', 'anthropic sse', 'claude stream'],
+    urls: ['https://docs.anthropic.com/en/docs/build-with-claude/streaming'],
+    name: 'Claude Streaming',
+  },
+  {
+    patterns: ['claude batches', 'anthropic batch', 'message batches anthropic'],
+    urls: ['https://docs.anthropic.com/en/docs/build-with-claude/message-batches'],
+    name: 'Claude Message Batches',
+  },
+  {
+    patterns: ['claude pdf', 'anthropic pdf', 'claude document analysis'],
+    urls: ['https://docs.anthropic.com/en/docs/build-with-claude/pdf-support'],
+    name: 'Claude PDF Support',
+  },
+  {
+    patterns: ['claude citations', 'anthropic citations', 'source citations claude'],
+    urls: ['https://docs.anthropic.com/en/docs/build-with-claude/citations'],
+    name: 'Claude Citations',
+  },
+  {
+    patterns: ['claude models', 'anthropic models', 'claude opus', 'claude sonnet', 'claude haiku', 'claude model comparison'],
+    urls: [
+      'https://docs.anthropic.com/en/docs/about-claude/models',
+      'https://docs.anthropic.com/en/docs/about-claude/models/all-models',
+    ],
+    name: 'Claude Models',
+  },
+  {
+    patterns: ['claude rate limits', 'anthropic rate limits', 'anthropic quotas'],
+    urls: ['https://docs.anthropic.com/en/api/rate-limits'],
+    name: 'Anthropic Rate Limits',
+  },
+  {
+    patterns: ['claude code', 'claude code cli', 'claude code agent', 'claude code sdk'],
+    urls: [
+      'https://code.claude.com/docs/en/overview',
+      'https://code.claude.com/docs/en/best-practices',
+    ],
+    name: 'Claude Code',
+  },
+  {
+    patterns: ['claude agent sdk', 'anthropic agent sdk', 'claude code sdk programmatic'],
+    urls: [
+      'https://platform.claude.com/docs/en/agent-sdk/overview',
+      'https://platform.claude.com/docs/en/agent-sdk/quickstart',
+    ],
+    name: 'Claude Agent SDK',
+  },
+
+  // ─── OpenAI API (comprehensive) ──────────────────────────────────────────
+  {
+    patterns: ['openai api', 'chatgpt api', 'gpt api', 'openai chat completions'],
+    urls: [
+      'https://platform.openai.com/docs/overview',
+      'https://platform.openai.com/docs/api-reference/chat',
+    ],
+    name: 'OpenAI API',
+  },
+  {
+    patterns: ['openai responses', 'openai responses api', 'gpt responses'],
+    urls: ['https://platform.openai.com/docs/api-reference/responses'],
+    name: 'OpenAI Responses API',
+  },
+  {
+    patterns: ['openai function calling', 'openai tools', 'gpt function calling', 'openai tool calling'],
+    urls: ['https://platform.openai.com/docs/guides/function-calling'],
+    name: 'OpenAI Function Calling',
+  },
+  {
+    patterns: ['openai structured output', 'openai json mode', 'gpt json output'],
+    urls: ['https://platform.openai.com/docs/guides/structured-outputs'],
+    name: 'OpenAI Structured Output',
+  },
+  {
+    patterns: ['openai embeddings', 'text-embedding-3', 'openai embed'],
+    urls: ['https://platform.openai.com/docs/guides/embeddings'],
+    name: 'OpenAI Embeddings',
+  },
+  {
+    patterns: ['openai fine tuning', 'gpt fine tune', 'openai finetune', 'openai fine-tuning'],
+    urls: ['https://platform.openai.com/docs/guides/fine-tuning'],
+    name: 'OpenAI Fine-tuning',
+  },
+  {
+    patterns: ['openai vision', 'gpt vision', 'gpt-4 vision', 'openai image understanding'],
+    urls: ['https://platform.openai.com/docs/guides/vision'],
+    name: 'OpenAI Vision',
+  },
+  {
+    patterns: ['openai image generation', 'dall-e', 'dalle', 'openai images', 'gpt image'],
+    urls: ['https://platform.openai.com/docs/guides/images'],
+    name: 'OpenAI Image Generation',
+  },
+  {
+    patterns: ['openai whisper', 'openai speech to text', 'openai stt', 'openai transcription'],
+    urls: ['https://platform.openai.com/docs/guides/speech-to-text'],
+    name: 'OpenAI Whisper / STT',
+  },
+  {
+    patterns: ['openai tts', 'openai text to speech', 'openai voice'],
+    urls: ['https://platform.openai.com/docs/guides/text-to-speech'],
+    name: 'OpenAI TTS',
+  },
+  {
+    patterns: ['openai realtime', 'openai realtime api', 'gpt realtime', 'openai voice chat'],
+    urls: ['https://platform.openai.com/docs/guides/realtime'],
+    name: 'OpenAI Realtime API',
+  },
+  {
+    patterns: ['openai batch', 'openai batch api', 'gpt batch processing'],
+    urls: ['https://platform.openai.com/docs/guides/batch'],
+    name: 'OpenAI Batch API',
+  },
+  {
+    patterns: ['openai moderation', 'content moderation openai', 'openai safety'],
+    urls: ['https://platform.openai.com/docs/guides/moderation'],
+    name: 'OpenAI Moderation',
+  },
+  {
+    patterns: ['openai agents', 'openai agents sdk', 'openai swarm', 'openai multi agent'],
+    urls: [
+      'https://openai.github.io/openai-agents-python',
+      'https://openai.github.io/openai-agents-python/quickstart',
+    ],
+    name: 'OpenAI Agents SDK',
+  },
+  {
+    patterns: ['openai rate limits', 'openai quotas', 'openai usage limits'],
+    urls: ['https://platform.openai.com/docs/guides/rate-limits'],
+    name: 'OpenAI Rate Limits',
+  },
+  {
+    patterns: ['openai best practices', 'openai production', 'gpt production best practices'],
+    urls: ['https://platform.openai.com/docs/guides/production-best-practices'],
+    name: 'OpenAI Production Best Practices',
+  },
+
+  // ─── Other AI Providers ──────────────────────────────────────────────────
+  {
+    patterns: ['mistral ai', 'mistral api', 'mistral large', 'mixtral', 'mistral nemo'],
+    urls: [
+      'https://docs.mistral.ai',
+      'https://docs.mistral.ai/getting-started/quickstart',
+    ],
+    name: 'Mistral AI',
+  },
+  {
+    patterns: ['cohere api', 'cohere embed', 'cohere rerank', 'cohere command'],
+    urls: [
+      'https://docs.cohere.com',
+      'https://docs.cohere.com/docs/the-cohere-platform',
+    ],
+    name: 'Cohere',
+  },
+  {
+    patterns: ['groq api', 'groq inference', 'groq llm', 'groq speed'],
+    urls: ['https://console.groq.com/docs'],
+    name: 'Groq',
+  },
+  {
+    patterns: ['replicate api', 'replicate run', 'replicate model'],
+    urls: ['https://replicate.com/docs'],
+    name: 'Replicate',
+  },
+  {
+    patterns: ['together ai', 'together api', 'together inference'],
+    urls: ['https://docs.together.ai'],
+    name: 'Together AI',
+  },
+  {
+    patterns: ['hugging face', 'huggingface', 'hf inference', 'hugging face api', 'hf hub'],
+    urls: [
+      'https://huggingface.co/docs/api-inference',
+      'https://huggingface.co/docs/huggingface.js',
+    ],
+    name: 'Hugging Face',
+  },
+  {
+    patterns: ['langchain', 'langchain js', 'langchain python', 'langchain rag', 'langchain agent'],
+    urls: [
+      'https://js.langchain.com/docs/introduction',
+      'https://python.langchain.com/docs/introduction',
+    ],
+    name: 'LangChain',
+  },
+  {
+    patterns: ['langgraph', 'lang graph', 'langchain graph', 'multi agent langchain'],
+    urls: ['https://langchain-ai.github.io/langgraph'],
+    name: 'LangGraph',
+  },
+  {
+    patterns: ['llamaindex', 'llama index', 'llama_index', 'llamaindex rag'],
+    urls: [
+      'https://docs.llamaindex.ai/en/stable',
+      'https://docs.llamaindex.ai/en/stable/getting_started/concepts',
+    ],
+    name: 'LlamaIndex',
+  },
+  {
+    patterns: ['crewai', 'crew ai', 'multi agent crew'],
+    urls: ['https://docs.crewai.com'],
+    name: 'CrewAI',
+  },
+  {
+    patterns: ['autogen', 'microsoft autogen', 'autogen agent'],
+    urls: ['https://microsoft.github.io/autogen'],
+    name: 'AutoGen',
+  },
+
+  // ─── AI Concepts & Patterns ──────────────────────────────────────────────
+  {
+    patterns: ['fine tuning', 'fine-tuning llm', 'lora', 'qlora', 'peft', 'model fine-tuning'],
+    urls: [
+      'https://platform.openai.com/docs/guides/fine-tuning',
+      'https://huggingface.co/docs/peft',
+    ],
+    name: 'LLM Fine-tuning',
+  },
+  {
+    patterns: ['embeddings', 'text embeddings', 'sentence embeddings', 'embedding model', 'vector embeddings'],
+    urls: [
+      'https://platform.openai.com/docs/guides/embeddings',
+      'https://huggingface.co/blog/getting-started-with-embeddings',
+    ],
+    name: 'Text Embeddings',
+  },
+  {
+    patterns: ['ai safety', 'ai alignment', 'responsible ai', 'ai ethics', 'llm safety'],
+    urls: [
+      'https://docs.anthropic.com/en/docs/about-claude/use-case-guides',
+      'https://platform.openai.com/docs/guides/safety-best-practices',
+    ],
+    name: 'AI Safety & Ethics',
+  },
+  {
+    patterns: ['ai evaluation', 'llm evaluation', 'evals', 'benchmark llm', 'ai testing'],
+    urls: [
+      'https://cookbook.openai.com/examples/evaluation/getting_started_with_openai_evals',
+      'https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/overview',
+    ],
+    name: 'AI Evaluation',
+  },
+  {
+    patterns: ['multimodal ai', 'multimodal llm', 'vision language model', 'image and text ai'],
+    urls: [
+      'https://ai.google.dev/gemini-api/docs/image-understanding',
+      'https://platform.openai.com/docs/guides/vision',
+    ],
+    name: 'Multimodal AI',
+  },
+  {
+    patterns: ['ai code generation', 'codex', 'copilot api', 'code assistant ai'],
+    urls: [
+      'https://platform.openai.com/docs/guides/text-generation',
+      'https://code.claude.com/docs/en/overview',
+    ],
+    name: 'AI Code Generation',
+  },
+  {
+    patterns: ['voice ai', 'conversational ai', 'ai voice assistant', 'speech ai', 'ai audio'],
+    urls: [
+      'https://elevenlabs.io/docs',
+      'https://platform.openai.com/docs/guides/realtime',
+    ],
+    name: 'Voice AI',
+  },
+  {
+    patterns: ['pinecone', 'pinecone vector', 'pinecone database'],
+    urls: [
+      'https://docs.pinecone.io',
+      'https://docs.pinecone.io/guides/get-started/quickstart',
+    ],
+    name: 'Pinecone',
+  },
+  {
+    patterns: ['chromadb', 'chroma vector', 'chroma database', 'chroma embeddings'],
+    urls: ['https://docs.trychroma.com'],
+    name: 'Chroma',
+  },
+  {
+    patterns: ['weaviate', 'weaviate vector', 'weaviate database'],
+    urls: ['https://weaviate.io/developers/weaviate'],
+    name: 'Weaviate',
+  },
+
+  // ─── Google Cloud (additional services) ───────────────────────────────
+  {
+    patterns: ['google cloud sql', 'cloud sql postgres', 'cloud sql mysql', 'gcp database', 'cloud sql proxy'],
+    urls: ['https://cloud.google.com/sql/docs'],
+    name: 'Google Cloud SQL',
+  },
+  {
+    patterns: ['google cloud cdn', 'cloud cdn', 'gcp load balancer', 'cloud load balancing'],
+    urls: ['https://cloud.google.com/cdn/docs', 'https://cloud.google.com/load-balancing/docs'],
+    name: 'Google Cloud CDN / Load Balancing',
+  },
+  {
+    patterns: ['google cloud armor', 'cloud armor', 'gcp waf', 'gcp ddos protection'],
+    urls: ['https://cloud.google.com/armor/docs'],
+    name: 'Google Cloud Armor',
+  },
+  {
+    patterns: ['google cloud build', 'cloud build', 'gcp ci cd', 'cloud deploy gcp'],
+    urls: ['https://cloud.google.com/build/docs'],
+    name: 'Google Cloud Build',
+  },
+  {
+    patterns: ['google secret manager', 'gcp secret manager', 'cloud secrets', 'secret manager api'],
+    urls: ['https://cloud.google.com/secret-manager/docs'],
+    name: 'Google Secret Manager',
+  },
+  {
+    patterns: ['dialogflow', 'google dialogflow', 'dialogflow cx', 'dialogflow es', 'google chatbot api'],
+    urls: ['https://cloud.google.com/dialogflow/docs'],
+    name: 'Google Dialogflow',
+  },
+  {
+    patterns: ['google document ai', 'document ai', 'gcp document processing'],
+    urls: ['https://cloud.google.com/document-ai/docs'],
+    name: 'Google Document AI',
+  },
+  {
+    patterns: ['google pay', 'google pay api', 'google wallet', 'google wallet api', 'gpay'],
+    urls: ['https://developers.google.com/pay/api', 'https://developers.google.com/wallet'],
+    name: 'Google Pay / Wallet',
+  },
+
+  // ─── Android / Kotlin ─────────────────────────────────────────────────
+  {
+    patterns: ['jetpack compose', 'android development', 'kotlin android', 'android jetpack', 'compose ui'],
+    urls: ['https://developer.android.com/develop/ui/compose/documentation', 'https://developer.android.com/kotlin'],
+    name: 'Android / Jetpack Compose',
+  },
+  {
+    patterns: ['kotlin', 'kotlin coroutines', 'kotlin flows', 'kotlinx', 'kotlin multiplatform'],
+    urls: ['https://kotlinlang.org/docs/home.html', 'https://kotlinlang.org/docs/coroutines-overview.html'],
+    name: 'Kotlin',
+  },
+
+  // ─── AI (additional topics) ───────────────────────────────────────────
+  {
+    patterns: ['tiktoken', 'token counting', 'tokenization llm', 'context window tokens', 'token limit'],
+    urls: ['https://platform.openai.com/tokenizer', 'https://docs.anthropic.com/en/docs/build-with-claude/token-counting'],
+    name: 'LLM Tokenization',
+  },
+  {
+    patterns: ['ai guardrails', 'llm guardrails', 'nemo guardrails', 'llm content filter', 'prompt injection defense'],
+    urls: ['https://docs.guardrailsai.com'],
+    name: 'AI Guardrails',
+  },
+  {
+    patterns: ['rlhf', 'reinforcement learning human feedback', 'rlaif', 'dpo training', 'reward model'],
+    urls: ['https://huggingface.co/blog/rlhf', 'https://huggingface.co/docs/trl'],
+    name: 'RLHF / DPO',
+  },
+  {
+    patterns: ['langfuse', 'helicone', 'braintrust ai', 'llm observability', 'ai tracing', 'llm monitoring'],
+    urls: ['https://langfuse.com/docs', 'https://docs.helicone.ai'],
+    name: 'AI Observability',
+  },
+  {
+    patterns: ['ollama', 'local llm', 'llama cpp', 'vllm', 'run llm locally', 'self hosted llm'],
+    urls: ['https://github.com/ollama/ollama', 'https://docs.vllm.ai'],
+    name: 'Local LLMs',
+  },
+  {
+    patterns: ['ai orchestration', 'llm orchestration', 'agentic workflow', 'agent memory', 'agent planning'],
+    urls: ['https://langchain-ai.github.io/langgraph/concepts/', 'https://python.langchain.com/docs/concepts/agents'],
+    name: 'AI Orchestration',
+  },
+  {
+    patterns: ['claude token counting', 'anthropic token count', 'count tokens claude'],
+    urls: ['https://docs.anthropic.com/en/docs/build-with-claude/token-counting'],
+    name: 'Claude Token Counting',
+  },
+  {
+    patterns: ['openai reasoning', 'openai o1', 'openai o3', 'o1 model', 'o3 model', 'reasoning model openai'],
+    urls: ['https://platform.openai.com/docs/guides/reasoning'],
+    name: 'OpenAI Reasoning Models',
+  },
+  {
+    patterns: ['openai file search', 'openai vector store', 'openai retrieval', 'openai knowledge base'],
+    urls: ['https://platform.openai.com/docs/guides/file-search'],
+    name: 'OpenAI File Search',
+  },
+  {
+    patterns: ['custom gpt', 'gpt actions', 'gpt builder', 'openai gpts', 'chatgpt plugin'],
+    urls: ['https://platform.openai.com/docs/actions/introduction'],
+    name: 'ChatGPT Actions / Custom GPTs',
+  },
 ];
 
 export function findTopicUrls(query: string): Array<{ urls: string[]; name: string }> {
@@ -980,15 +1648,31 @@ function normalizeQueryYear(query: string): string {
 const AUTHORITATIVE_DOMAINS =
   "developer.mozilla.org|web.dev|owasp.org|cheatsheetseries.owasp.org|w3.org|webkit.org|whatwg.org|tc39.es|v8.dev|nodejs.org|docs.github.com|webaim.org|www.typescriptlang.org|vitest.dev|playwright.dev|jestjs.io|docs.astro.build|svelte.dev|vuejs.org|reactnative.dev|" +
   "docs.nestjs.com|elysiajs.com|hono.dev|tanstack.com|kysely.dev|opentelemetry.io|turbo.build|nx.dev|biome.sh|bun.sh|deno.com|docs.deno.com|" +
-  "docs.anthropic.com|platform.openai.com|modelcontextprotocol.io|docs.langchain.com|docs.llamaindex.ai|docs.crewai.com|" +
+  // AI / LLM providers
+  "docs.anthropic.com|code.claude.com|platform.claude.com|platform.openai.com|openai.github.io|ai.google.dev|docs.mistral.ai|docs.cohere.com|console.groq.com|replicate.com|docs.together.ai|docs.fireworks.ai|" +
+  "modelcontextprotocol.io|js.langchain.com|python.langchain.com|langchain-ai.github.io|docs.llamaindex.ai|docs.crewai.com|microsoft.github.io|" +
+  // AI audio/image
+  "elevenlabs.io|developers.deepgram.com|www.assemblyai.com|platform.stability.ai|fal.ai|" +
+  // Hugging Face
+  "huggingface.co|" +
+  // Vector databases
+  "docs.pinecone.io|docs.trychroma.com|weaviate.io|qdrant.tech|" +
+  // ML frameworks
+  "pytorch.org|www.tensorflow.org|" +
+  // Google
+  "developers.google.com|cloud.google.com|firebase.google.com|developer.chrome.com|m3.material.io|angular.dev|docs.flutter.dev|" +
+  // React Native / Mobile
   "reactnavigation.org|motion.dev|pinia.vuejs.org|docs.partykit.io|assistant-ui.com|" +
-  "pytorch.org|huggingface.co|docs.pinecone.io|qdrant.tech|" +
+  // Infrastructure
   "grpc.io|protobuf.dev|json-schema.org|semver.org|webassembly.org|" +
+  // CMS
   "payloadcms.com|strapi.io|docs.expo.dev|" +
   "supabase.com|redis.io|mongodb.com|postgresql.org|orm.drizzle.team|prisma.io|mongoosejs.com|" +
-  "docs.stripe.com|resend.com|socket.io|fastify.dev|trpc.io|authjs.dev|better-auth.com|" +
+  // Services
+  "docs.stripe.com|resend.com|socket.io|fastify.dev|trpc.io|authjs.dev|better-auth.com|upstash.com|posthog.com|docs.sentry.io|docs.n8n.io|trigger.dev|" +
+  // Frameworks
   "storybook.js.org|threejs.org|docs.solidjs.com|remix.run|nuxt.com|" +
-  "effect.website|valibot.dev|jotai.org|stately.ai|trigger.dev|" +
+  "effect.website|valibot.dev|jotai.org|stately.ai|" +
   "developers.cloudflare.com|grafana.com|unicode-org.github.io";
 
 const AUTHORITATIVE_URL_PATTERN = new RegExp(
@@ -1062,10 +1746,6 @@ IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library 
         idempotentHint: false,
         openWorldHint: true,
       },
-      outputSchema: z.object({
-        query: z.string(),
-        sources: z.array(z.object({ name: z.string(), url: z.string(), content: z.string() })),
-      }),
     },
     async ({ query: rawQuery, tokens }) => {
       const query = normalizeQueryYear(rawQuery);
@@ -1082,7 +1762,17 @@ IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library 
         const entry = lookupById(match.id);
         if (!entry) continue;
         try {
-          const fetchResult = await fetchDocs(entry.docsUrl, entry.llmsTxtUrl, entry.llmsFullTxtUrl);
+          let fetchResult = await fetchDocs(entry.docsUrl, entry.llmsTxtUrl, entry.llmsFullTxtUrl, query);
+          if (isIndexContent(fetchResult.content)) {
+            const deepLinks = rankIndexLinks(fetchResult.content, query);
+            for (const deepUrl of deepLinks) {
+              const deepContent = await fetchViaJina(deepUrl);
+              if (deepContent && deepContent.length > 300) {
+                fetchResult = { content: deepContent, url: deepUrl, sourceType: "jina" };
+                break;
+              }
+            }
+          }
           const safe = sanitizeContent(fetchResult.content);
           const { text } = extractRelevantContent(safe, query, Math.floor(tokens / 2));
           if (text.length > 200) {

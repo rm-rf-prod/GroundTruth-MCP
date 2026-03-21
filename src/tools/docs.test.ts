@@ -13,6 +13,8 @@ vi.mock("../services/fetcher.js", () => ({
   fetchDocs: vi.fn(),
   fetchGitHubContent: vi.fn(),
   fetchViaJina: vi.fn(),
+  isIndexContent: vi.fn().mockReturnValue(false),
+  rankIndexLinks: vi.fn().mockReturnValue([]),
 }));
 
 vi.mock("../utils/extract.js", () => ({
@@ -149,6 +151,7 @@ describe("gt_get_docs handler", () => {
         "https://react.dev",
         "https://react.dev/llms.txt",
         "https://react.dev/llms-full.txt",
+        undefined,
       );
     });
   });
@@ -162,13 +165,13 @@ describe("gt_get_docs handler", () => {
     it("treats http:// libraryId as direct URL", async () => {
       vi.mocked(fetchDocs).mockResolvedValue(makeFetchResult(DOCS_CONTENT, "direct", "https://custom.dev/docs"));
       await handler({ libraryId: "https://custom.dev/docs" });
-      expect(fetchDocs).toHaveBeenCalledWith("https://custom.dev/docs", undefined, undefined);
+      expect(fetchDocs).toHaveBeenCalledWith("https://custom.dev/docs", undefined, undefined, undefined);
     });
 
     it("treats https:// libraryId as direct URL", async () => {
       vi.mocked(fetchDocs).mockResolvedValue(makeFetchResult());
       await handler({ libraryId: "https://docs.example.com" });
-      expect(fetchDocs).toHaveBeenCalledWith("https://docs.example.com", undefined, undefined);
+      expect(fetchDocs).toHaveBeenCalledWith("https://docs.example.com", undefined, undefined, undefined);
     });
 
     it("resolves npm: prefix to npmjs.com URL", async () => {
@@ -176,6 +179,7 @@ describe("gt_get_docs handler", () => {
       await handler({ libraryId: "npm:express" });
       expect(fetchDocs).toHaveBeenCalledWith(
         "https://www.npmjs.com/package/express",
+        undefined,
         undefined,
         undefined,
       );
@@ -188,6 +192,7 @@ describe("gt_get_docs handler", () => {
         "https://pypi.org/project/flask",
         undefined,
         undefined,
+        undefined,
       );
     });
 
@@ -198,6 +203,7 @@ describe("gt_get_docs handler", () => {
         "https://tailwindcss.com",
         undefined,
         undefined,
+        undefined,
       );
     });
 
@@ -206,6 +212,7 @@ describe("gt_get_docs handler", () => {
       await handler({ libraryId: "express" });
       expect(fetchDocs).toHaveBeenCalledWith(
         "https://www.npmjs.com/package/express",
+        undefined,
         undefined,
         undefined,
       );

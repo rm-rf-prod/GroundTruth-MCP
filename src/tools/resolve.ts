@@ -37,7 +37,7 @@ function extractGithubUrl(repoField: unknown): string | undefined {
 async function resolveFromNpm(packageName: string): Promise<LibraryMatch | null> {
   const cacheKey = `npm-resolve:${packageName}`;
   const cached = resolveCache.get(cacheKey);
-  if (cached) return cached as LibraryMatch;
+  if (cached) return cached;
 
   const data = await fetchNpmPackage(packageName);
   if (!data || typeof data !== "object") return null;
@@ -66,7 +66,7 @@ async function resolveFromNpm(packageName: string): Promise<LibraryMatch | null>
 async function resolveFromPypi(packageName: string): Promise<LibraryMatch | null> {
   const cacheKey = `pypi-resolve:${packageName}`;
   const cached = resolveCache.get(cacheKey);
-  if (cached) return cached as LibraryMatch;
+  if (cached) return cached;
 
   const data = await fetchPypiPackage(packageName);
   if (!data || typeof data !== "object") return null;
@@ -140,25 +140,11 @@ IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library 
         idempotentHint: true,
         openWorldHint: true,
       },
-      outputSchema: z.object({
-        matches: z.array(
-          z.object({
-            id: z.string(),
-            name: z.string(),
-            description: z.string(),
-            docsUrl: z.string(),
-            llmsTxtUrl: z.string().optional(),
-            githubUrl: z.string().optional(),
-            score: z.number(),
-            source: z.string(),
-          }),
-        ),
-      }),
     },
     async ({ libraryName, query }) => {
       const name = libraryName.trim();
 
-      if (isExtractionAttempt(name) || isExtractionAttempt(query ?? "")) {
+      if (isExtractionAttempt(name) || (query !== undefined && isExtractionAttempt(query))) {
         return { content: [{ type: "text", text: EXTRACTION_REFUSAL }] };
       }
 

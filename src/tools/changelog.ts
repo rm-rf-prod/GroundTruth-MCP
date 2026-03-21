@@ -41,13 +41,6 @@ export function registerChangelogTool(server: McpServer): void {
         idempotentHint: true,
         openWorldHint: true,
       },
-      outputSchema: z.object({
-        libraryId: z.string(),
-        displayName: z.string(),
-        version: z.string().nullable(),
-        sourceUrl: z.string(),
-        truncated: z.boolean(),
-      }),
     },
     async ({ libraryId, version, tokens }) => {
       if (isExtractionAttempt(libraryId)) {
