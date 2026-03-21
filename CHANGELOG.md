@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.5.5] — 2026-03-21
+
+- See diff for changes.
+
+---
+
 ## [2.5.4] — 2026-03-21
 
 - fix: close DNS rebinding TOCTOU gap with undici global dispatcher
