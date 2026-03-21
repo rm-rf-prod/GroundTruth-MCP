@@ -13,7 +13,7 @@
   <a href="https://www.npmjs.com/package/@groundtruth-mcp/gt-mcp"><img src="https://img.shields.io/npm/v/@groundtruth-mcp/gt-mcp?color=00d4aa&label=npm" alt="npm version" /></a>
   <a href="https://github.com/rm-rf-prod/GroundTruth-MCP/actions/workflows/ci.yml"><img src="https://github.com/rm-rf-prod/GroundTruth-MCP/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-ELv2-orange" alt="Elastic License 2.0" /></a>
-  <img src="https://img.shields.io/badge/libraries-363%2B-teal" alt="363+ libraries" />
+  <img src="https://img.shields.io/badge/libraries-unlimited-teal" alt="Unlimited libraries" />
   <img src="https://img.shields.io/badge/audit_patterns-100%2B-red" alt="100+ audit patterns" />
   <img src="https://img.shields.io/badge/tests-676-brightgreen" alt="676 tests" />
   <img src="https://img.shields.io/badge/node-%3E%3D24-green" alt="Node 24+" />
@@ -35,7 +35,7 @@ There's also the security problem nobody talks about enough. AI assistants produ
 
 Context7 helps with the first problem. But it has rate limits, lives in the cloud, and covers around 130 libraries. Hit the quota mid-session and you get nothing. I did that enough times that I built the thing I actually wanted.
 
-**GroundTruth runs on your machine.** It fetches docs directly from the source at query time — `llms.txt` files first (purpose-built for LLMs by the maintainers themselves), then Jina Reader for JS-rendered pages, then GitHub. No quota. No cold start. No cache from six months ago. 363+ libraries across the Python AI/ML stack, Go, Rust, and web standards including OWASP, MDN, and WebAssembly.
+**GroundTruth runs on your machine.** It fetches docs directly from the source at query time — `llms.txt` files first (purpose-built for LLMs by the maintainers themselves), then Jina Reader for JS-rendered pages, then GitHub. No quota. No cold start. No cache from six months ago. 363+ curated libraries with automatic fallback to npm, PyPI, crates.io, and pkg.go.dev — meaning any public package in any major ecosystem is resolvable, not just the ones in the registry.
 
 The audit tool scans your actual source files at `file:line` level and fetches current fix guidance from the real spec. Not a linting rule someone wrote in 2019. The actual spec.
 
@@ -356,9 +356,9 @@ For every library docs request, GroundTruth tries sources in this order and stop
 
 ---
 
-## Library coverage — 363+ libraries
+## Library coverage — unlimited
 
-Every major ecosystem. If a library publishes an `llms.txt`, it's probably in here.
+363+ curated entries in the registry, plus automatic fallback to npm, PyPI, crates.io, and pkg.go.dev. Any public package in any major ecosystem is resolvable — the registry gives you curated quality, the fallbacks give you universal reach.
 
 | Ecosystem | Libraries |
 |---|---|
@@ -415,7 +415,7 @@ Context7 is solid. Here's why I reach for this instead.
 | Library comparison | Yes — 2-3 libraries side-by-side, any criteria | No |
 | Code examples | Yes — GitHub Code Search for real-world usage | No |
 | Lockfile detection | Yes — reads exact versions from lockfiles | No |
-| Libraries | 363+ curated + npm/PyPI/crates.io/Go fallback | ~130 |
+| Libraries | Unlimited — 363+ curated + npm/PyPI/crates.io/Go fallback | ~130 |
 | AI coverage | Claude, OpenAI, Gemini, Mistral, Cohere, Groq, LangChain, LlamaIndex, CrewAI, 20+ more | Limited |
 | Google APIs | Full coverage — Maps, Analytics, Ads, Cloud, Firebase, Vertex AI, 30+ services | Partial |
 | Python / Rust / Go | Yes | Limited |
@@ -474,7 +474,7 @@ That's it. No Docker. No config files. No environment variables unless you want 
 
 ## Active development
 
-GroundTruth is under active development. New libraries, audit patterns, search topics, and features are added regularly. The registry currently covers 363+ libraries across every major ecosystem, with a focus on AI/LLM providers, Google APIs, and modern web development.
+GroundTruth is under active development. New curated registry entries, audit patterns, search topics, and features are added regularly. The registry covers 363+ libraries with deep curated metadata, and automatic fallback to npm, PyPI, crates.io, and pkg.go.dev means any public package is resolvable out of the box.
 
 Recent additions include comprehensive coverage for Google Gemini API, Anthropic Claude API (tool use, prompt caching, vision, extended thinking, computer use, streaming, batches), OpenAI API (chat, responses, function calling, structured output, embeddings, fine-tuning, realtime, agents), and 20+ additional AI providers and frameworks.
 
