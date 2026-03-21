@@ -3,7 +3,7 @@ import { isNewerVersion, formatUpdateNotice, getUpdateNoticeForResponse, setPend
 
 describe("isNewerVersion", () => {
   it("detects major version bump", () => {
-    expect(isNewerVersion("3.0.0", "1.0.0")).toBe(true);
+    expect(isNewerVersion("3.0.1", "1.0.0")).toBe(true);
   });
 
   it("detects minor version bump", () => {
@@ -23,14 +23,14 @@ describe("isNewerVersion", () => {
   });
 
   it("handles v prefix", () => {
-    expect(isNewerVersion("v3.0.0", "v2.0.0")).toBe(true);
+    expect(isNewerVersion("v3.0.1", "v2.0.0")).toBe(true);
   });
 });
 
 describe("formatUpdateNotice", () => {
   it("includes the new version", () => {
-    const notice = formatUpdateNotice("3.0.0");
-    expect(notice).toContain("3.0.0");
+    const notice = formatUpdateNotice("3.0.1");
+    expect(notice).toContain("3.0.1");
     expect(notice).toContain("UPDATE AVAILABLE");
   });
 });
