@@ -1,7 +1,7 @@
 import type { CacheEntry, LibraryMatch } from "../types.js";
 import { CACHE_TTL_MS, DISK_CACHE_DIR } from "../constants.js";
 import { createHash } from "crypto";
-import { readFile, writeFile, mkdir, unlink } from "fs/promises";
+import { readFile, writeFile, mkdir, unlink, readdir, stat } from "fs/promises";
 import { join } from "path";
 
 class LRUCache<T> {
@@ -120,6 +120,50 @@ export class DiskCache {
     } catch {
       return false;
     }
+  }
+
+  async prune(maxEntries = 1000): Promise<number> {
+    if (!(await this.ensureDir())) return 0;
+    let removed = 0;
+    try {
+      const files = await readdir(this.dir);
+      const jsonFiles = files.filter((f) => f.endsWith(".json"));
+
+      for (const file of jsonFiles) {
+        const filePath = join(this.dir, file);
+        try {
+          const content = await readFile(filePath, "utf-8");
+          const entry = JSON.parse(content) as DiskCacheFile;
+          if (Date.now() > entry.expiresAt) {
+            await unlink(filePath);
+            removed++;
+          }
+        } catch {
+          await unlink(filePath).catch(() => void 0);
+          removed++;
+        }
+      }
+
+      const remaining = jsonFiles.length - removed;
+      if (remaining > maxEntries) {
+        const entries: Array<{ path: string; mtime: number }> = [];
+        const currentFiles = await readdir(this.dir);
+        for (const file of currentFiles.filter((f) => f.endsWith(".json"))) {
+          const filePath = join(this.dir, file);
+          try {
+            const s = await stat(filePath);
+            entries.push({ path: filePath, mtime: s.mtimeMs });
+          } catch { /* skip */ }
+        }
+        entries.sort((a, b) => a.mtime - b.mtime);
+        const toEvict = entries.slice(0, entries.length - maxEntries);
+        for (const e of toEvict) {
+          await unlink(e.path).catch(() => void 0);
+          removed++;
+        }
+      }
+    } catch { /* readdir failed — cache dir may not exist */ }
+    return removed;
   }
 }
 

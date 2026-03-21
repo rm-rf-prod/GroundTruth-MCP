@@ -1,8 +1,28 @@
 import { createHash } from "crypto";
+import { lookup } from "dns/promises";
 import { FETCH_TIMEOUT_MS, JINA_BASE_URL, SERVER_VERSION } from "../constants.js";
 import type { FetchResult } from "../types.js";
 import { docCache, diskDocCache } from "./cache.js";
 import { assertPublicUrl } from "../utils/guard.js";
+
+const PRIVATE_IP_PATTERNS = [
+  /^127\./, /^10\./, /^0\./, /^192\.168\./, /^169\.254\./,
+  /^172\.(1[6-9]|2\d|3[01])\./,
+  /^::1$/, /^::$/, /^::ffff:/i, /^fc[0-9a-f]{2}:/i, /^fe[89ab][0-9a-f]:/i, /^ff[0-9a-f]{2}:/i,
+];
+
+async function assertResolvedIp(hostname: string): Promise<void> {
+  try {
+    const { address } = await lookup(hostname);
+    if (PRIVATE_IP_PATTERNS.some((p) => p.test(address))) {
+      throw new Error(`DNS resolved to private IP: ${address}`);
+    }
+  } catch (err) {
+    if (err instanceof Error && err.message.startsWith("DNS resolved")) throw err;
+  }
+}
+
+const MAX_REDIRECTS = 5;
 
 export function hashContent(content: string): string {
   return createHash("sha256").update(content).digest("hex").slice(0, 16);
@@ -29,10 +49,25 @@ export async function fetchWithTimeout(
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), ms);
   try {
-    return await fetch(url, {
-      signal: controller.signal,
-      headers: { "User-Agent": USER_AGENT, Accept: "text/plain,text/html,*/*", ...extraHeaders },
-    });
+    let currentUrl = url;
+    for (let hops = 0; hops <= MAX_REDIRECTS; hops++) {
+      const parsed = new URL(currentUrl);
+      await assertResolvedIp(parsed.hostname);
+      const res = await fetch(currentUrl, {
+        signal: controller.signal,
+        redirect: "manual",
+        headers: { "User-Agent": USER_AGENT, Accept: "text/plain,text/html,*/*", ...extraHeaders },
+      });
+      if (res.status >= 300 && res.status < 400) {
+        const location = res.headers.get("location");
+        if (!location) return res;
+        currentUrl = new URL(location, currentUrl).href;
+        try { assertPublicUrl(currentUrl); } catch { return res; }
+        continue;
+      }
+      return res;
+    }
+    throw new Error(`Too many redirects for ${url}`);
   } finally {
     clearTimeout(id);
   }
