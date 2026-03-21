@@ -408,10 +408,10 @@ Context7 is solid. Here's why I reach for this instead.
 
 | | GroundTruth | Context7 |
 |---|---|---|
-| Hosting | Self-hosted + HTTP mode | Cloud only |
-| Rate limits | None | 1,000 free/month |
-| Transport | Stdio + Streamable HTTP | HTTP |
-| Source priority | llms.txt -> Jina -> GitHub -> DevDocs | Doc page embeddings |
+| Hosting | Self-hosted (stdio) + HTTP mode | Cloud backend, local MCP client |
+| Rate limits | None | 1,000 free/month ($10/seat for 5,000) |
+| Transport | Stdio + Streamable HTTP | Stdio + Streamable HTTP |
+| Source priority | llms.txt -> Jina -> GitHub -> npm/PyPI | Vector DB with proprietary crawl pipeline |
 | Tools | 12 specialized tools | 2 tools |
 | Code audit | Yes — 100+ patterns, 18 categories, file:line, live fixes | No |
 | Freeform search | Yes — OWASP, MDN, AI docs, Google APIs, web standards | Library docs only |
@@ -423,20 +423,13 @@ Context7 is solid. Here's why I reach for this instead.
 | Code examples | Yes — GitHub Code Search for real-world usage | No |
 | Content quality score | Yes — 0-1 relevance score per response | No |
 | MCP Resources | Yes — browsable library registry + docs | No |
-| MCP Prompts | 8 workflow prompts | 0 |
-| Circuit breaker | Yes — per-domain failure isolation | Unknown |
-| Stale-while-revalidate | Yes — instant cached responses | Unknown |
-| Deep multi-page fetch | Yes — follows links, assembles content | Single page |
+| MCP Prompts | 8 workflow prompts | No |
 | Lockfile detection | Yes — reads exact versions from lockfiles | No |
-| Libraries | 422+ curated (100% best-practices coverage) + npm/PyPI/crates.io/Go fallback | ~500 |
-| AI coverage | Claude, OpenAI, Gemini, Mistral, Cohere, Groq, LangChain, LlamaIndex, CrewAI, 20+ more | Limited |
-| Google APIs | Full coverage — Maps, Analytics, Ads, Cloud, Firebase, Vertex AI, 30+ services | Partial |
-| Python / Rust / Go / Java | Yes — full ecosystem coverage | Limited |
-| Security | Prompt injection guard, SSRF defense, circuit breaker | Standard |
+| Libraries | 422+ curated (100% best-practices coverage) + npm/PyPI/crates.io/Go fallback | Undisclosed (community-contributed, claims "thousands") |
 | Update notifications | Yes — notifies when new version available | No |
 | API key required | No | No |
 
-GroundTruth and Context7 solve the same problem differently. Context7 embeds doc pages and retrieves by semantic similarity. GroundTruth fetches from the source at query time, prioritizes `llms.txt` files, follows deep links across multiple pages, and scores content quality so your model knows when to retry. Neither is universally better — but when you hit a rate limit at 11pm debugging a production issue, "self-hosted with no quota" stops being a nice-to-have.
+GroundTruth and Context7 solve the same problem differently. Context7 indexes documentation into a vector database and retrieves by semantic similarity — fast lookups, but with indexing lag on new releases. GroundTruth fetches from the source at query time, prioritizes `llms.txt` files, follows deep links across multiple pages, and scores content quality so your model knows when to retry. Neither is universally better — but when you hit a rate limit at 11pm debugging a production issue, "self-hosted with no quota" stops being a nice-to-have.
 
 ---
 

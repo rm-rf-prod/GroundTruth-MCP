@@ -99,10 +99,17 @@ const toolCount = countMatches(indexTs, /register\w+Tool\s*\(/g);
 const testFiles = findTestFiles("src");
 const testFileCount = testFiles.length;
 
-// Library badge size — tracked in constants.ts as REGISTRY_BADGE_SIZE
-const constantsTs = read("src/constants.ts");
-const badgeMatch = constantsTs.match(/REGISTRY_BADGE_SIZE\s*=\s*(\d+)/);
-const libraryBadgeSize = badgeMatch ? parseInt(badgeMatch[1]) : 360;
+// Library badge size — count from private registry if available, fall back to constants.ts
+const privateRegistryPath = join(root, "docs/private/registry.ts");
+let libraryBadgeSize;
+if (existsSync(privateRegistryPath)) {
+  const privateReg = readFileSync(privateRegistryPath, "utf-8");
+  libraryBadgeSize = countMatches(privateReg, /^\s+id:\s+"/gm);
+} else {
+  const constantsTs = read("src/constants.ts");
+  const badgeMatch = constantsTs.match(/REGISTRY_BADGE_SIZE\s*=\s*(\d+)/);
+  libraryBadgeSize = badgeMatch ? parseInt(badgeMatch[1]) : 97;
+}
 
 // Test count — run vitest with json reporter
 let testCount = 0;
@@ -165,5 +172,15 @@ readme = readme.replace(/\d+ categories, file:line/g, `${categoryCount} categori
 readme = readme.replace(/\d+ tests across \d+ files/, `${testCount} tests across ${testFileCount} files`);
 
 write("README.md", readme);
+
+// Keep REGISTRY_BADGE_SIZE in constants.ts in sync with actual private registry count
+const currentConstants = read("src/constants.ts");
+const updatedConstants = currentConstants.replace(
+  /REGISTRY_BADGE_SIZE\s*=\s*\d+/,
+  `REGISTRY_BADGE_SIZE = ${libraryBadgeSize}`,
+);
+if (updatedConstants !== currentConstants) {
+  write("src/constants.ts", updatedConstants);
+}
 
 console.log(`stats: ${libraryBadgeSize}+ libraries | ${patternCount} patterns | ${categoryCount} categories | ${toolCount} tools | ${testCount} tests (${testFileCount} files)`);
