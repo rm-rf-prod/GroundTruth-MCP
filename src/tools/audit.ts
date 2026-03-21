@@ -39,7 +39,7 @@ const InputSchema = z.object({
       ]),
     )
     .default(["all"])
-    .describe("Issue categories to audit. Default: all."),
+    .describe('Issue categories to audit. Use "all" for broad questions. Default: all. Available: layout, performance, accessibility, security, react, nextjs, typescript, node, python, vue, svelte, angular, testing, mobile, api, css, seo, i18n.'),
   tokens: z
     .number()
     .int()
@@ -1599,7 +1599,13 @@ export function registerAuditTool(server: McpServer): void {
     "gt_audit",
     {
       title: "Audit Project Code",
-      description: `Scan all source files in a project for real code issues across 9 categories (layout, performance, accessibility, security, react, nextjs, typescript, node, python), then fetch live best-practice fixes from official docs for each issue type. Returns file + line locations so every issue can be fixed directly.`,
+      description: `Scan source files for code issues across 18 categories, then fetch live best-practice fixes from official docs. Returns file:line locations.
+
+Categories: layout, performance, accessibility, security, react, nextjs, typescript, node, python, vue, svelte, angular, testing, mobile, api, css, seo, i18n — or "all" (default).
+
+For broad questions like "what can be improved" or "find all issues", use categories: ["all"]. For mobile apps (React Native/Expo), use ["mobile", "react", "typescript", "accessibility", "performance", "security"]. For web apps, use ["react", "nextjs", "typescript", "security", "accessibility", "performance", "layout", "css", "seo"].
+
+If doc fetches fail with empty results, the user likely needs to set GT_GITHUB_TOKEN for higher GitHub API rate limits. The audit patterns themselves always run locally — only the fix guidance fetch requires network.`,
       inputSchema: InputSchema,
       annotations: {
         readOnlyHint: true,
