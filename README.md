@@ -6,10 +6,7 @@
    ██████     ██        ██      ██   ██████  ██
 </pre>
 
-<p align="center">
-  Your AI assistant just confidently wrote deprecated code again.<br/>
-  This fixes that.
-</p>
+<h3 align="center">Your AI assistant just mass-produced deprecated code again.<br/>You merged it because the formatting was clean.<br/><br/>GroundTruth fixes that.</h3>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@groundtruth-mcp/gt-mcp"><img src="https://img.shields.io/npm/v/@groundtruth-mcp/gt-mcp?color=00d4aa&label=npm" alt="npm version" /></a>
@@ -22,10 +19,7 @@
   <img src="https://img.shields.io/badge/status-active%20development-blue" alt="Active Development" />
 </p>
 
-<p align="center">
-  <b>Actively maintained. New libraries, audit patterns, and features ship regularly.</b><br/>
-  GroundTruth checks for updates on startup and notifies you when a new version is available.
-</p>
+<h4 align="center">Self-hosted MCP server. 363+ curated libraries. 100+ audit patterns. No rate limits. No API keys.<br/>Ships updates continuously — your MCP client picks them up on restart.</h4>
 
 ---
 
