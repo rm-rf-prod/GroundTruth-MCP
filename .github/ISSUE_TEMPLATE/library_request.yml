@@ -1,0 +1,30 @@
+name: Library Request
+description: Request a new library to be added to the curated registry
+labels: ["library-request"]
+body:
+  - type: input
+    id: library
+    attributes:
+      label: Library name
+      placeholder: "e.g. fastify"
+    validations:
+      required: true
+  - type: input
+    id: docs_url
+    attributes:
+      label: Official docs URL
+      placeholder: "https://fastify.dev/docs/latest/"
+    validations:
+      required: true
+  - type: input
+    id: llms_txt
+    attributes:
+      label: llms.txt URL (if available)
+      placeholder: "https://fastify.dev/llms.txt"
+  - type: input
+    id: npm_package
+    attributes:
+      label: npm / PyPI / crates.io package name
+      placeholder: "fastify"
+    validations:
+      required: true

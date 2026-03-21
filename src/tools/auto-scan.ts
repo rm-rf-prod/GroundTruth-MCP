@@ -431,7 +431,8 @@ Reads: package.json, requirements.txt, pyproject.toml, Cargo.toml, go.mod, pom.x
       const versions = await detectAllVersions(resolvedPath, allDepNames);
 
       // Fetch best practices in parallel (with concurrency limit)
-      const CONCURRENCY = parseInt(process.env.GT_CONCURRENCY ?? "6", 10);
+      const rawConcurrency = parseInt(process.env.GT_CONCURRENCY ?? "6", 10);
+      const CONCURRENCY = Number.isFinite(rawConcurrency) && rawConcurrency > 0 ? Math.min(rawConcurrency, 20) : 6;
       const results: Array<{ name: string; content: string; url: string }> = [];
 
       for (let i = 0; i < topMatched.length; i += CONCURRENCY) {

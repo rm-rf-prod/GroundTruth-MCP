@@ -182,8 +182,11 @@ describe("DiskCache", () => {
 
   it("returns false for expired entries in has()", async () => {
     const cache = await makeDiskCache(tmpDir);
-    await cache.set("expire-has-test", "data", 1);
-    await new Promise(r => setTimeout(r, 10));
+    const pastExpiry = Date.now() - 1000;
+    const entry = { data: "old value", expiresAt: pastExpiry };
+    const { createHash } = await import("crypto");
+    const hash = createHash("sha256").update("expire-has-test").digest("hex");
+    await writeFile(join(tmpDir, `${hash}.json`), JSON.stringify(entry), "utf-8");
     const result = await cache.has("expire-has-test");
     expect(result).toBe(false);
   });

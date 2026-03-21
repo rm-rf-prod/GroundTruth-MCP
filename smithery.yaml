@@ -1,0 +1,15 @@
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    properties:
+      GT_GITHUB_TOKEN:
+        type: string
+        description: "GitHub API token for higher rate limits (60 -> 5000 req/hr)"
+    required: []
+  commandFunction: |-
+    (config) => ({
+      command: "node",
+      args: ["dist/index.js"],
+      env: config.GT_GITHUB_TOKEN ? { GT_GITHUB_TOKEN: config.GT_GITHUB_TOKEN } : {}
+    })
