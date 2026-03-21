@@ -26,10 +26,10 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
     "version": "node scripts/update-version.mjs && node scripts/update-changelog.mjs && npm run update-stats && git add -A",
-    "postversion": "git push && git push origin \"v$(node -p 'require(\"./package.json\").version')\" && node scripts/create-release.mjs && mcp-publisher publish",
-    "release": "npm version minor && npm publish --access public",
-    "release:patch": "npm version patch && npm publish --access public",
-    "release:major": "npm version major && npm publish --access public"
+    "postversion": "git push && git push origin \"v$(node -p 'require(\"./package.json\").version')\" && node scripts/create-release.mjs",
+    "release": "npm version minor && npm publish --access public && mcp-publisher publish",
+    "release:patch": "npm version patch && npm publish --access public && mcp-publisher publish",
+    "release:major": "npm version major && npm publish --access public && mcp-publisher publish"
   },
   "engines": {
     "node": ">=24"
