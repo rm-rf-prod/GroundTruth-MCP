@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.0.2] — 2026-03-21
+
+- fix: improve audit tool descriptions for broad queries
+- docs: update DOCUMENTATION.md to match v3.0.0
+- docs: trim README, move detailed content to DOCUMENTATION.md
+
+---
+
 ## [3.0.1] — 2026-03-21
 
 - See diff for changes.
