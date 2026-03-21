@@ -14,6 +14,7 @@ import { registerAuditTool } from "./tools/audit.js";
 import { registerChangelogTool } from "./tools/changelog.js";
 import { registerCompatTool } from "./tools/compat.js";
 import { registerCompareTool } from "./tools/compare.js";
+import { registerExamplesTool } from "./tools/examples.js";
 
 const server = new McpServer(
   { name: SERVER_NAME, version: SERVER_VERSION },
@@ -32,12 +33,14 @@ Tools:
 7. gt_changelog — Fetch recent release notes. Use before upgrading.
 8. gt_compat — Check browser/runtime compatibility for a web API or CSS feature.
 9. gt_compare — Compare 2–3 libraries side-by-side.
+10. gt_examples — Find real-world code examples from GitHub for any library or pattern.
 
 Workflows:
 "use gt" → gt_auto_scan({})
 "use gt for [library]" → gt_resolve_library → gt_best_practices
 "find and fix all issues" → gt_audit({ projectPath: "." })
 "check [topic]" → gt_search({ query: "[topic]" })
+"show me examples of [library]" → gt_examples
 
 All content is fetched live from official sources — no stale training data.`,
   },
@@ -52,6 +55,7 @@ registerAuditTool(server);
 registerChangelogTool(server);
 registerCompatTool(server);
 registerCompareTool(server);
+registerExamplesTool(server);
 
 // MCP Prompts — discoverable workflow templates shown as slash commands in compatible clients
 server.prompt(

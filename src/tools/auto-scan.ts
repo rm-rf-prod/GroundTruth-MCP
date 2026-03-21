@@ -9,6 +9,7 @@ import { isExtractionAttempt, withNotice, EXTRACTION_REFUSAL, safeguardPath } fr
 import { sanitizeContent } from "../utils/sanitize.js";
 import { DEFAULT_TOKEN_LIMIT } from "../constants.js";
 import type { LibraryEntry } from "../types.js";
+import { detectAllVersions } from "../utils/lockfile.js";
 
 const InputSchema = z.object({
   projectPath: z
@@ -425,16 +426,23 @@ Reads: package.json, requirements.txt, pyproject.toml, Cargo.toml, go.mod, pom.x
       // Cap at 20 libraries to avoid overwhelming responses
       const topMatched = matched.slice(0, 20);
 
+      // Detect installed versions from lockfiles
+      const allDepNames = [...allDeps];
+      const versions = await detectAllVersions(resolvedPath, allDepNames);
+
       // Fetch best practices in parallel (with concurrency limit)
-      const CONCURRENCY = 4;
+      const CONCURRENCY = parseInt(process.env.GT_CONCURRENCY ?? "6", 10);
       const results: Array<{ name: string; content: string; url: string }> = [];
 
       for (let i = 0; i < topMatched.length; i += CONCURRENCY) {
         const batch = topMatched.slice(i, i + CONCURRENCY);
         const batchResults = await Promise.allSettled(
-          batch.map(async ({ entry }) => {
+          batch.map(async ({ dep, entry }) => {
             try {
-              const enrichedTopic = `${topic} best practices patterns guide`;
+              const version = versions.get(dep);
+              const enrichedTopic = version
+                ? `${topic} v${version} best practices patterns guide`
+                : `${topic} best practices patterns guide`;
               let fetchResult = await fetchDocs(
                 entry.docsUrl,
                 entry.llmsTxtUrl,
@@ -474,6 +482,9 @@ Reads: package.json, requirements.txt, pyproject.toml, Cargo.toml, go.mod, pom.x
         `> Topic: ${topic}`,
         `> Found ${allDeps.size} dependencies across ${sources.length} file(s)`,
         `> Matched ${topMatched.length} to registry, fetched best practices for each`,
+        versions.size > 0
+          ? `> Lockfile versions detected: ${[...versions.entries()].map(([k, v]) => `${k}@${v}`).join(", ")}`
+          : undefined,
         "",
         `**Files scanned:**`,
         filesList,

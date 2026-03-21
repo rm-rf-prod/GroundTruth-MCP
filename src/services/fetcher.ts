@@ -1,7 +1,12 @@
+import { createHash } from "crypto";
 import { FETCH_TIMEOUT_MS, JINA_BASE_URL, SERVER_VERSION } from "../constants.js";
 import type { FetchResult } from "../types.js";
 import { docCache, diskDocCache } from "./cache.js";
 import { assertPublicUrl } from "../utils/guard.js";
+
+export function hashContent(content: string): string {
+  return createHash("sha256").update(content).digest("hex").slice(0, 16);
+}
 
 const USER_AGENT =
   `GroundTruth/${SERVER_VERSION} (docs-fetcher; +https://github.com/rm-rf-prod/GroundTruth-MCP)`;
@@ -169,15 +174,19 @@ export async function fetchDocs(
 ): Promise<FetchResult> {
   const cacheKey = `docs:${docsUrl}`;
 
+  function stamp(result: FetchResult): FetchResult {
+    return { ...result, contentHash: hashContent(result.content), fetchedAt: new Date().toISOString() };
+  }
+
   const memCached = docCache.get(cacheKey);
   if (memCached) {
-    return { content: memCached, url: docsUrl, sourceType: "llms-txt" };
+    return stamp({ content: memCached, url: docsUrl, sourceType: "llms-txt" });
   }
 
   const diskCached = await diskDocCache.get(cacheKey);
   if (diskCached) {
     docCache.set(cacheKey, diskCached);
-    return { content: diskCached, url: docsUrl, sourceType: "llms-txt" };
+    return stamp({ content: diskCached, url: docsUrl, sourceType: "llms-txt" });
   }
 
   // 1. Race llms-full.txt and llms.txt in parallel (both are cheap GETs)
@@ -195,7 +204,7 @@ export async function fetchDocs(
       if (r.content) {
         docCache.set(cacheKey, r.content);
         void diskDocCache.set(cacheKey, r.content);
-        return { content: r.content, url: r.url, sourceType: r.sourceType };
+        return stamp({ content: r.content, url: r.url, sourceType: r.sourceType });
       }
     }
 
@@ -207,7 +216,7 @@ export async function fetchDocs(
         if (autoDiscovered) {
           docCache.set(cacheKey, autoDiscovered);
           void diskDocCache.set(cacheKey, autoDiscovered);
-          return { content: autoDiscovered, url: `${origin}/llms.txt`, sourceType: "llms-txt" };
+          return stamp({ content: autoDiscovered, url: `${origin}/llms.txt`, sourceType: "llms-txt" });
         }
       } catch { /* invalid URL */ }
     }
@@ -220,7 +229,7 @@ export async function fetchDocs(
     if (autoDiscover) {
       docCache.set(cacheKey, autoDiscover);
       void diskDocCache.set(cacheKey, autoDiscover);
-      return { content: autoDiscover, url: `${origin}/llms.txt`, sourceType: "llms-txt" };
+      return stamp({ content: autoDiscover, url: `${origin}/llms.txt`, sourceType: "llms-txt" });
     }
   } catch {
     // invalid URL, skip
@@ -231,7 +240,7 @@ export async function fetchDocs(
   if (jinaContent) {
     docCache.set(cacheKey, jinaContent);
     void diskDocCache.set(cacheKey, jinaContent);
-    return { content: jinaContent, url: docsUrl, sourceType: "jina" };
+    return stamp({ content: jinaContent, url: docsUrl, sourceType: "jina" });
   }
 
   // 4. Direct fetch as last resort
@@ -239,7 +248,7 @@ export async function fetchDocs(
   if (directContent) {
     docCache.set(cacheKey, directContent);
     void diskDocCache.set(cacheKey, directContent);
-    return { content: directContent, url: docsUrl, sourceType: "direct" };
+    return stamp({ content: directContent, url: docsUrl, sourceType: "direct" });
   }
 
   throw new Error(`Failed to fetch documentation from ${docsUrl}`);
