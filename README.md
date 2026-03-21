@@ -27,17 +27,19 @@
 
 ---
 
-## The problem with AI coding assistants
+## The problem (it's you, but also the model)
 
-They hallucinate APIs. Not because the models are bad — because documentation moves faster than training data does. A library ships a major version, deprecates half its API, and the model keeps generating the old patterns for the next six months. You catch it in review if you're lucky. In production if you're not.
+Your AI assistant just mass-produced seven files of deprecated code and you merged all of it because the formatting was nice and the variable names were clean. We've all been there. Some of us are still there. Some of us are in production there.
 
-There's also the security problem nobody talks about enough. AI assistants produce insecure patterns without knowing they're doing it: SQL built with template literals, `innerHTML` fed user input, `any` scattered through TypeScript like confetti, `cookies()` called without `await` in Next.js 16. The model isn't malicious — it just learned from code that predates the rule change, and now it's your problem.
+Here's what happened: React shipped v19 and killed `forwardRef`. Next.js made `cookies()` async. Tailwind moved to v4 and nuked `@tailwind` directives. Your model didn't get the memo. It's still writing patterns from the before times with absolute confidence and zero hesitation.
 
-Context7 helps with the first problem. But it has rate limits, lives in the cloud, and covers around 130 libraries. Hit the quota mid-session and you get nothing. I did that enough times that I built the thing I actually wanted.
+And the security stuff — that's the part that should keep you up at night but doesn't because you don't know about it yet. The model will hand you SQL injection dressed up as a query builder, pass user input to `innerHTML` like it's a feature, and use `any` in TypeScript with the same energy as someone who puts ketchup on steak. It learned from real code. Real code that real people got real fired over.
 
-**GroundTruth runs on your machine.** It fetches docs directly from the source at query time — `llms.txt` files first (purpose-built for LLMs by the maintainers themselves), then Jina Reader for JS-rendered pages, then GitHub. No quota. No cold start. No cache from six months ago. 363+ curated libraries with automatic fallback to npm, PyPI, crates.io, and pkg.go.dev — meaning any public package in any major ecosystem is resolvable, not just the ones in the registry.
+Context7 is one solution. Cloud-hosted. Rate-limited. Covers about 130 libraries. Works great until you burn through the quota at 11pm debugging a production outage and it serves you a 429 while your Slack is lighting up.
 
-The audit tool scans your actual source files at `file:line` level and fetches current fix guidance from the real spec. Not a linting rule someone wrote in 2019. The actual spec.
+**GroundTruth runs on your machine.** No quota to hit. No cloud to go down. Fetches docs from the source — `llms.txt`, Jina Reader, GitHub — right when you ask. 363+ curated libraries, plus npm, PyPI, crates.io, and pkg.go.dev as fallback. Any public package. Any ecosystem.
+
+The audit tool reads your actual files, finds issues at exact `file:line` locations, and fetches the current fix from the real spec. Not a Medium article. Not a 2019 ESLint plugin. The OWASP cheat sheet that was updated last month.
 
 ---
 
