@@ -18,7 +18,7 @@ describe("detectVersionFromLockfile", () => {
     const lockContent = JSON.stringify({
       packages: {
         "node_modules/react": { version: "19.1.0" },
-        "node_modules/@types/node": { version: "22.6.0" },
+        "node_modules/@types/node": { version: "23.0.0" },
       },
     });
     mockReadFile.mockResolvedValueOnce(lockContent);
@@ -30,13 +30,13 @@ describe("detectVersionFromLockfile", () => {
   it("reads scoped package from package-lock.json", async () => {
     const lockContent = JSON.stringify({
       packages: {
-        "node_modules/@types/node": { version: "22.6.0" },
+        "node_modules/@types/node": { version: "23.0.0" },
       },
     });
     mockReadFile.mockResolvedValueOnce(lockContent);
 
     const result = await detectVersionFromLockfile("/project", "@types/node");
-    expect(result).toBe("22.6.0");
+    expect(result).toBe("23.0.0");
   });
 
   it("falls back to dependencies field (lockfileVersion 1)", async () => {
