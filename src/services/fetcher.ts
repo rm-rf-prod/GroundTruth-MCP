@@ -505,17 +505,24 @@ export async function fetchDevDocs(slug: string, topic?: string): Promise<string
     return diskCached;
   }
 
-  // Try the devdocs.io search endpoint
-  const searchUrl = topic
-    ? `https://devdocs.io/search?q=${encodeURIComponent(`${slug} ${topic}`)}`
-    : `https://devdocs.io/${slugEncoded}/`;
+  // Try topic-specific doc page first, then root page
+  const topicSlug = topic ? topic.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "") : "";
+  const urls = topic
+    ? [
+        `https://devdocs.io/${slugEncoded}/${topicSlug}`,
+        `https://devdocs.io/${slugEncoded}/`,
+      ]
+    : [`https://devdocs.io/${slugEncoded}/`];
 
-  const content = await fetchViaJina(searchUrl);
-  if (!content || content.length < 200) return null;
-
-  docCache.set(cacheKey, content);
-  void diskDocCache.set(cacheKey, content);
-  return content;
+  for (const url of urls) {
+    const content = await fetchViaJina(url);
+    if (content && content.length >= 200) {
+      docCache.set(cacheKey, content);
+      void diskDocCache.set(cacheKey, content);
+      return content;
+    }
+  }
+  return null;
 }
 
 /** Query PyPI for package metadata */
