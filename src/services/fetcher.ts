@@ -3,6 +3,7 @@ import dns from "dns";
 import { isIPv4, isIPv6 } from "net";
 import { Agent, setGlobalDispatcher } from "undici";
 import { FETCH_TIMEOUT_MS, JINA_BASE_URL, SERVER_VERSION } from "../constants.js";
+import { extractDomain, isCircuitOpen, recordSuccess, recordFailure } from "./circuit-breaker.js";
 import type { FetchResult } from "../types.js";
 import { docCache, diskDocCache } from "./cache.js";
 import { assertPublicUrl } from "../utils/guard.js";
@@ -102,20 +103,31 @@ export async function fetchWithTimeout(
 
 async function tryFetch(url: string, retries = 1, extraHeaders?: Record<string, string>): Promise<string | null> {
   try { assertPublicUrl(url); } catch { return null; }
+  const domain = extractDomain(url);
+  if (isCircuitOpen(domain)) return null;
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       const res = await fetchWithTimeout(url, FETCH_TIMEOUT_MS, extraHeaders);
       if (res.status === 429 || res.status === 503) {
+        recordFailure(domain);
         if (attempt < retries) {
           await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
           continue;
         }
         return null;
       }
-      if (!res.ok) return null;
+      if (!res.ok) {
+        recordFailure(domain);
+        return null;
+      }
       const text = await res.text();
-      return text.length > 100 ? text : null;
+      if (text.length > 100) {
+        recordSuccess(domain);
+        return text;
+      }
+      return null;
     } catch {
+      recordFailure(domain);
       if (attempt < retries) {
         await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
       }
@@ -131,6 +143,9 @@ export async function fetchViaJina(url: string): Promise<string | null> {
   } catch {
     return null;
   }
+
+  const jinaDomain = extractDomain(JINA_BASE_URL);
+  if (isCircuitOpen(jinaDomain)) return null;
 
   const jinaUrl = `${JINA_BASE_URL}/${url}`;
   const cacheKey = `jina:${url}`;
@@ -153,21 +168,31 @@ export async function fetchViaJina(url: string): Promise<string | null> {
   const fetchPromise = (async (): Promise<string | null> => {
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
-        const res = await fetchWithTimeout(jinaUrl, 25_000, { "X-Return-Format": "markdown" });
+        const res = await fetchWithTimeout(jinaUrl, 25_000, {
+          "X-Return-Format": "markdown",
+          "X-Exclude-Selector": "nav,footer,aside,.sidebar,.ads,#comments,.cookie-banner,.cookie-consent,#cookie-notice,.newsletter-signup",
+          "X-Wait-For-Selector": "main,article,.docs-content,[role=main]",
+        });
         if (res.status === 429 || res.status === 503) {
+          recordFailure(jinaDomain);
           if (attempt === 0) {
             await new Promise((r) => setTimeout(r, 1500));
             continue;
           }
           return null;
         }
-        if (!res.ok) return null;
+        if (!res.ok) {
+          recordFailure(jinaDomain);
+          return null;
+        }
         const text = await res.text();
         if (text.length < 200) return null;
+        recordSuccess(jinaDomain);
         docCache.set(cacheKey, text);
-        void diskDocCache.set(cacheKey, text); // persist async
+        void diskDocCache.set(cacheKey, text);
         return text;
       } catch {
+        recordFailure(jinaDomain);
         if (attempt === 0) await new Promise((r) => setTimeout(r, 1000));
       }
     }
@@ -207,7 +232,7 @@ export function rankIndexLinks(content: string, topic: string): string[] {
     }
   }
 
-  if (!topic || links.length === 0) return links.slice(0, 3).map((l) => l.url);
+  if (!topic || links.length === 0) return links.slice(0, 5).map((l) => l.url);
 
   const queryWords = topic
     .toLowerCase()
@@ -224,7 +249,7 @@ export function rankIndexLinks(content: string, topic: string): string[] {
   return links
     .filter((l) => l.score > 0)
     .sort((a, b) => b.score - a.score)
-    .slice(0, 3)
+    .slice(0, 5)
     .map((l) => l.url);
 }
 
@@ -285,33 +310,34 @@ export async function fetchDocs(
     }
   }
 
-  // 2. Try auto-discovering llms.txt from docs URL
+  // 2. Race auto-discover + Jina + direct in parallel (first good result wins)
+  const autoDiscoverUrls: string[] = [];
   try {
     const origin = new URL(docsUrl).origin;
-    const autoDiscover = await tryFetch(`${origin}/llms.txt`);
-    if (autoDiscover) {
-      docCache.set(cacheKey, autoDiscover);
-      void diskDocCache.set(cacheKey, autoDiscover);
-      return stamp({ content: autoDiscover, url: `${origin}/llms.txt`, sourceType: "llms-txt" });
+    autoDiscoverUrls.push(`${origin}/llms.txt`, `${origin}/llms-full.txt`, `${origin}/docs/llms.txt`);
+  } catch { /* invalid URL */ }
+
+  const candidates: Array<Promise<FetchResult | null>> = [];
+  for (const adUrl of autoDiscoverUrls) {
+    candidates.push(
+      tryFetch(adUrl).then((c) => c ? { content: c, url: adUrl, sourceType: "llms-txt" as const } : null),
+    );
+  }
+  candidates.push(
+    fetchViaJina(docsUrl).then((c) => c ? { content: c, url: docsUrl, sourceType: "jina" as const } : null),
+  );
+  candidates.push(
+    tryFetch(docsUrl).then((c) => c ? { content: c, url: docsUrl, sourceType: "direct" as const } : null),
+  );
+
+  const settled = await Promise.allSettled(candidates);
+  for (const result of settled) {
+    if (result.status === "fulfilled" && result.value) {
+      const hit = result.value;
+      docCache.set(cacheKey, hit.content);
+      void diskDocCache.set(cacheKey, hit.content);
+      return stamp(hit);
     }
-  } catch {
-    // invalid URL, skip
-  }
-
-  // 3. Jina Reader (renders JS, returns clean markdown)
-  const jinaContent = await fetchViaJina(docsUrl);
-  if (jinaContent) {
-    docCache.set(cacheKey, jinaContent);
-    void diskDocCache.set(cacheKey, jinaContent);
-    return stamp({ content: jinaContent, url: docsUrl, sourceType: "jina" });
-  }
-
-  // 4. Direct fetch as last resort
-  const directContent = await tryFetch(docsUrl);
-  if (directContent) {
-    docCache.set(cacheKey, directContent);
-    void diskDocCache.set(cacheKey, directContent);
-    return stamp({ content: directContent, url: docsUrl, sourceType: "direct" });
   }
 
   throw new Error(`Failed to fetch documentation from ${docsUrl}`);
@@ -349,6 +375,24 @@ export async function fetchGitHubContent(
       return { content, url: rawUrl, sourceType: "github-readme" };
     }
   }
+
+  // Fallback: GitHub REST API with auth (5000/hr vs 60/hr unauthenticated)
+  const token = process.env.GT_GITHUB_TOKEN;
+  if (token) {
+    for (const branch of ["main", "master"]) {
+      const apiUrl = `https://api.github.com/repos/${repoPath}/contents/${path}?ref=${branch}`;
+      const content = await tryFetch(apiUrl, 0, {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/vnd.github.raw+json",
+      });
+      if (content) {
+        docCache.set(cacheKey, content);
+        void diskDocCache.set(cacheKey, content);
+        return { content, url: apiUrl, sourceType: "github-readme" };
+      }
+    }
+  }
+
   return null;
 }
 
@@ -491,9 +535,22 @@ export async function fetchNpmPackage(packageName: string): Promise<unknown> {
   }
 }
 
+const DEVDOCS_SLUGS: Record<string, string> = {
+  react: "react", node: "node", python: "python~3.12", go: "go",
+  typescript: "typescript", javascript: "javascript", rust: "rust",
+  css: "css", html: "html", postgresql: "postgresql~16", redis: "redis",
+  mongodb: "mongodb", docker: "docker", nginx: "nginx", git: "git",
+  bash: "bash", ruby: "ruby~3.3", php: "php", java: "openjdk~21",
+  kotlin: "kotlin", swift: "swift", dart: "dart~3", elixir: "elixir",
+  django: "django~5.0", flask: "flask~3.0", express: "express",
+  vue: "vue~3", angular: "angular", svelte: "svelte",
+  tailwindcss: "tailwindcss", rails: "ruby_on_rails~7.1", laravel: "laravel~11",
+};
+
 /** Fetch documentation from devdocs.io — pre-parsed, offline-capable docs for 200+ technologies */
 export async function fetchDevDocs(slug: string, topic?: string): Promise<string | null> {
-  const slugEncoded = encodeURIComponent(slug.toLowerCase());
+  const resolvedSlug = DEVDOCS_SLUGS[slug.toLowerCase()] ?? slug.toLowerCase();
+  const slugEncoded = encodeURIComponent(resolvedSlug);
   const cacheKey = `devdocs:${slugEncoded}:${topic ?? ""}`;
 
   const memCached = docCache.get(cacheKey);
@@ -523,6 +580,44 @@ export async function fetchDevDocs(slug: string, topic?: string): Promise<string
     }
   }
   return null;
+}
+
+/** Fetch and parse sitemap.xml to discover all doc page URLs */
+export async function fetchSitemapUrls(docsUrl: string): Promise<string[]> {
+  let origin: string;
+  try {
+    origin = new URL(docsUrl).origin;
+  } catch {
+    return [];
+  }
+
+  const cacheKey = `sitemap:${origin}`;
+  const memCached = docCache.get(cacheKey);
+  if (memCached) {
+    try { return JSON.parse(memCached) as string[]; } catch { /* invalid cache */ }
+  }
+
+  const sitemapUrl = `${origin}/sitemap.xml`;
+  const content = await tryFetch(sitemapUrl, 0);
+  if (!content) return [];
+
+  const locRegex = /<loc>\s*(https?:\/\/[^<]+)\s*<\/loc>/g;
+  const urls: string[] = [];
+  let match;
+  while ((match = locRegex.exec(content)) !== null && urls.length < 500) {
+    const url = match[1]?.trim();
+    if (url && /\/(docs?|guide|api|reference|learn|tutorial)\//i.test(url)) {
+      urls.push(url);
+    }
+  }
+
+  if (urls.length > 0) {
+    const ttl = 24 * 60 * 60 * 1000; // 24h — sitemaps rarely change
+    docCache.set(cacheKey, JSON.stringify(urls), ttl);
+    void diskDocCache.set(cacheKey, JSON.stringify(urls), ttl);
+  }
+
+  return urls;
 }
 
 /** Query PyPI for package metadata */

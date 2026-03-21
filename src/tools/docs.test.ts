@@ -13,8 +13,11 @@ vi.mock("../services/fetcher.js", () => ({
   fetchDocs: vi.fn(),
   fetchGitHubContent: vi.fn(),
   fetchViaJina: vi.fn(),
-  isIndexContent: vi.fn().mockReturnValue(false),
-  rankIndexLinks: vi.fn().mockReturnValue([]),
+}));
+
+vi.mock("../services/deep-fetch.js", () => ({
+  deepFetchForTopic: vi.fn(async (result: unknown) => result),
+  splitTopics: vi.fn((topic: string) => [topic]),
 }));
 
 vi.mock("../utils/extract.js", () => ({
@@ -35,10 +38,15 @@ vi.mock("../utils/guard.js", () => ({
   assertPublicUrl: vi.fn(),
 }));
 
+vi.mock("../utils/quality.js", () => ({
+  computeQualityScore: vi.fn(() => 0.8),
+}));
+
 // ── Imports after mocks ─────────────────────────────────────────────────────
 
 import { lookupById, lookupByAlias } from "../sources/registry.js";
-import { fetchDocs, fetchGitHubContent, fetchViaJina, isIndexContent, rankIndexLinks } from "../services/fetcher.js";
+import { fetchDocs, fetchGitHubContent, fetchViaJina } from "../services/fetcher.js";
+import { deepFetchForTopic } from "../services/deep-fetch.js";
 import { sanitizeContent } from "../utils/sanitize.js";
 import { extractRelevantContent } from "../utils/extract.js";
 import { isExtractionAttempt } from "../utils/guard.js";
@@ -90,8 +98,7 @@ beforeEach(() => {
   vi.mocked(fetchGitHubContent).mockReset();
   vi.mocked(fetchViaJina).mockReset().mockResolvedValue(null);
   vi.mocked(isExtractionAttempt).mockReset().mockReturnValue(false);
-  vi.mocked(isIndexContent).mockReset().mockReturnValue(false);
-  vi.mocked(rankIndexLinks).mockReset().mockReturnValue([]);
+  vi.mocked(deepFetchForTopic).mockReset().mockImplementation(async (result) => result);
   vi.mocked(sanitizeContent).mockReset().mockImplementation((t: string) => t);
   vi.mocked(extractRelevantContent).mockImplementation((content, _topic, _tokens) => ({
     text: content,
@@ -337,22 +344,37 @@ describe("gt_get_docs handler", () => {
     });
   });
 
-  describe("index content deep linking", () => {
-    it("follows deep links when content is an index page", async () => {
+  describe("deep-fetch integration", () => {
+    it("calls deepFetchForTopic when topic is provided", async () => {
       vi.mocked(lookupById).mockReturnValue(makeEntry());
       vi.mocked(fetchDocs).mockResolvedValue({
-        content: "- [Auth](https://example.com/auth)\n- [Routing](https://example.com/routing)",
+        content: "index page content",
         url: "https://example.com/docs",
         sourceType: "llms-txt",
       });
-      vi.mocked(isIndexContent).mockReturnValueOnce(true);
-      vi.mocked(rankIndexLinks).mockReturnValue(["https://example.com/auth"]);
-      vi.mocked(fetchViaJina).mockResolvedValue("x".repeat(400));
+      vi.mocked(deepFetchForTopic).mockResolvedValue({
+        content: "deep auth docs content",
+        url: "https://example.com/auth",
+        sourceType: "deep-fetch",
+      });
       vi.mocked(sanitizeContent).mockImplementation((t: string) => t);
       vi.mocked(extractRelevantContent).mockReturnValue({ text: "auth docs content", truncated: false });
 
       const result = await handler({ libraryId: "facebook/react", topic: "auth", tokens: 8000 });
+      expect(deepFetchForTopic).toHaveBeenCalled();
       expect(result.content[0]!.text).toContain("auth docs content");
+    });
+
+    it("does not call deepFetchForTopic when no topic is provided", async () => {
+      vi.mocked(lookupById).mockReturnValue(makeEntry());
+      vi.mocked(fetchDocs).mockResolvedValue({
+        content: "docs content",
+        url: "https://example.com/docs",
+        sourceType: "llms-txt",
+      });
+
+      await handler({ libraryId: "facebook/react", tokens: 8000 });
+      expect(deepFetchForTopic).not.toHaveBeenCalled();
     });
   });
 

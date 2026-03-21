@@ -2,10 +2,12 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { FetchResult } from "../types.js";
 import { z } from "zod";
 import { lookupById, lookupByAlias } from "../sources/registry.js";
-import { fetchDocs, fetchGitHubContent, fetchViaJina, isIndexContent, rankIndexLinks } from "../services/fetcher.js";
+import { fetchDocs, fetchGitHubContent, fetchViaJina } from "../services/fetcher.js";
+import { deepFetchForTopic, splitTopics } from "../services/deep-fetch.js";
 import { extractRelevantContent } from "../utils/extract.js";
 import { isExtractionAttempt, withNotice, EXTRACTION_REFUSAL, assertPublicUrl } from "../utils/guard.js";
 import { sanitizeContent } from "../utils/sanitize.js";
+import { computeQualityScore } from "../utils/quality.js";
 import { DEFAULT_TOKEN_LIMIT, MAX_TOKEN_LIMIT } from "../constants.js";
 
 const InputSchema = z.object({
@@ -159,27 +161,48 @@ IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library 
         };
       }
 
-      // If the result is a TOC/index (list of links) and we have a topic,
-      // follow the best-matching deep link to get actual content
-      if (topic && isIndexContent(fetchResult.content)) {
-        const deepLinks = rankIndexLinks(fetchResult.content, topic);
-        for (const deepUrl of deepLinks) {
-          const deepContent = await fetchViaJina(deepUrl);
-          if (deepContent && deepContent.length > 300) {
-            fetchResult = { content: deepContent, url: deepUrl, sourceType: "jina" };
-            break;
+      if (topic) {
+        const subtopics = splitTopics(topic);
+        if (subtopics.length > 1) {
+          const baseCopy: FetchResult = {
+            content: fetchResult.content,
+            url: fetchResult.url,
+            sourceType: fetchResult.sourceType,
+          };
+          const results = await Promise.all(
+            subtopics.map((st) => deepFetchForTopic(
+              baseCopy,
+              st,
+              docsUrl,
+              entry?.urlPatterns,
+            )),
+          );
+          const combined = results
+            .filter((r) => r.content.length > 200)
+            .map((r) => `## ${r.url}\n\n${r.content}`)
+            .join("\n\n---\n\n");
+          if (combined.length > 300) {
+            fetchResult = {
+              content: combined,
+              url: results[0]?.url ?? docsUrl,
+              sourceType: "deep-fetch",
+            };
           }
+        } else {
+          fetchResult = await deepFetchForTopic(fetchResult, topic, docsUrl, entry?.urlPatterns);
         }
       }
 
       const safe = sanitizeContent(fetchResult.content);
       const { text, truncated } = extractRelevantContent(safe, topic, tokens);
+      const qualityScore = computeQualityScore(text, topic, fetchResult.sourceType);
 
       const header = [
         `# ${displayName} Documentation`,
         `> Source: ${fetchResult.sourceType} — ${fetchResult.url}`,
         topic ? `> Topic: ${topic}` : "",
         truncated ? "> Note: Response truncated. Use a more specific topic or increase tokens." : "",
+        qualityScore < 0.4 ? "> Quality: Low — try a more specific topic or different library ID." : "",
         "",
         "---",
         "",
@@ -196,6 +219,7 @@ IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library 
           sourceUrl: fetchResult.url,
           sourceType: fetchResult.sourceType,
           truncated,
+          qualityScore,
           content: text,
         },
       };

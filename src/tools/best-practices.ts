@@ -1,10 +1,12 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { lookupById, lookupByAlias } from "../sources/registry.js";
-import { fetchDocs, fetchGitHubContent, fetchViaJina, fetchGitHubExamples, isIndexContent, rankIndexLinks } from "../services/fetcher.js";
+import { fetchDocs, fetchGitHubContent, fetchViaJina, fetchGitHubExamples } from "../services/fetcher.js";
+import { deepFetchForTopic } from "../services/deep-fetch.js";
 import { extractRelevantContent } from "../utils/extract.js";
 import { isExtractionAttempt, withNotice, EXTRACTION_REFUSAL } from "../utils/guard.js";
 import { sanitizeContent } from "../utils/sanitize.js";
+import { computeQualityScore } from "../utils/quality.js";
 import { DEFAULT_TOKEN_LIMIT, MAX_TOKEN_LIMIT } from "../constants.js";
 
 const InputSchema = z.object({
@@ -158,6 +160,12 @@ const BEST_PRACTICES_URLS: Record<string, string[]> = {
     "https://mongoosejs.com/docs/best_practices.html",
     "https://mongoosejs.com/docs/indexes.html",
   ],
+  "mongoose/mongoose": [
+    "https://mongoosejs.com/docs/guide.html",
+    "https://mongoosejs.com/docs/best_practices.html",
+    "https://mongoosejs.com/docs/indexes.html",
+    "https://mongoosejs.com/docs/middleware.html",
+  ],
   "knex/knex": [
     "https://knexjs.org/guide/",
     "https://knexjs.org/guide/migrations.html",
@@ -191,6 +199,12 @@ const BEST_PRACTICES_URLS: Record<string, string[]> = {
   "effect-ts/effect": [
     "https://effect.website/docs/introduction",
     "https://effect.website/docs/error-management/expected-errors",
+  ],
+  "Effect-TS/effect": [
+    "https://effect.website/docs/introduction",
+    "https://effect.website/docs/error-management/expected-errors",
+    "https://effect.website/docs/concurrency/basic-concurrency",
+    "https://effect.website/docs/guides/configuration",
   ],
 
   // ─── State Management ────────────────────────────────────────────────────
@@ -328,6 +342,26 @@ const BEST_PRACTICES_URLS: Record<string, string[]> = {
     "https://docs.anthropic.com/en/docs/build-with-claude/overview",
     "https://docs.anthropic.com/en/docs/build-with-claude/tool-use",
     "https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/overview",
+  ],
+  "anthropics/anthropic-sdk-node": [
+    "https://docs.anthropic.com/en/docs/build-with-claude/overview",
+    "https://docs.anthropic.com/en/docs/build-with-claude/tool-use",
+    "https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/overview",
+    "https://docs.anthropic.com/en/docs/build-with-claude/streaming",
+    "https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching",
+  ],
+  "anthropics/anthropic-sdk-python": [
+    "https://docs.anthropic.com/en/docs/build-with-claude/overview",
+    "https://docs.anthropic.com/en/docs/build-with-claude/tool-use",
+    "https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/overview",
+    "https://docs.anthropic.com/en/docs/build-with-claude/streaming",
+  ],
+  "anthropics/anthropic-api": [
+    "https://docs.anthropic.com/en/docs/build-with-claude/overview",
+    "https://docs.anthropic.com/en/docs/build-with-claude/tool-use",
+    "https://docs.anthropic.com/en/docs/build-with-claude/vision",
+    "https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking",
+    "https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching",
   ],
   "openai/openai-node": [
     "https://platform.openai.com/docs/guides/text-generation",
@@ -538,6 +572,13 @@ const BEST_PRACTICES_URLS: Record<string, string[]> = {
     "https://docs.astro.build/en/guides/deploy/",
     "https://docs.astro.build/en/guides/server-side-rendering/",
   ],
+  "astro-build/astro": [
+    "https://docs.astro.build/en/guides/best-practices/",
+    "https://docs.astro.build/en/guides/performance/",
+    "https://docs.astro.build/en/guides/deploy/",
+    "https://docs.astro.build/en/guides/server-side-rendering/",
+    "https://docs.astro.build/en/guides/content-collections/",
+  ],
   "withastro/starlight": [
     "https://starlight.astro.build/getting-started/",
     "https://starlight.astro.build/guides/customization/",
@@ -699,6 +740,338 @@ const BEST_PRACTICES_URLS: Record<string, string[]> = {
 
   // ─── Sonner / Toast ──────────────────────────────────────────────────────
   "emilkowalski/sonner": ["https://sonner.emilkowal.ski"],
+
+  // ─── Rust Ecosystem ───────────────────────────────────────────────────────
+  "serde-rs/serde": ["https://serde.rs/", "https://serde.rs/derive.html"],
+  "seanmonstar/reqwest": ["https://docs.rs/reqwest/latest/reqwest/"],
+  "rwf2/Rocket": ["https://rocket.rs/guide/", "https://rocket.rs/guide/configuration/"],
+
+  // ─── Go Ecosystem ────────────────────────────────────────────────────────
+  "labstack/echo": ["https://echo.labstack.com/docs/middleware", "https://echo.labstack.com/docs/cookbook"],
+  "spf13/cobra": ["https://cobra.dev/", "https://github.com/spf13/cobra/blob/main/site/content/user_guide.md"],
+
+  // ─── Java / Kotlin ────────────────────────────────────────────────────────
+  "spring-projects/spring-boot": [
+    "https://docs.spring.io/spring-boot/docs/current/reference/html/getting-started.html",
+    "https://docs.spring.io/spring-boot/docs/current/reference/html/howto.html",
+    "https://docs.spring.io/spring-boot/docs/current/reference/html/actuator.html",
+  ],
+  "spring-projects/spring-security": [
+    "https://docs.spring.io/spring-security/reference/servlet/authentication/index.html",
+    "https://docs.spring.io/spring-security/reference/servlet/authorization/index.html",
+  ],
+  "ktorio/ktor": ["https://ktor.io/docs/server-create-new-project.html", "https://ktor.io/docs/server-auto-reload.html"],
+
+  // ─── DevOps / Infrastructure ──────────────────────────────────────────────
+  "ansible/ansible": [
+    "https://docs.ansible.com/ansible/latest/playbook_guide/index.html",
+    "https://docs.ansible.com/ansible/latest/tips_tricks/index.html",
+  ],
+  "pulumi/pulumi": ["https://www.pulumi.com/docs/concepts/", "https://www.pulumi.com/docs/using-pulumi/testing/"],
+  "hashicorp/terraform": [
+    "https://developer.hashicorp.com/terraform/language",
+    "https://developer.hashicorp.com/terraform/language/best-practices",
+  ],
+  "helm/helm": ["https://helm.sh/docs/chart_best_practices/", "https://helm.sh/docs/topics/charts/"],
+  "grafana/grafana": ["https://grafana.com/docs/grafana/latest/dashboards/", "https://grafana.com/docs/grafana/latest/alerting/"],
+  "prometheus/prometheus": ["https://prometheus.io/docs/practices/naming/", "https://prometheus.io/docs/practices/alerting/"],
+
+  // ─── Databases (additional) ───────────────────────────────────────────────
+  "cockroachdb/cockroach": ["https://www.cockroachlabs.com/docs/stable/performance-best-practices-overview.html"],
+  "ClickHouse/ClickHouse": ["https://clickhouse.com/docs/en/best-practices", "https://clickhouse.com/docs/en/guides"],
+  "meilisearch/meilisearch": ["https://www.meilisearch.com/docs/learn/getting_started", "https://www.meilisearch.com/docs/learn/fine_tuning_results"],
+  "typesense/typesense": ["https://typesense.org/docs/guide/", "https://typesense.org/docs/guide/ranking-and-relevance.html"],
+
+  // ─── AI / ML ──────────────────────────────────────────────────────────────
+  "wandb/wandb": ["https://docs.wandb.ai/guides", "https://docs.wandb.ai/guides/track"],
+  "mlflow/mlflow": ["https://mlflow.org/docs/latest/tracking.html", "https://mlflow.org/docs/latest/model-registry.html"],
+  "deepset-ai/haystack": ["https://docs.haystack.deepset.ai/docs/pipelines", "https://docs.haystack.deepset.ai/docs/components"],
+  "jxnl/instructor": ["https://python.useinstructor.com/concepts/", "https://python.useinstructor.com/tutorials/"],
+  "BerriAI/litellm": ["https://docs.litellm.ai/docs/", "https://docs.litellm.ai/docs/proxy/quick_start"],
+  "gradio-app/gradio": ["https://www.gradio.app/docs/interface", "https://www.gradio.app/guides/quickstart"],
+
+  // ─── Python (additional) ──────────────────────────────────────────────────
+  "astral-sh/ruff": ["https://docs.astral.sh/ruff/configuration/", "https://docs.astral.sh/ruff/rules/"],
+  "pytest-dev/pytest": ["https://docs.pytest.org/en/stable/how-to/", "https://docs.pytest.org/en/stable/reference/fixtures.html"],
+  "streamlit/streamlit": ["https://docs.streamlit.io/develop/concepts", "https://docs.streamlit.io/develop/api-reference"],
+  "pola-rs/polars": ["https://docs.pola.rs/user-guide/", "https://docs.pola.rs/user-guide/lazy/optimizations/"],
+
+  // ─── Frontend (additional) ────────────────────────────────────────────────
+  "solidjs/solid": ["https://docs.solidjs.com/concepts/signals", "https://docs.solidjs.com/guides/state-management"],
+  "bigskysoftware/htmx": ["https://htmx.org/docs/", "https://htmx.org/examples/"],
+  "BuilderIO/qwik": ["https://qwik.dev/docs/concepts/think-qwik/", "https://qwik.dev/docs/components/overview/"],
+  "preactjs/preact": ["https://preactjs.com/guide/v10/getting-started", "https://preactjs.com/guide/v10/hooks"],
+
+  // ─── Desktop / Mobile (additional) ────────────────────────────────────────
+  "nicolo-ribaudo/tauri": ["https://v2.tauri.app/develop/", "https://v2.tauri.app/develop/security/"],
+  "nicolo-ribaudo/electron": ["https://www.electronjs.org/docs/latest/tutorial/security", "https://www.electronjs.org/docs/latest/tutorial/performance"],
+
+  // ─── Cloud ────────────────────────────────────────────────────────────────
+  "netlify/cli": ["https://docs.netlify.com/frameworks/next-js/", "https://docs.netlify.com/functions/overview/"],
+
+  // ─── Messaging / Workflows ────────────────────────────────────────────────
+  "temporalio/sdk-typescript": ["https://docs.temporal.io/develop/typescript", "https://docs.temporal.io/develop/typescript/core-application"],
+  "inngest/inngest": ["https://www.inngest.com/docs/guides/", "https://www.inngest.com/docs/features/inngest-functions"],
+
+  // ─── Elixir ───────────────────────────────────────────────────────────────
+  "phoenixframework/phoenix": ["https://hexdocs.pm/phoenix/overview.html", "https://hexdocs.pm/phoenix/deployment.html"],
+
+  // ─── PHP ──────────────────────────────────────────────────────────────────
+  "laravel/laravel": ["https://laravel.com/docs/routing", "https://laravel.com/docs/eloquent", "https://laravel.com/docs/deployment"],
+  "rails/rails": ["https://guides.rubyonrails.org/security.html", "https://guides.rubyonrails.org/active_record_basics.html"],
+
+  // ─── Registry ID aliases and new entries ──────────────────────────────
+
+  "sveltejs/kit": [
+    "https://svelte.dev/docs/kit/performance",
+    "https://svelte.dev/docs/kit/form-actions",
+    "https://svelte.dev/docs/kit/hooks",
+    "https://svelte.dev/docs/kit/routing",
+  ],
+  "fastify/fastify": [
+    "https://fastify.dev/docs/latest/Guides/Getting-Started",
+    "https://fastify.dev/docs/latest/Guides/Testing",
+    "https://fastify.dev/docs/latest/Guides/Plugins-Guide",
+    "https://fastify.dev/docs/latest/Guides/Recommendations",
+  ],
+  "remix-run/remix": [
+    "https://remix.run/docs/guides/data-loading",
+    "https://remix.run/docs/guides/form-validation",
+    "https://remix.run/docs/guides/styling",
+  ],
+  "modelcontextprotocol/sdk": [
+    "https://modelcontextprotocol.io/docs/concepts/architecture",
+    "https://modelcontextprotocol.io/docs/concepts/tools",
+    "https://modelcontextprotocol.io/docs/concepts/resources",
+    "https://modelcontextprotocol.io/docs/concepts/transports",
+  ],
+  "storybookjs/storybook": [
+    "https://storybook.js.org/docs/get-started",
+    "https://storybook.js.org/docs/writing-stories",
+    "https://storybook.js.org/docs/writing-tests",
+  ],
+  "mrdoob/three.js": [
+    "https://threejs.org/docs/index.html#manual/en/introduction/Creating-a-scene",
+    "https://threejs.org/docs/index.html#manual/en/introduction/How-to-dispose-of-objects",
+  ],
+
+  // ─── Google / Firebase / GCP ──────────────────────────────────────────
+  "google/generative-ai-js": [
+    "https://ai.google.dev/gemini-api/docs/get-started/tutorial",
+    "https://ai.google.dev/gemini-api/docs/function-calling",
+    "https://ai.google.dev/gemini-api/docs/structured-output",
+    "https://ai.google.dev/gemini-api/docs/embeddings",
+  ],
+  "google/generative-ai-python": [
+    "https://ai.google.dev/gemini-api/docs/get-started/tutorial",
+    "https://ai.google.dev/gemini-api/docs/function-calling",
+    "https://ai.google.dev/gemini-api/docs/structured-output",
+  ],
+  "googleapis/google-cloud-node": [
+    "https://cloud.google.com/storage/docs",
+    "https://cloud.google.com/bigquery/docs",
+    "https://cloud.google.com/run/docs",
+    "https://cloud.google.com/functions/docs",
+  ],
+  "googleapis/google-api-nodejs-client": [
+    "https://developers.google.com/api-client-library/javascript/start/start-node",
+  ],
+  "google/vertex-ai-sdk": [
+    "https://cloud.google.com/vertex-ai/docs/start/introduction-unified-platform",
+    "https://cloud.google.com/vertex-ai/docs/generative-ai/learn/overview",
+  ],
+  "google/maps-js-api": [
+    "https://developers.google.com/maps/documentation/javascript/overview",
+    "https://developers.google.com/maps/documentation/javascript/markers",
+    "https://developers.google.com/maps/documentation/javascript/geocoding",
+  ],
+  "google/material-web": [
+    "https://m3.material.io/foundations",
+    "https://m3.material.io/components",
+  ],
+  "flutter/flutter": [
+    "https://docs.flutter.dev/get-started/install",
+    "https://docs.flutter.dev/cookbook",
+    "https://docs.flutter.dev/ui/widgets",
+    "https://docs.flutter.dev/data-and-backend/state-mgmt",
+    "https://docs.flutter.dev/testing/overview",
+  ],
+  "angular/angular": [
+    "https://angular.dev/overview",
+    "https://angular.dev/essentials/components",
+    "https://angular.dev/guide/signals",
+    "https://angular.dev/guide/di",
+    "https://angular.dev/guide/routing",
+    "https://angular.dev/guide/testing",
+  ],
+
+  // ─── OpenAI (registry ID aliases) ─────────────────────────────────────
+  "openai/openai-python": [
+    "https://platform.openai.com/docs/guides/text-generation",
+    "https://platform.openai.com/docs/guides/function-calling",
+    "https://platform.openai.com/docs/guides/structured-outputs",
+    "https://platform.openai.com/docs/guides/production-best-practices",
+  ],
+  "openai/openai-api": [
+    "https://platform.openai.com/docs/guides/text-generation",
+    "https://platform.openai.com/docs/guides/function-calling",
+    "https://platform.openai.com/docs/guides/structured-outputs",
+    "https://platform.openai.com/docs/guides/prompt-engineering",
+    "https://platform.openai.com/docs/guides/production-best-practices",
+    "https://platform.openai.com/docs/guides/latency-optimization",
+  ],
+  "openai/openai-agents-python": [
+    "https://openai.github.io/openai-agents-python/quickstart",
+    "https://openai.github.io/openai-agents-python/agents",
+    "https://openai.github.io/openai-agents-python/tools",
+    "https://openai.github.io/openai-agents-python/handoffs",
+  ],
+
+  // ─── AI Agents / Orchestration ────────────────────────────────────────
+  "joaomdmoura/crewai": [
+    "https://docs.crewai.com/introduction",
+    "https://docs.crewai.com/concepts/agents",
+    "https://docs.crewai.com/concepts/tasks",
+    "https://docs.crewai.com/concepts/crews",
+  ],
+  "microsoft/autogen": [
+    "https://microsoft.github.io/autogen/docs/Getting-Started",
+    "https://microsoft.github.io/autogen/docs/Use-Cases/agent_chat",
+  ],
+  "anthropics/claude-code": [
+    "https://code.claude.com/docs/en/overview",
+    "https://code.claude.com/docs/en/best-practices",
+    "https://code.claude.com/docs/en/common-workflows",
+    "https://code.claude.com/docs/en/hooks-guide",
+    "https://code.claude.com/docs/en/sub-agents",
+  ],
+  "anthropics/claude-agent-sdk": [
+    "https://platform.claude.com/docs/en/agent-sdk/overview",
+    "https://platform.claude.com/docs/en/agent-sdk/quickstart",
+    "https://platform.claude.com/docs/en/agent-sdk/agent-loop",
+    "https://platform.claude.com/docs/en/agent-sdk/custom-tools",
+  ],
+
+  // ─── AI Model Providers ───────────────────────────────────────────────
+  "mistralai/client-js": [
+    "https://docs.mistral.ai/getting-started/quickstart",
+    "https://docs.mistral.ai/capabilities/completion",
+    "https://docs.mistral.ai/capabilities/function_calling",
+    "https://docs.mistral.ai/capabilities/embeddings",
+  ],
+  "cohere-ai/cohere-typescript": [
+    "https://docs.cohere.com/docs/the-cohere-platform",
+    "https://docs.cohere.com/docs/chat-api",
+    "https://docs.cohere.com/docs/embed-api",
+    "https://docs.cohere.com/docs/rerank-api",
+  ],
+  "groq/groq-typescript": [
+    "https://console.groq.com/docs/quickstart",
+    "https://console.groq.com/docs/text-chat",
+    "https://console.groq.com/docs/tool-use",
+  ],
+  "replicate/replicate-javascript": [
+    "https://replicate.com/docs/get-started/nodejs",
+    "https://replicate.com/docs/reference/http",
+  ],
+  "together-ai/together-typescript": [
+    "https://docs.together.ai/docs/quickstart",
+    "https://docs.together.ai/docs/inference-models",
+  ],
+  "fireworks-ai/fireworks-js": [
+    "https://docs.fireworks.ai/guides/querying-text-models",
+    "https://docs.fireworks.ai/guides/function-calling",
+  ],
+
+  // ─── Vector Databases ─────────────────────────────────────────────────
+  "pinecone-io/pinecone-ts-client": [
+    "https://docs.pinecone.io/guides/get-started/overview",
+    "https://docs.pinecone.io/guides/indexes/understanding-indexes",
+    "https://docs.pinecone.io/guides/data/upsert-data",
+    "https://docs.pinecone.io/guides/data/query-data",
+  ],
+  "chroma-core/chromadb": [
+    "https://docs.trychroma.com/docs/overview/getting-started",
+    "https://docs.trychroma.com/docs/collections/add-data",
+    "https://docs.trychroma.com/docs/collections/query-data",
+  ],
+  "weaviate/typescript-client": [
+    "https://weaviate.io/developers/weaviate/starter-guides",
+    "https://weaviate.io/developers/weaviate/manage-data",
+    "https://weaviate.io/developers/weaviate/search",
+  ],
+  "qdrant/js-client-rest": [
+    "https://qdrant.tech/documentation/guides/",
+    "https://qdrant.tech/documentation/concepts/",
+    "https://qdrant.tech/documentation/quick-start/",
+  ],
+
+  // ─── AI Audio / Voice ─────────────────────────────────────────────────
+  "elevenlabs/elevenlabs-js": [
+    "https://elevenlabs.io/docs/quickstart",
+    "https://elevenlabs.io/docs/api-reference/text-to-speech",
+  ],
+  "deepgram/deepgram-js-sdk": [
+    "https://developers.deepgram.com/docs/getting-started",
+    "https://developers.deepgram.com/docs/speech-to-text",
+  ],
+  "AssemblyAI/assemblyai-node-sdk": [
+    "https://www.assemblyai.com/docs/getting-started",
+    "https://www.assemblyai.com/docs/speech-to-text/pre-recorded",
+  ],
+
+  // ─── AI Image / Video ─────────────────────────────────────────────────
+  "stability-ai/stability-sdk": [
+    "https://platform.stability.ai/docs/getting-started",
+  ],
+  "fal-ai/fal-js": [
+    "https://fal.ai/docs/quickstart",
+  ],
+
+  // ─── Hugging Face ─────────────────────────────────────────────────────
+  "huggingface/huggingface.js": [
+    "https://huggingface.co/docs/huggingface.js/inference/overview",
+    "https://huggingface.co/docs/huggingface.js/hub/overview",
+  ],
+  "huggingface/transformers.js": [
+    "https://huggingface.co/docs/transformers.js/index",
+    "https://huggingface.co/docs/transformers.js/guides/node-esm",
+  ],
+
+  // ─── ML / Deep Learning ───────────────────────────────────────────────
+  "pytorch/pytorch": [
+    "https://pytorch.org/tutorials/beginner/basics/intro",
+    "https://pytorch.org/docs/stable/notes/cuda",
+  ],
+  "tensorflow/tensorflow": [
+    "https://www.tensorflow.org/guide",
+    "https://www.tensorflow.org/tutorials",
+    "https://www.tensorflow.org/guide/keras",
+  ],
+
+  // ─── Services / Infrastructure ────────────────────────────────────────
+  "upstash/redis": [
+    "https://upstash.com/docs/redis/overall/getstarted",
+    "https://upstash.com/docs/redis/sdks/ts/overview",
+  ],
+  "PostHog/posthog-js": [
+    "https://posthog.com/docs/getting-started/install",
+    "https://posthog.com/docs/product-analytics",
+    "https://posthog.com/docs/feature-flags",
+  ],
+  "n8n-io/n8n": [
+    "https://docs.n8n.io/workflows/",
+    "https://docs.n8n.io/code/",
+    "https://docs.n8n.io/integrations/",
+  ],
+  "triggerdotdev/trigger.dev": [
+    "https://trigger.dev/docs/quick-start",
+    "https://trigger.dev/docs/guides",
+  ],
+  "lucia-auth/lucia": [
+    "https://lucia-auth.com/tutorials/",
+    "https://lucia-auth.com/guides/validate-session-cookies/",
+  ],
 };
 
 // Common best-practices path patterns to try for any library
@@ -709,8 +1082,30 @@ const GENERIC_BP_SUFFIXES = [
   "/docs/patterns",
   "/docs/tips",
   "/docs/migration",
+  "/docs/getting-started",
+  "/docs/concepts",
+  "/docs/tutorials",
+  "/docs/how-to",
+  "/docs/cookbook",
+  "/docs/recipes",
+  "/docs/faq",
+  "/docs/advanced",
+  "/docs/security",
+  "/docs/performance",
+  "/docs/deployment",
+  "/docs/configuration",
+  "/docs/testing",
+  "/docs/troubleshooting",
   "/guide",
   "/guides",
+  "/getting-started",
+  "/tutorial",
+  "/tutorials",
+  "/learn",
+  "/howto",
+  "/cookbook",
+  "/examples",
+  "/best-practices",
 ];
 
 /** Race multiple URLs in parallel — return first that has content */
@@ -833,16 +1228,7 @@ async function fetchBestPracticesContent(
     const enrichedTopic = topic
       ? `${topic} best practices patterns guide`
       : "best practices patterns guide tips";
-    if (isIndexContent(result.content)) {
-      const deepLinks = rankIndexLinks(result.content, enrichedTopic);
-      for (const deepUrl of deepLinks) {
-        const deepContent = await fetchViaJina(deepUrl);
-        if (deepContent && deepContent.length > 300) {
-          result = { content: deepContent, url: deepUrl, sourceType: "jina" };
-          break;
-        }
-      }
-    }
+    result = await deepFetchForTopic(result, enrichedTopic, docsUrl, bestPracticesPaths);
     const safe = sanitizeContent(result.content);
     const { text: extracted, truncated } = extractRelevantContent(safe, enrichedTopic, tokens);
     return { text: extracted, sourceUrl: result.url, truncated };
@@ -924,11 +1310,14 @@ IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library 
         entry.bestPracticesPaths,
       );
 
+      const qualityScore = computeQualityScore(text, effectiveTopic, "jina");
+
       const header = [
         `# ${entry.name} — Best Practices`,
         effectiveTopic ? `> Topic: ${effectiveTopic}` : "",
         `> Source: ${sourceUrl}`,
         truncated ? "> Note: Response truncated. Use a more specific topic or increase tokens." : "",
+        qualityScore < 0.4 ? "> Quality: Low — try a more specific topic." : "",
         "",
         "---",
         "",
@@ -944,6 +1333,7 @@ IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library 
           topic: effectiveTopic,
           sourceUrl,
           truncated,
+          qualityScore,
           content: text,
         },
       };
