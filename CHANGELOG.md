@@ -1,5 +1,11 @@
 # Changelog
 
+## [3.0.0] — 2026-03-21
+
+- feat: automate private registry swap in publish pipeline
+
+---
+
 ## [2.6.0] — 2026-03-21
 
 - feat: registry deep coverage — 100% bestPracticesPaths and urlPatterns
