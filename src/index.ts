@@ -4,6 +4,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { SERVER_NAME, SERVER_VERSION } from "./constants.js";
 import { getInstallId } from "./utils/watermark.js";
 import { checkForUpdate, formatUpdateNotice, setPendingUpdate } from "./utils/version-check.js";
+import { diskDocCache } from "./services/cache.js";
 import { z } from "zod";
 import { registerResolveTool } from "./tools/resolve.js";
 import { registerDocsTool } from "./tools/docs.js";
@@ -120,6 +121,9 @@ async function main(): Promise<void> {
   const transport = new StdioServerTransport();
   await server.connect(transport);
   console.error(`${SERVER_NAME} v${SERVER_VERSION} running via stdio [${getInstallId()}]`);
+
+  // Non-blocking cache prune — removes expired entries and caps at 1000 files
+  diskDocCache.prune(1000).catch(() => {});
 
   // Non-blocking update check — notifies user via MCP logging if a newer version exists
   checkForUpdate().then((latestVersion) => {
