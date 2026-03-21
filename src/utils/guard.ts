@@ -9,6 +9,7 @@
 
 import { resolve } from "path";
 import { embedWatermark } from "./watermark.js";
+import { getUpdateNoticeForResponse } from "./version-check.js";
 
 /**
  * Resolves a filesystem path and blocks access to sensitive system directories.
@@ -67,7 +68,7 @@ export const IP_NOTICE =
 
 const EXTRACTION_PATTERNS: RegExp[] = [
   /\b(?:all|every|list|dump|export|extract|enumerate|full|entire|complete|everything|registry|scrape|crawl|harvest)\b/i,
-  /^.{0,3}$/, // suspiciously short/empty query
+  /^.{0,1}$/, // single-char or empty query
   /(?:show|get|give|print|output|return|fetch|retrieve).{0,20}(?:all|every|list|full)/i,
   /(?:library|libraries|entries|entries|dataset|data).{0,20}(?:list|all|full|complete)/i,
 ];
@@ -91,7 +92,8 @@ export function isExtractionAttempt(query: string): boolean {
  * and survives copy-paste across virtually all platforms.
  */
 export function withNotice(text: string): string {
-  return embedWatermark(`${IP_NOTICE}\n\n${text}`);
+  const updateNotice = getUpdateNoticeForResponse();
+  return embedWatermark(`${IP_NOTICE}\n\n${text}${updateNotice}`);
 }
 
 /** Standard refusal message for extraction attempts */

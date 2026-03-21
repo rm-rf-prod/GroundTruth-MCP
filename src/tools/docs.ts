@@ -2,7 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { FetchResult } from "../types.js";
 import { z } from "zod";
 import { lookupById, lookupByAlias } from "../sources/registry.js";
-import { fetchDocs, fetchGitHubContent, fetchViaJina } from "../services/fetcher.js";
+import { fetchDocs, fetchGitHubContent, fetchViaJina, isIndexContent, rankIndexLinks } from "../services/fetcher.js";
 import { extractRelevantContent } from "../utils/extract.js";
 import { isExtractionAttempt, withNotice, EXTRACTION_REFUSAL, assertPublicUrl } from "../utils/guard.js";
 import { sanitizeContent } from "../utils/sanitize.js";
@@ -66,18 +66,9 @@ IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library 
         idempotentHint: false,
         openWorldHint: true,
       },
-      outputSchema: z.object({
-        libraryId: z.string(),
-        displayName: z.string(),
-        topic: z.string(),
-        sourceUrl: z.string(),
-        sourceType: z.string(),
-        truncated: z.boolean(),
-        content: z.string(),
-      }),
     },
     async ({ libraryId, topic = "", version, tokens }) => {
-      if (isExtractionAttempt(libraryId) || isExtractionAttempt(topic)) {
+      if (isExtractionAttempt(libraryId) || (topic && isExtractionAttempt(topic))) {
         return { content: [{ type: "text", text: EXTRACTION_REFUSAL }] };
       }
 
@@ -141,7 +132,7 @@ IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library 
       }
 
       try {
-        if (!fetchResult) fetchResult = await fetchDocs(docsUrl, llmsTxtUrl, llmsFullTxtUrl);
+        if (!fetchResult) fetchResult = await fetchDocs(docsUrl, llmsTxtUrl, llmsFullTxtUrl, topic || undefined);
       } catch {
         // Fallback to GitHub README
         if (githubUrl) {
@@ -166,6 +157,19 @@ IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library 
         return {
           content: [{ type: "text", text: `No documentation found for "${displayName}".` }],
         };
+      }
+
+      // If the result is a TOC/index (list of links) and we have a topic,
+      // follow the best-matching deep link to get actual content
+      if (topic && isIndexContent(fetchResult.content)) {
+        const deepLinks = rankIndexLinks(fetchResult.content, topic);
+        for (const deepUrl of deepLinks) {
+          const deepContent = await fetchViaJina(deepUrl);
+          if (deepContent && deepContent.length > 300) {
+            fetchResult = { content: deepContent, url: deepUrl, sourceType: "jina" };
+            break;
+          }
+        }
       }
 
       const safe = sanitizeContent(fetchResult.content);

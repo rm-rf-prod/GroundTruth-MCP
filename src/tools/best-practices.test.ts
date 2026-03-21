@@ -14,6 +14,8 @@ vi.mock("../services/fetcher.js", () => ({
   fetchViaJina: vi.fn(),
   fetchGitHubContent: vi.fn(),
   fetchGitHubExamples: vi.fn(),
+  isIndexContent: vi.fn().mockReturnValue(false),
+  rankIndexLinks: vi.fn().mockReturnValue([]),
 }));
 
 vi.mock("../utils/extract.js", () => ({

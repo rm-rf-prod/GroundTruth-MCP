@@ -3,7 +3,7 @@ import { z } from "zod";
 import { readFile } from "fs/promises";
 import { join } from "path";
 import { lookupByAlias, lookupById, fuzzySearch } from "../sources/registry.js";
-import { fetchDocs } from "../services/fetcher.js";
+import { fetchDocs, fetchViaJina, isIndexContent, rankIndexLinks } from "../services/fetcher.js";
 import { extractRelevantContent } from "../utils/extract.js";
 import { isExtractionAttempt, withNotice, EXTRACTION_REFUSAL, safeguardPath } from "../utils/guard.js";
 import { sanitizeContent } from "../utils/sanitize.js";
@@ -370,15 +370,6 @@ Reads: package.json, requirements.txt, pyproject.toml, Cargo.toml, go.mod, pom.x
         idempotentHint: false,
         openWorldHint: true,
       },
-      outputSchema: z.object({
-        projectPath: z.string(),
-        topic: z.string(),
-        filesScanned: z.array(z.string()),
-        totalDependencies: z.number(),
-        matched: z.array(z.string()),
-        unmatched: z.array(z.string()),
-        results: z.array(z.object({ name: z.string(), url: z.string(), content: z.string() })),
-      }),
     },
     async ({ projectPath, topic = "latest best practices", tokensPerLib }) => {
       let resolvedPath: string;
@@ -443,13 +434,24 @@ Reads: package.json, requirements.txt, pyproject.toml, Cargo.toml, go.mod, pom.x
         const batchResults = await Promise.allSettled(
           batch.map(async ({ entry }) => {
             try {
-              const fetchResult = await fetchDocs(
+              const enrichedTopic = `${topic} best practices patterns guide`;
+              let fetchResult = await fetchDocs(
                 entry.docsUrl,
                 entry.llmsTxtUrl,
                 entry.llmsFullTxtUrl,
+                enrichedTopic,
               );
+              if (isIndexContent(fetchResult.content)) {
+                const deepLinks = rankIndexLinks(fetchResult.content, enrichedTopic);
+                for (const deepUrl of deepLinks) {
+                  const deepContent = await fetchViaJina(deepUrl);
+                  if (deepContent && deepContent.length > 300) {
+                    fetchResult = { content: deepContent, url: deepUrl, sourceType: "jina" };
+                    break;
+                  }
+                }
+              }
               const safe = sanitizeContent(fetchResult.content);
-              const enrichedTopic = `${topic} best practices patterns guide`;
               const { text } = extractRelevantContent(safe, enrichedTopic, tokensPerLib);
               return { name: entry.name, content: text, url: fetchResult.url };
             } catch {

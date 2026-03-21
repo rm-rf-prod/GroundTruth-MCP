@@ -1,7 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { lookupById, lookupByAlias } from "../sources/registry.js";
-import { fetchDocs, fetchGitHubContent, fetchViaJina, fetchGitHubExamples } from "../services/fetcher.js";
+import { fetchDocs, fetchGitHubContent, fetchViaJina, fetchGitHubExamples, isIndexContent, rankIndexLinks } from "../services/fetcher.js";
 import { extractRelevantContent } from "../utils/extract.js";
 import { isExtractionAttempt, withNotice, EXTRACTION_REFUSAL } from "../utils/guard.js";
 import { sanitizeContent } from "../utils/sanitize.js";
@@ -781,11 +781,21 @@ async function fetchBestPracticesContent(
 
   // 3. Fall back to main docs with topic = "best practices"
   try {
-    const result = await fetchDocs(docsUrl, llmsTxtUrl, llmsFullTxtUrl);
-    const safe = sanitizeContent(result.content);
+    let result = await fetchDocs(docsUrl, llmsTxtUrl, llmsFullTxtUrl, topic || undefined);
     const enrichedTopic = topic
       ? `${topic} best practices patterns guide`
       : "best practices patterns guide tips";
+    if (isIndexContent(result.content)) {
+      const deepLinks = rankIndexLinks(result.content, enrichedTopic);
+      for (const deepUrl of deepLinks) {
+        const deepContent = await fetchViaJina(deepUrl);
+        if (deepContent && deepContent.length > 300) {
+          result = { content: deepContent, url: deepUrl, sourceType: "jina" };
+          break;
+        }
+      }
+    }
+    const safe = sanitizeContent(result.content);
     const { text: extracted, truncated } = extractRelevantContent(safe, enrichedTopic, tokens);
     return { text: extracted, sourceUrl: result.url, truncated };
   } catch {
@@ -833,17 +843,9 @@ IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library 
         idempotentHint: false,
         openWorldHint: true,
       },
-      outputSchema: z.object({
-        libraryId: z.string(),
-        displayName: z.string(),
-        topic: z.string(),
-        sourceUrl: z.string(),
-        truncated: z.boolean(),
-        content: z.string(),
-      }),
     },
     async ({ libraryId, topic = "", version, tokens }) => {
-      if (isExtractionAttempt(libraryId) || isExtractionAttempt(topic)) {
+      if (isExtractionAttempt(libraryId) || (topic && isExtractionAttempt(topic))) {
         return { content: [{ type: "text", text: EXTRACTION_REFUSAL }] };
       }
 

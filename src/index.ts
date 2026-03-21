@@ -3,6 +3,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { SERVER_NAME, SERVER_VERSION } from "./constants.js";
 import { getInstallId } from "./utils/watermark.js";
+import { checkForUpdate, formatUpdateNotice, setPendingUpdate } from "./utils/version-check.js";
 import { z } from "zod";
 import { registerResolveTool } from "./tools/resolve.js";
 import { registerDocsTool } from "./tools/docs.js";
@@ -115,6 +116,16 @@ async function main(): Promise<void> {
   const transport = new StdioServerTransport();
   await server.connect(transport);
   console.error(`${SERVER_NAME} v${SERVER_VERSION} running via stdio [${getInstallId()}]`);
+
+  // Non-blocking update check — notifies user via MCP logging if a newer version exists
+  checkForUpdate().then((latestVersion) => {
+    if (latestVersion) {
+      setPendingUpdate(latestVersion);
+      const notice = formatUpdateNotice(latestVersion);
+      console.error(notice);
+      server.server.sendLoggingMessage({ level: "warning", data: notice }).catch(() => {});
+    }
+  }).catch(() => {});
 }
 
 main().catch((err: unknown) => {

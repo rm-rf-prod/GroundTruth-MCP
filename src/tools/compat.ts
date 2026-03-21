@@ -43,11 +43,6 @@ export function registerCompatTool(server: McpServer): void {
         idempotentHint: true,
         openWorldHint: true,
       },
-      outputSchema: z.object({
-        feature: z.string(),
-        environments: z.array(z.string()),
-        sources: z.array(z.string()),
-      }),
     },
     async ({ feature, environments, tokens }) => {
       if (isExtractionAttempt(feature)) {

@@ -144,9 +144,13 @@ describe("isExtractionAttempt", () => {
     });
   });
 
-  it("flags suspiciously short queries (3 chars or fewer)", () => {
-    expect(isExtractionAttempt("ab")).toBe(true);
+  it("flags single-char queries but allows 2-3 char library names", () => {
     expect(isExtractionAttempt("a")).toBe(true);
+    expect(isExtractionAttempt("ab")).toBe(false);
+    expect(isExtractionAttempt("zod")).toBe(false);
+    expect(isExtractionAttempt("vue")).toBe(false);
+    expect(isExtractionAttempt("swr")).toBe(false);
+    expect(isExtractionAttempt("go")).toBe(false);
   });
 
   it("flags empty string", () => {

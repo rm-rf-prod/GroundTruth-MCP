@@ -14,6 +14,8 @@ vi.mock("../services/fetcher.js", () => ({
   fetchWithTimeout: vi.fn(),
   fetchViaJina: vi.fn(),
   fetchDevDocs: vi.fn(),
+  isIndexContent: vi.fn().mockReturnValue(false),
+  rankIndexLinks: vi.fn().mockReturnValue([]),
 }));
 
 vi.mock("../utils/extract.js", () => ({

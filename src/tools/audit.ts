@@ -4,7 +4,7 @@ import { readdir, readFile, stat } from "fs/promises";
 import { join, extname, relative } from "path";
 import { lookupById } from "../sources/registry.js";
 import { safeguardPath } from "../utils/guard.js";
-import { fetchDocs, fetchGitHubExamples, fetchGitHubReleases, fetchViaJina } from "../services/fetcher.js";
+import { fetchDocs, fetchGitHubExamples, fetchGitHubReleases, fetchViaJina, isIndexContent, rankIndexLinks } from "../services/fetcher.js";
 import { extractRelevantContent } from "../utils/extract.js";
 import { sanitizeContent } from "../utils/sanitize.js";
 
@@ -1496,7 +1496,17 @@ async function fetchBestPractice(query: string, tokens: number): Promise<string>
       const entry = lookupById(libId);
       if (entry) {
         try {
-          const result = await fetchDocs(entry.docsUrl, entry.llmsTxtUrl, entry.llmsFullTxtUrl);
+          let result = await fetchDocs(entry.docsUrl, entry.llmsTxtUrl, entry.llmsFullTxtUrl, query);
+          if (isIndexContent(result.content)) {
+            const deepLinks = rankIndexLinks(result.content, query);
+            for (const deepUrl of deepLinks) {
+              const deepContent = await fetchViaJina(deepUrl);
+              if (deepContent && deepContent.length > 300) {
+                result = { content: deepContent, url: deepUrl, sourceType: "jina" };
+                break;
+              }
+            }
+          }
           const safe = sanitizeContent(result.content);
           const { text } = extractRelevantContent(safe, query, tokens);
           if (text.length > 200) return text;
@@ -1597,21 +1607,6 @@ export function registerAuditTool(server: McpServer): void {
         idempotentHint: false,
         openWorldHint: true,
       },
-      outputSchema: z.object({
-        projectPath: z.string(),
-        filesScanned: z.number(),
-        totalIssues: z.number(),
-        uniqueIssueTypes: z.number(),
-        issues: z.array(
-          z.object({
-            title: z.string(),
-            severity: z.string(),
-            category: z.string(),
-            count: z.number(),
-            locations: z.array(z.string()),
-          }),
-        ),
-      }),
     },
     async ({ projectPath, categories, tokens, maxFiles }) => {
       let resolvedPath: string;

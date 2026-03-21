@@ -15,8 +15,14 @@
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-ELv2-orange" alt="Elastic License 2.0" /></a>
   <img src="https://img.shields.io/badge/libraries-363%2B-teal" alt="363+ libraries" />
   <img src="https://img.shields.io/badge/audit_patterns-100%2B-red" alt="100+ audit patterns" />
-  <img src="https://img.shields.io/badge/tests-631-brightgreen" alt="631 tests" />
+  <img src="https://img.shields.io/badge/tests-640-brightgreen" alt="640 tests" />
   <img src="https://img.shields.io/badge/node-%3E%3D24-green" alt="Node 24+" />
+  <img src="https://img.shields.io/badge/status-active%20development-blue" alt="Active Development" />
+</p>
+
+<p align="center">
+  <b>Actively maintained. New libraries, audit patterns, and features ship regularly.</b><br/>
+  GroundTruth checks for updates on startup and notifies you when a new version is available.
 </p>
 
 ---
@@ -64,7 +70,17 @@ Add to your MCP config (`claude_desktop_config.json`, `.cursor/mcp.json`, or `.v
 }
 ```
 
-No build step. No config file. Node.js 24+. npx pulls the latest version on every session start automatically.
+No build step. No config file. Node.js 24+. Using `@latest` means npx pulls the newest version on every session start automatically — you always get the latest libraries, audit patterns, and fixes without doing anything.
+
+### Automatic updates
+
+GroundTruth checks npm for new versions on every startup. If a newer version exists, you get a notification:
+
+- **stderr log** — visible in your MCP client's server output
+- **MCP logging message** — surfaces in clients that support MCP log notifications
+- **Tool response footer** — appended to every tool response until you restart with the latest version
+
+Since the install uses `npx -y @groundtruth-mcp/gt-mcp@latest`, restarting your MCP client (or starting a new session) is enough to get the update. No manual `npm update` needed.
 
 ### Optional: GitHub token
 
@@ -104,7 +120,7 @@ Nine tools. Each does one thing and stops there.
 | `gt_audit` | Scan your source files — finds real issues at exact `file:line` with live fixes attached |
 | `gt_changelog` | Fetch release notes before you run `npm update` and regret it |
 | `gt_compat` | Check browser and runtime compatibility — before Safari breaks your launch |
-| `gt_compare` | Compare 2–3 libraries side-by-side so you can finally pick one and move on |
+| `gt_compare` | Compare 2-3 libraries side-by-side so you can finally pick one and move on |
 
 ---
 
@@ -148,7 +164,7 @@ gt_audit({ categories: ["typescript", "react"] })      // type safety + React ru
 gt_audit({
   projectPath: "./src",       // defaults to cwd
   categories: ["security"],   // or "all" (default)
-  maxFiles: 100,              // 1–200, default 50
+  maxFiles: 100,              // 1-200, default 50
   tokens: 6000,               // max tokens per docs fetch, default 4000
 })
 ```
@@ -207,7 +223,7 @@ gt_compat({ feature: "CSS :has() selector", environments: ["safari", "firefox"] 
 
 ## `gt_compare` — pick one already
 
-Side-by-side comparison of 2–3 libraries. Fetches live docs for each and filters to content relevant to your criteria. Useful for the "prisma vs drizzle" debate you've been having with yourself for three weeks while using neither.
+Side-by-side comparison of 2-3 libraries. Fetches live docs for each and filters to content relevant to your criteria. Useful for the "prisma vs drizzle" debate you've been having with yourself for three weeks while using neither.
 
 ```
 gt_compare({ libraries: ["prisma", "drizzle-orm"] })
@@ -220,7 +236,7 @@ gt_compare({ libraries: ["react", "solid-js"], criteria: "performance rendering"
 
 ## `gt_search` — anything that isn't a specific library
 
-For questions not tied to a particular package. Pulls from OWASP, MDN, web.dev, W3C, official language docs, AI provider docs, and everything else in the topic map below. Good for when you know what you need but not which library page it lives on.
+For questions not tied to a particular package. Pulls from OWASP, MDN, web.dev, W3C, official language docs, AI provider docs, Google developer docs, and everything else in the topic map below. Good for when you know what you need but not which library page it lives on.
 
 ```
 gt_search({ query: "WCAG 2.2 focus indicators" })
@@ -229,26 +245,36 @@ gt_search({ query: "Core Web Vitals LCP optimization" })
 gt_search({ query: "gRPC vs REST tradeoffs" })
 gt_search({ query: "OpenTelemetry Node.js setup" })
 gt_search({ query: "RAG retrieval patterns" })
-gt_search({ query: "WebAssembly use cases" })
-gt_search({ query: "MCP protocol tool definition" })
+gt_search({ query: "Google Gemini API function calling" })
+gt_search({ query: "Claude tool use best practices" })
+gt_search({ query: "OpenAI structured output" })
+gt_search({ query: "Firebase Firestore security rules" })
 ```
 
 ### Covered topic areas
 
 | Area | Topics |
 |---|---|
-| Security | OWASP Top 10, SQL injection, XSS / CSP, CSRF, HSTS, authentication, CORS, JWT, OAuth 2.1, OIDC, WebAuthn / passkeys |
+| Security | OWASP Top 10, SQL injection, XSS / CSP, CSRF, HSTS, authentication, CORS, JWT, OAuth 2.1, OIDC, WebAuthn / passkeys, SSRF, file upload security, clickjacking, path traversal, API security, supply chain / SBOM |
 | Accessibility | WCAG 2.2, WAI-ARIA, keyboard navigation |
 | Performance | Core Web Vitals, image optimization, web fonts, Speculation Rules API |
-| Web APIs | Fetch, Web Workers, Service Workers, WebSocket, WebRTC, IndexedDB, Web Crypto, Intersection Observer, ResizeObserver, Web Animations API, WebAssembly |
-| CSS | Grid, Flexbox, Container Queries, Custom Properties, View Transitions, Cascade Layers |
-| HTTP & protocols | Headers, caching, HTTP/2, HTTP/3, REST, OpenAPI, GraphQL, gRPC / Protocol Buffers, Server-Sent Events |
-| Standards | JSON Schema, JSON-LD / Structured Data, OpenTelemetry, Semantic Versioning, MCP Protocol |
-| AI | Agents & tool calling, RAG, prompt engineering, vector search / embeddings |
-| Infrastructure | Docker, Kubernetes, GitHub Actions, Terraform, monorepo patterns |
+| Web APIs | Fetch, Web Workers, Service Workers, WebSocket, WebRTC, IndexedDB, Web Crypto, Intersection Observer, ResizeObserver, Web Animations API, WebAssembly, AbortController, File System Access API |
+| CSS | Grid, Flexbox, Container Queries, Custom Properties, View Transitions, Cascade Layers, Nesting, :has(), Subgrid, Scroll-driven Animations, oklch / color-mix, @scope |
+| HTTP & protocols | Headers, caching, HTTP/2, HTTP/3, REST, OpenAPI, GraphQL, gRPC / Protocol Buffers, Server-Sent Events, JSON Schema |
+| Standards | JSON-LD / Structured Data, OpenTelemetry, Semantic Versioning, MCP Protocol, Intl API, i18n / Localization |
+| Google APIs | Gemini API, Maps API, Analytics 4, Ads API, Search Console, Sheets API, Drive API, Calendar API, OAuth / Identity, Tag Manager, reCAPTCHA, Lighthouse / PageSpeed, YouTube API, Gmail API, Workspace / Apps Script, Custom Search, Chrome Extensions, SEO guidelines, Fonts API |
+| Google Cloud | Cloud Run, Cloud Functions, Cloud Storage, BigQuery, Pub/Sub, Vertex AI, Vision API, Speech APIs, Translation, Natural Language, GKE, IAM |
+| Firebase | Firestore, Authentication, Cloud Functions, Hosting |
+| Anthropic / Claude | Claude API, tool use, prompt caching, vision, extended thinking, computer use, streaming, message batches, PDF support, citations, models, rate limits, Claude Code, Agent SDK |
+| OpenAI | Chat API, Responses API, function calling, structured output, embeddings, fine-tuning, vision, image generation, Whisper / STT, TTS, Realtime API, Batch API, moderation, Agents SDK, rate limits, production best practices |
+| AI providers | Mistral AI, Cohere, Groq, Replicate, Together AI, Hugging Face |
+| AI frameworks | LangChain, LangGraph, LlamaIndex, CrewAI, AutoGen |
+| AI concepts | Agents & tool calling, RAG, prompt engineering, vector search / embeddings, fine-tuning, AI safety, evaluation, multimodal AI, code generation, voice AI |
+| Vector databases | Pinecone, Chroma, Weaviate |
+| Infrastructure | Docker, Kubernetes, GitHub Actions, Terraform, Cloudflare Workers, monorepo patterns |
 | Databases | PostgreSQL, Redis, MongoDB |
 | Languages | Rust, Go, Python, Node.js, TypeScript |
-| Frameworks | NestJS, Elysia, Payload CMS, Kysely, Pinia, React Native / Expo + full ecosystem |
+| Frameworks | NestJS, Elysia, Angular, Flutter, Payload CMS, Kysely, Pinia, React Native / Expo + full ecosystem, Material Design |
 
 ---
 
@@ -276,6 +302,8 @@ use gt to check WCAG focus indicators
 use gt for OpenTelemetry setup
 find all issues and fix with gt
 use gt for gRPC
+use gt for Google Gemini API
+use gt for Claude tool use
 ```
 
 ### Direct tool calls
@@ -286,6 +314,8 @@ gt_get_docs({ libraryId: "nestjs/nest", topic: "guards" })
 gt_best_practices({ libraryId: "vercel/next.js", topic: "caching" })
 gt_auto_scan({ projectPath: "." })
 gt_search({ query: "OpenTelemetry Node.js distributed tracing" })
+gt_search({ query: "Google Gemini API function calling" })
+gt_search({ query: "Claude prompt caching" })
 gt_audit({ projectPath: ".", categories: ["security", "accessibility"] })
 gt_changelog({ libraryId: "vercel/next.js", version: "15" })
 gt_compat({ feature: "CSS container queries", environments: ["safari"] })
@@ -322,9 +352,14 @@ Every major ecosystem. If a library publishes an `llms.txt`, it's probably in he
 | Backend (Go) | Gin, Fiber, GORM, chi |
 | Backend (Rust) | Axum, Actix Web, sqlx, Tokio |
 | Database / ORM | Prisma, Drizzle, Kysely, TypeORM, Mongoose, Knex, Supabase, Neon, Turso, Electric SQL |
-| Vector databases | Pinecone, Qdrant |
-| AI / ML (JS) | Vercel AI SDK, Anthropic SDK, OpenAI SDK, LangChain.js, LlamaIndex.TS, Transformers.js, Ollama, assistant-ui |
-| AI / ML (Python) | LangChain, LlamaIndex, CrewAI, LangGraph, HuggingFace Transformers |
+| Vector databases | Pinecone, Chroma, Weaviate, Qdrant |
+| AI / LLM providers | Anthropic Claude API, OpenAI API, Google Gemini API, Mistral AI, Cohere, Groq, Replicate, Together AI, Fireworks AI |
+| AI SDKs (JS/TS) | Vercel AI SDK, Anthropic SDK, OpenAI SDK, Google Generative AI, LangChain.js, Transformers.js, Ollama, assistant-ui |
+| AI SDKs (Python) | Anthropic Python SDK, OpenAI Python SDK, Google Gemini Python SDK, LangChain, LlamaIndex, CrewAI, LangGraph, AutoGen, HuggingFace Transformers |
+| AI agents | Claude Code, Claude Agent SDK, OpenAI Agents SDK |
+| AI audio / voice | ElevenLabs, Deepgram, AssemblyAI |
+| AI image / video | Stability AI, fal.ai |
+| Google | Firebase, Google Cloud, Google Maps API, Google APIs Client, Vertex AI, Angular, Flutter, Material Design |
 | Testing | Vitest, Playwright, Jest, Testing Library, Cypress, MSW |
 | Auth | Clerk, NextAuth, Better Auth, Lucia, Passport.js |
 | Validation | Zod, Yup, Valibot, Effect |
@@ -336,12 +371,14 @@ Every major ecosystem. If a library publishes an `llms.txt`, it's probably in he
 | Mobile | Expo, React Native, React Navigation, NativeWind, Reanimated, MMKV, FlashList, Skia, Moti |
 | Build tools | Vite, Turbopack, SWC, Rollup, Webpack, Biome, ESLint, Prettier, Turborepo, Nx |
 | Runtime | Node.js, Bun, Deno |
-| Cloud | Vercel, Cloudflare Workers, AWS SDK, Firebase |
+| Cloud | Vercel, Cloudflare Workers, AWS SDK, Firebase, Google Cloud |
+| Monitoring | Sentry, PostHog, OpenTelemetry, Pino |
+| Automation | n8n, Trigger.dev |
 | HTTP clients | Axios, ky |
 | Real-time | Socket.IO, PartyKit |
-| Observability | OpenTelemetry, Sentry, Pino |
 | GraphQL clients | Apollo Client, urql |
-| HTTP utils | clsx, tailwind-merge |
+| ML / Deep learning | PyTorch, TensorFlow, HuggingFace Transformers |
+| Serverless | Upstash Redis |
 
 ---
 
@@ -353,14 +390,17 @@ Context7 is solid. Here's why I reach for this instead.
 |---|---|---|
 | Hosting | Self-hosted | Cloud |
 | Rate limits | None | Yes |
-| Source priority | llms.txt → Jina → GitHub | Doc page embeddings |
+| Source priority | llms.txt -> Jina -> GitHub | Doc page embeddings |
 | Code audit | Yes — 100+ patterns, 18 categories, file:line, live fixes | No |
-| Freeform search | Yes — OWASP, MDN, AI docs, web standards | Library docs only |
+| Freeform search | Yes — OWASP, MDN, AI docs, Google APIs, web standards | Library docs only |
 | Changelog lookup | Yes — GitHub Releases, CHANGELOG.md, docs site | No |
 | Browser compatibility | Yes — MDN + caniuse.com | No |
-| Library comparison | Yes — 2–3 libraries side-by-side, any criteria | No |
+| Library comparison | Yes — 2-3 libraries side-by-side, any criteria | No |
 | Libraries | 363+ curated + npm/PyPI fallback | ~130 |
+| AI coverage | Claude, OpenAI, Gemini, Mistral, Cohere, Groq, LangChain, LlamaIndex, CrewAI, 20+ more | Limited |
+| Google APIs | Full coverage — Maps, Analytics, Ads, Cloud, Firebase, Vertex AI, 30+ services | Partial |
 | Python / Rust / Go | Yes | Limited |
+| Update notifications | Yes — notifies when new version available | No |
 | API key required | No | No |
 
 The two tools approach the same problem from different angles. Context7 embeds doc pages and retrieves them by semantic similarity. GroundTruth fetches from the source at query time and prioritizes `llms.txt` files — content the maintainers specifically wrote for LLM consumption. Neither is universally better, but when you hit a rate limit at 11pm debugging a production issue, "self-hosted with no quota" stops being a nice-to-have.
@@ -369,7 +409,7 @@ The two tools approach the same problem from different angles. Context7 embeds d
 
 ## Tests
 
-631 tests across 19 files. Every audit pattern has a test. Every manifest parser has a test. If a pattern ships without a test, the CI pipeline says no before any human has to.
+640 tests across 20 files. Every audit pattern has a test. Every manifest parser has a test. If a pattern ships without a test, the CI pipeline says no before any human has to.
 
 ```bash
 npm test                # run all tests
@@ -384,6 +424,7 @@ npm run typecheck       # TypeScript strict check (no emit)
 | `src/tools/auto-scan.test.ts` | All 8 manifest parsers using temp directories (package.json, requirements.txt, pyproject.toml, Cargo.toml, go.mod, pom.xml, composer.json, build.gradle) |
 | `src/utils/extract.test.ts` | Topic relevance ranking, truncation, document order preservation |
 | `src/utils/sanitize.test.ts` | Prompt injection stripping, `<script>`/`<style>` removal, navigation link cleanup |
+| `src/utils/version-check.test.ts` | Version comparison, update notification formatting, pending update state |
 
 Tests run in CI on every push and pull request to `main`. See `.github/workflows/ci.yml`.
 
@@ -391,10 +432,23 @@ Tests run in CI on every push and pull request to `main`. See `.github/workflows
 
 ## Requirements
 
-- Node.js 20+
+- Node.js 24+
 - Claude Code, Cursor, VS Code (MCP extension), or Claude Desktop
 
 That's it. No Docker. No config files. No environment variables unless you want the GitHub token.
+
+---
+
+## Active development
+
+GroundTruth is under active development. New libraries, audit patterns, search topics, and features are added regularly. The registry currently covers 363+ libraries across every major ecosystem, with a focus on AI/LLM providers, Google APIs, and modern web development.
+
+Recent additions include comprehensive coverage for Google Gemini API, Anthropic Claude API (tool use, prompt caching, vision, extended thinking, computer use, streaming, batches), OpenAI API (chat, responses, function calling, structured output, embeddings, fine-tuning, realtime, agents), and 20+ additional AI providers and frameworks.
+
+To stay updated:
+- **Star and watch** the [GitHub repo](https://github.com/rm-rf-prod/GroundTruth-MCP) for release notifications
+- **Use `@latest`** in your MCP config (the default install command) — npx fetches the newest version automatically
+- **Check tool responses** — GroundTruth appends an update notice when a newer version is available
 
 ---
 
@@ -408,7 +462,13 @@ Issues and requests: [github.com/rm-rf-prod/GroundTruth-MCP/issues](https://gith
 
 ## Star history
 
-[![Star History Chart](https://api.star-history.com/svg?repos=rm-rf-prod/GroundTruth-MCP&type=Date)](https://star-history.com/#rm-rf-prod/GroundTruth-MCP&Date)
+<a href="https://star-history.com/#rm-rf-prod/GroundTruth-MCP&Date">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=rm-rf-prod/GroundTruth-MCP&type=Date&theme=dark" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=rm-rf-prod/GroundTruth-MCP&type=Date" />
+    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=rm-rf-prod/GroundTruth-MCP&type=Date" />
+  </picture>
+</a>
 
 ---
 

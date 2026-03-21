@@ -1,7 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { lookupById, lookupByAlias, fuzzySearch } from "../sources/registry.js";
-import { fetchDocs } from "../services/fetcher.js";
+import { fetchDocs, fetchViaJina, isIndexContent, rankIndexLinks } from "../services/fetcher.js";
 import { extractRelevantContent } from "../utils/extract.js";
 import { sanitizeContent } from "../utils/sanitize.js";
 import { isExtractionAttempt, withNotice, EXTRACTION_REFUSAL } from "../utils/guard.js";
@@ -46,18 +46,6 @@ export function registerCompareTool(server: McpServer): void {
         idempotentHint: true,
         openWorldHint: true,
       },
-      outputSchema: z.object({
-        libraries: z.array(
-          z.object({
-            id: z.string(),
-            name: z.string(),
-            description: z.string(),
-            docsUrl: z.string(),
-            content: z.string(),
-          }),
-        ),
-        criteria: z.string(),
-      }),
     },
     async ({ libraries, criteria, tokens }) => {
       for (const lib of libraries) {
@@ -88,8 +76,18 @@ export function registerCompareTool(server: McpServer): void {
           if (!entry) return { lib, entry: null, content: null };
 
           try {
-            const fetchResult = await fetchDocs(entry.docsUrl, entry.llmsTxtUrl, entry.llmsFullTxtUrl);
+            let fetchResult = await fetchDocs(entry.docsUrl, entry.llmsTxtUrl, entry.llmsFullTxtUrl, topic);
             if (!fetchResult) return { lib, entry, content: null };
+            if (isIndexContent(fetchResult.content)) {
+              const deepLinks = rankIndexLinks(fetchResult.content, topic);
+              for (const deepUrl of deepLinks) {
+                const deepContent = await fetchViaJina(deepUrl);
+                if (deepContent && deepContent.length > 300) {
+                  fetchResult = { content: deepContent, url: deepUrl, sourceType: "jina" };
+                  break;
+                }
+              }
+            }
             const safe = sanitizeContent(fetchResult.content);
             const { text } = extractRelevantContent(safe, topic, tokens ?? 2000);
             docCache.set(cacheKey, text);
