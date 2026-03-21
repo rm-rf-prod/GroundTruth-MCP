@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.5.3] — 2026-03-21
+
+- fix: resolve all remaining security issues to enterprise grade
+
+---
+
 ## [2.5.2] — 2026-03-21
 
 - fix: security hardening, CI pipeline, and visibility improvements
