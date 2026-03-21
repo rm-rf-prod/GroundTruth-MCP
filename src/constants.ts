@@ -1,5 +1,5 @@
 export const SERVER_NAME = "GroundTruth";
-export const SERVER_VERSION = "2.5.0";
+export const SERVER_VERSION = "2.5.1";
 
 // Known size of the full private registry (updated with each release that adds entries)
 export const REGISTRY_BADGE_SIZE = 363;

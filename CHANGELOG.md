@@ -1,5 +1,25 @@
 # Changelog
 
+## [2.5.1] — 2026-03-21
+
+- feat: add MCP Registry support
+- fix: remove bottom line of ASCII art
+- fix: adjust last ASCII art line alignment
+- fix: align last line of ASCII art one space left
+- style: switch to box-drawing ASCII art style
+- fix: equalize ASCII art line widths for alignment
+- fix: center ASCII art using table wrapper
+- fix: center GT MCP ASCII art using inline code blocks
+- style: polish header text styling and copy
+- fix: center GT MCP ASCII art with pre tag
+- feat: GT MCP ASCII art banner centered
+- feat: replace banner with GT ASCII art
+- Revert "fix: remove star history section from README"
+- fix: remove star history section from README
+- feat: add ASCII art banner to README
+
+---
+
 ## [2.5.0] — 2026-03-21
 
 ### New tools
