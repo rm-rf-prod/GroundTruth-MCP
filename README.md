@@ -515,6 +515,18 @@ Want the full technical breakdown? Architecture, every tool's input schema, ever
 
 ---
 
+## Star history
+
+<a href="https://star-history.com/#rm-rf-prod/GroundTruth-MCP&Date">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=rm-rf-prod/GroundTruth-MCP&type=Date&theme=dark" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=rm-rf-prod/GroundTruth-MCP&type=Date" />
+    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=rm-rf-prod/GroundTruth-MCP&type=Date" />
+  </picture>
+</a>
+
+---
+
 ## License
 
 [Elastic License 2.0](./LICENSE) — free to use, free to self-host, free to build on. The one thing you can't do is turn it into a managed service and sell it. Fair enough.
