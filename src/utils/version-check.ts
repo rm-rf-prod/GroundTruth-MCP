@@ -1,4 +1,4 @@
-import { SERVER_VERSION, NPM_REGISTRY_URL } from "../constants.js";
+import { SERVER_VERSION, NPM_REGISTRY_URL, FETCH_TIMEOUT_MS } from "../constants.js";
 
 let cachedLatest: { version: string; checkedAt: number } | null = null;
 const CHECK_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
@@ -9,15 +9,16 @@ export async function getLatestVersion(): Promise<string | null> {
   }
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5_000);
+    const timeout = setTimeout(() => controller.abort(), Math.min(5_000, FETCH_TIMEOUT_MS));
     const res = await fetch(`${NPM_REGISTRY_URL}/@groundtruth-mcp/gt-mcp/latest`, {
       signal: controller.signal,
+      redirect: "manual",
       headers: { Accept: "application/json" },
     });
     clearTimeout(timeout);
     if (!res.ok) return null;
     const data = (await res.json()) as { version?: string };
-    if (data.version) {
+    if (typeof data.version === "string" && /^\d+\.\d+\.\d+/.test(data.version)) {
       cachedLatest = { version: data.version, checkedAt: Date.now() };
       return data.version;
     }
@@ -28,9 +29,10 @@ export async function getLatestVersion(): Promise<string | null> {
 }
 
 export function isNewerVersion(latest: string, current: string): boolean {
-  const parse = (v: string) => v.replace(/^v/, "").split(".").map(Number);
+  const parse = (v: string) => v.replace(/^v/, "").split("-")[0]!.split(".").map(Number);
   const [lMaj = 0, lMin = 0, lPat = 0] = parse(latest);
   const [cMaj = 0, cMin = 0, cPat = 0] = parse(current);
+  if (!Number.isFinite(lMaj) || !Number.isFinite(cMaj)) return false;
   if (lMaj !== cMaj) return lMaj > cMaj;
   if (lMin !== cMin) return lMin > cMin;
   return lPat > cPat;

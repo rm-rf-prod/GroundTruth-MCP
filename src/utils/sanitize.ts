@@ -76,8 +76,12 @@ const NAV_FOOTER_PATTERNS: RegExp[] = [
  * Also strips navigation chrome, footers, cookie banners, and other
  * boilerplate from Jina Reader output to reduce token waste by 15-25%.
  */
+const MAX_SANITIZE_LENGTH = 512_000; // 500KB cap before regex processing
+
 export function sanitizeContent(content: string): string {
-  let sanitized = content;
+  let sanitized = content.length > MAX_SANITIZE_LENGTH
+    ? content.slice(0, MAX_SANITIZE_LENGTH)
+    : content;
 
   // Strip nav/footer boilerplate first (before injection scan to reduce noise)
   for (const pattern of NAV_FOOTER_PATTERNS) {

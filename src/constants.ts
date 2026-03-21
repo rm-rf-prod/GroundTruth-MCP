@@ -38,4 +38,10 @@ export const INJECTION_PATTERNS: RegExp[] = [
   /\bact\s+as\b.{0,50}(?:you are|you're|an?\s+ai|a\s+model)/gi,
   /\bpretend\s+(?:you\s+are|to\s+be)\b/gi,
   /\bfrom\s+now\s+on\b.{0,30}(?:you|ignore|forget)/gi,
+  // ChatML / special token delimiters
+  /<\|(?:im_|system|user|assistant|endoftext)[_a-z]*\|?>/gi,
+  // Markdown image exfiltration attempts
+  /!\[.*?\]\(https?:\/\/[^)]*(?:exfil|steal|leak|callback|webhook|requestbin|hookbin|burp)[^)]*\)/gi,
+  // Tool/function override attempts
+  /\btool_call\b|\bfunction_call\b|\btool_result\b/gi,
 ];
