@@ -3,27 +3,27 @@ import { isNewerVersion, formatUpdateNotice, getUpdateNoticeForResponse, setPend
 
 describe("isNewerVersion", () => {
   it("detects major version bump", () => {
-    expect(isNewerVersion("3.0.0", "2.4.1")).toBe(true);
+    expect(isNewerVersion("3.0.0", "1.0.0")).toBe(true);
   });
 
   it("detects minor version bump", () => {
-    expect(isNewerVersion("2.5.0", "2.4.1")).toBe(true);
+    expect(isNewerVersion("1.5.0", "1.4.0")).toBe(true);
   });
 
   it("detects patch version bump", () => {
-    expect(isNewerVersion("2.4.1", "2.4.1")).toBe(true);
+    expect(isNewerVersion("1.4.2", "1.4.1")).toBe(true);
   });
 
   it("returns false when same version", () => {
-    expect(isNewerVersion("2.4.1", "2.4.1")).toBe(false);
+    expect(isNewerVersion("1.4.1", "1.4.1")).toBe(false);
   });
 
   it("returns false when current is newer", () => {
-    expect(isNewerVersion("2.3.0", "2.4.1")).toBe(false);
+    expect(isNewerVersion("1.3.0", "1.4.0")).toBe(false);
   });
 
   it("handles v prefix", () => {
-    expect(isNewerVersion("v3.0.0", "v2.4.1")).toBe(true);
+    expect(isNewerVersion("v3.0.0", "v2.0.0")).toBe(true);
   });
 });
 
