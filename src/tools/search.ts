@@ -6,6 +6,7 @@ import { extractRelevantContent } from "../utils/extract.js";
 import { isExtractionAttempt, withNotice, EXTRACTION_REFUSAL } from "../utils/guard.js";
 import { sanitizeContent } from "../utils/sanitize.js";
 import { docCache } from "../services/cache.js";
+import { computeQualityScore } from "../utils/quality.js";
 import { DEFAULT_TOKEN_LIMIT, MAX_TOKEN_LIMIT } from "../constants.js";
 
 const InputSchema = z.object({
@@ -1868,7 +1869,12 @@ IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library 
         content: [{ type: "text", text: withNotice(header + body) }],
         structuredContent: {
           query,
-          sources: results.map((r) => ({ name: r.source, url: r.url, content: r.content })),
+          sources: results.map((r) => ({
+            name: r.source,
+            url: r.url,
+            content: r.content,
+            qualityScore: computeQualityScore(r.content, query, "jina"),
+          })),
         },
       };
     },

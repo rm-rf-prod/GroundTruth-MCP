@@ -10,15 +10,18 @@ vi.mock("@modelcontextprotocol/sdk/server/stdio.js", () => ({
 vi.mock("@modelcontextprotocol/sdk/server/mcp.js", () => ({
   // Use a regular function (not arrow) so new McpServer() works as a constructor
   McpServer: vi.fn().mockImplementation(function McpServerMock(
-    this: { _name: string; _version: string; registerTool: unknown; prompt: unknown; connect: unknown },
+    this: { _name: string; _version: string; registerTool: unknown; registerResource: unknown; prompt: unknown; connect: unknown; server: unknown },
     meta: { name: string; version: string },
   ) {
     this._name = meta.name;
     this._version = meta.version;
     this.registerTool = vi.fn();
+    this.registerResource = vi.fn();
     this.prompt = vi.fn();
     this.connect = vi.fn().mockResolvedValue(undefined);
+    this.server = { sendLoggingMessage: vi.fn().mockResolvedValue(undefined) };
   }),
+  ResourceTemplate: class { constructor() { /* mock */ } },
 }));
 
 vi.mock("./tools/resolve.js", () => ({
@@ -50,6 +53,32 @@ vi.mock("./tools/compare.js", () => ({
 }));
 vi.mock("./tools/examples.js", () => ({
   registerExamplesTool: vi.fn(),
+}));
+vi.mock("./tools/migration.js", () => ({
+  registerMigrationTool: vi.fn(),
+}));
+vi.mock("./tools/batch-resolve.js", () => ({
+  registerBatchResolveTool: vi.fn(),
+}));
+
+vi.mock("./sources/registry.js", () => ({
+  LIBRARY_REGISTRY: [{ id: "test/lib", name: "TestLib", docsUrl: "https://example.com" }],
+}));
+
+vi.mock("./services/fetcher.js", () => ({
+  fetchDocs: vi.fn().mockResolvedValue({ content: "docs", url: "https://example.com", sourceType: "direct" }),
+}));
+
+vi.mock("./utils/extract.js", () => ({
+  extractRelevantContent: vi.fn((content: string) => ({ text: content, truncated: false })),
+}));
+
+vi.mock("./utils/sanitize.js", () => ({
+  sanitizeContent: vi.fn((content: string) => content),
+}));
+
+vi.mock("./utils/guard.js", () => ({
+  withNotice: vi.fn((text: string) => text),
 }));
 
 // ── process.exit guard ──────────────────────────────────────────────────────
@@ -182,9 +211,9 @@ describe("index.ts bootstrap", () => {
   });
 
   describe("MCP prompts", () => {
-    it("registers 5 prompts total", () => {
+    it("registers 8 prompts total", () => {
       const serverInstance = vi.mocked(McpServer).mock.results[0]!.value as { prompt: ReturnType<typeof vi.fn> };
-      expect(serverInstance.prompt).toHaveBeenCalledTimes(5);
+      expect(serverInstance.prompt).toHaveBeenCalledTimes(8);
     });
 
     it("registers audit-my-project prompt", () => {

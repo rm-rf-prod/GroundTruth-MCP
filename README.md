@@ -16,14 +16,15 @@
   <a href="https://www.npmjs.com/package/@groundtruth-mcp/gt-mcp"><img src="https://img.shields.io/npm/v/@groundtruth-mcp/gt-mcp?color=00d4aa&label=npm" alt="npm version" /></a>
   <a href="https://github.com/rm-rf-prod/GroundTruth-MCP/actions/workflows/ci.yml"><img src="https://github.com/rm-rf-prod/GroundTruth-MCP/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-ELv2-orange" alt="Elastic License 2.0" /></a>
-  <img src="https://img.shields.io/badge/libraries-363%2B-teal" alt="Unlimited libraries" />
+  <img src="https://img.shields.io/badge/libraries-422%2B-teal" alt="422+ curated libraries" />
   <img src="https://img.shields.io/badge/audit_patterns-100%2B-red" alt="100+ audit patterns" />
-  <img src="https://img.shields.io/badge/tests-704-brightgreen" alt="704 tests" />
+  <img src="https://img.shields.io/badge/tests-762-brightgreen" alt="762 tests" />
+  <img src="https://img.shields.io/badge/tools-12-blue" alt="12 tools" />
   <img src="https://img.shields.io/badge/node-%3E%3D24-green" alt="Node 24+" />
   <img src="https://img.shields.io/badge/status-active%20development-blue" alt="Active Development" />
 </p>
 
-<h4 align="center">Self-hosted MCP server. 363+ curated libraries. 100+ audit patterns. No rate limits. No API keys.<br/>Ships updates continuously — your MCP client picks them up on restart.</h4>
+<h4 align="center">Self-hosted MCP server. 422+ curated libraries. 100+ audit patterns. No rate limits. No API keys.<br/>Ships updates continuously — your MCP client picks them up on restart.</h4>
 
 ---
 
@@ -35,9 +36,9 @@ Here's what happened: React shipped v19 and killed `forwardRef`. Next.js made `c
 
 And the security stuff — that's the part that should keep you up at night but doesn't because you don't know about it yet. The model will hand you SQL injection dressed up as a query builder, pass user input to `innerHTML` like it's a feature, and use `any` in TypeScript with the same energy as someone who puts ketchup on steak. It learned from real code. Real code that real people got real fired over.
 
-Context7 is one solution. Cloud-hosted. Rate-limited. Covers about 130 libraries. Works great until you burn through the quota at 11pm debugging a production outage and it serves you a 429 while your Slack is lighting up.
+Context7 is one solution. Cloud-hosted. Rate-limited. Covers about 500 libraries. Works great until you burn through the quota at 11pm debugging a production outage and it serves you a 429 while your Slack is lighting up.
 
-**GroundTruth runs on your machine.** No quota to hit. No cloud to go down. Fetches docs from the source — `llms.txt`, Jina Reader, GitHub — right when you ask. 363+ curated libraries, plus npm, PyPI, crates.io, and pkg.go.dev as fallback. Any public package. Any ecosystem.
+**GroundTruth runs on your machine.** No quota to hit. No cloud to go down. Fetches docs from the source — `llms.txt`, Jina Reader, GitHub — right when you ask. 422+ curated libraries, plus npm, PyPI, crates.io, and pkg.go.dev as fallback. Any public package. Any ecosystem.
 
 The audit tool reads your actual files, finds issues at exact `file:line` locations, and fetches the current fix from the real spec. Not a Medium article. Not a 2019 ESLint plugin. The OWASP cheat sheet that was updated last month.
 
@@ -360,7 +361,7 @@ For every library docs request, GroundTruth tries sources in this order and stop
 
 ## Library coverage — unlimited
 
-363+ curated entries in the registry, plus automatic fallback to npm, PyPI, crates.io, and pkg.go.dev. Any public package in any major ecosystem is resolvable — the registry gives you curated quality, the fallbacks give you universal reach.
+422+ curated entries in the registry with 100% best-practices and URL pattern coverage, plus automatic fallback to npm, PyPI, crates.io, and pkg.go.dev. Any public package in any major ecosystem is resolvable — the registry gives you curated quality, the fallbacks give you universal reach.
 
 | Ecosystem | Libraries |
 |---|---|
@@ -407,30 +408,41 @@ Context7 is solid. Here's why I reach for this instead.
 
 | | GroundTruth | Context7 |
 |---|---|---|
-| Hosting | Self-hosted | Cloud |
-| Rate limits | None | Yes |
-| Source priority | llms.txt -> Jina -> GitHub | Doc page embeddings |
+| Hosting | Self-hosted + HTTP mode | Cloud only |
+| Rate limits | None | 1,000 free/month |
+| Transport | Stdio + Streamable HTTP | HTTP |
+| Source priority | llms.txt -> Jina -> GitHub -> DevDocs | Doc page embeddings |
+| Tools | 12 specialized tools | 2 tools |
 | Code audit | Yes — 100+ patterns, 18 categories, file:line, live fixes | No |
 | Freeform search | Yes — OWASP, MDN, AI docs, Google APIs, web standards | Library docs only |
+| Migration guides | Yes — MIGRATION.md, changelogs, upgrade docs | No |
+| Batch resolution | Yes — resolve up to 20 libraries in one call | No |
 | Changelog lookup | Yes — GitHub Releases, CHANGELOG.md, docs site | No |
 | Browser compatibility | Yes — MDN + caniuse.com | No |
 | Library comparison | Yes — 2-3 libraries side-by-side, any criteria | No |
 | Code examples | Yes — GitHub Code Search for real-world usage | No |
+| Content quality score | Yes — 0-1 relevance score per response | No |
+| MCP Resources | Yes — browsable library registry + docs | No |
+| MCP Prompts | 8 workflow prompts | 0 |
+| Circuit breaker | Yes — per-domain failure isolation | Unknown |
+| Stale-while-revalidate | Yes — instant cached responses | Unknown |
+| Deep multi-page fetch | Yes — follows links, assembles content | Single page |
 | Lockfile detection | Yes — reads exact versions from lockfiles | No |
-| Libraries | Unlimited — 363+ curated + npm/PyPI/crates.io/Go fallback | ~130 |
+| Libraries | 422+ curated (100% best-practices coverage) + npm/PyPI/crates.io/Go fallback | ~500 |
 | AI coverage | Claude, OpenAI, Gemini, Mistral, Cohere, Groq, LangChain, LlamaIndex, CrewAI, 20+ more | Limited |
 | Google APIs | Full coverage — Maps, Analytics, Ads, Cloud, Firebase, Vertex AI, 30+ services | Partial |
-| Python / Rust / Go | Yes | Limited |
+| Python / Rust / Go / Java | Yes — full ecosystem coverage | Limited |
+| Security | Prompt injection guard, SSRF defense, circuit breaker | Standard |
 | Update notifications | Yes — notifies when new version available | No |
 | API key required | No | No |
 
-The two tools approach the same problem from different angles. Context7 embeds doc pages and retrieves them by semantic similarity. GroundTruth fetches from the source at query time and prioritizes `llms.txt` files — content the maintainers specifically wrote for LLM consumption. Neither is universally better, but when you hit a rate limit at 11pm debugging a production issue, "self-hosted with no quota" stops being a nice-to-have.
+GroundTruth and Context7 solve the same problem differently. Context7 embeds doc pages and retrieves by semantic similarity. GroundTruth fetches from the source at query time, prioritizes `llms.txt` files, follows deep links across multiple pages, and scores content quality so your model knows when to retry. Neither is universally better — but when you hit a rate limit at 11pm debugging a production issue, "self-hosted with no quota" stops being a nice-to-have.
 
 ---
 
 ## Tests
 
-704 tests across 22 files. Every audit pattern has a test. Every manifest parser has a test. If a pattern ships without a test, the CI pipeline says no before any human has to.
+762+ tests across 25+ files. Every audit pattern has a test. Every manifest parser has a test. Circuit breaker states, SWR cache behavior, deep-fetch assembly, quality scoring — all tested. If a pattern ships without a test, the CI pipeline says no before any human has to.
 
 ```bash
 npm test                # run all tests
@@ -440,7 +452,7 @@ npm run typecheck       # TypeScript strict check (no emit)
 
 | File | Coverage |
 |---|---|
-| `src/sources/registry.test.ts` | LIBRARY_REGISTRY integrity, `lookupById`, `lookupByAlias`, fuzzy search |
+| `src/sources/registry.test.ts` | LIBRARY_REGISTRY integrity, `lookupById`, `lookupByAlias`, fuzzy search, field coverage (bestPracticesPaths, urlPatterns, llmsTxtUrl), alias uniqueness |
 | `src/tools/audit.test.ts` | `buildCommentMap`, all 100+ patterns — Python, security, TypeScript, React, Node |
 | `src/tools/auto-scan.test.ts` | All 8 manifest parsers using temp directories (package.json, requirements.txt, pyproject.toml, Cargo.toml, go.mod, pom.xml, composer.json, build.gradle) |
 | `src/utils/extract.test.ts` | Topic relevance ranking, truncation, document order preservation |
@@ -476,7 +488,7 @@ That's it. No Docker. No config files. No environment variables unless you want 
 
 ## Active development
 
-GroundTruth is under active development. New curated registry entries, audit patterns, search topics, and features are added regularly. The registry covers 363+ libraries with deep curated metadata, and automatic fallback to npm, PyPI, crates.io, and pkg.go.dev means any public package is resolvable out of the box.
+GroundTruth is under active development. New curated registry entries, audit patterns, search topics, and features are added regularly. The registry covers 422+ libraries with 100% bestPracticesPaths and urlPatterns coverage, 230+ curated best-practice URL entries, and 30 generic fallback path patterns. Automatic fallback to npm, PyPI, crates.io, and pkg.go.dev means any public package is resolvable out of the box.
 
 Recent additions include comprehensive coverage for Google Gemini API, Anthropic Claude API (tool use, prompt caching, vision, extended thinking, computer use, streaming, batches), OpenAI API (chat, responses, function calling, structured output, embeddings, fine-tuning, realtime, agents), and 20+ additional AI providers and frameworks.
 
