@@ -50,6 +50,7 @@ class LRUCache<T> {
 interface DiskCacheFile {
   data: string;
   expiresAt: number;
+  contentHash?: string;
 }
 
 /**

@@ -8,6 +8,7 @@ import {
   fetchGitHubExamples,
   fetchNpmPackage,
   fetchPypiPackage,
+  hashContent,
 } from "./fetcher.js";
 
 // ── Cache mock ──────────────────────────────────────────────────────────────
@@ -105,6 +106,35 @@ describe("fetchWithTimeout", () => {
     await fetchWithTimeout("https://example.com/path?q=1");
     const [url] = mockFetch.mock.calls[0]!;
     expect(url).toBe("https://example.com/path?q=1");
+  });
+});
+
+// ── hashContent ─────────────────────────────────────────────────────────────
+
+describe("hashContent", () => {
+  it("returns a 16-character hex string", () => {
+    const hash = hashContent("test content");
+    expect(hash).toMatch(/^[a-f0-9]{16}$/);
+  });
+
+  it("returns deterministic hashes", () => {
+    expect(hashContent("hello")).toBe(hashContent("hello"));
+  });
+
+  it("returns different hashes for different content", () => {
+    expect(hashContent("a")).not.toBe(hashContent("b"));
+  });
+});
+
+// ── fetchDocs contentHash ───────────────────────────────────────────────────
+
+describe("fetchDocs contentHash", () => {
+  it("includes contentHash and fetchedAt in response", async () => {
+    mockFetch.mockResolvedValueOnce(makeRes(LONG, 200));
+    const result = await fetchDocs("https://example.com/docs", "https://example.com/llms.txt");
+    expect(result.contentHash).toMatch(/^[a-f0-9]{16}$/);
+    expect(result.fetchedAt).toBeDefined();
+    expect(() => new Date(result.fetchedAt!)).not.toThrow();
   });
 });
 

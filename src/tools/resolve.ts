@@ -1,7 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { fuzzySearch, lookupByAlias } from "../sources/registry.js";
-import { fetchNpmPackage, fetchPypiPackage } from "../services/fetcher.js";
+import { fetchNpmPackage, fetchPypiPackage, fetchWithTimeout, fetchViaJina } from "../services/fetcher.js";
 import { resolveCache } from "../services/cache.js";
 import type { LibraryMatch, NpmPackageInfo, PypiPackageInfo } from "../types.js";
 import { isExtractionAttempt, withNotice, EXTRACTION_REFUSAL } from "../utils/guard.js";
@@ -20,6 +20,30 @@ const InputSchema = z.object({
     .optional()
     .describe("Optional: what you want to do with this library, used to rank results"),
 });
+
+interface CratesApiResponse {
+  crate: {
+    name: string;
+    description?: string;
+    homepage?: string;
+    repository?: string;
+    documentation?: string;
+    max_stable_version?: string;
+  };
+}
+
+async function probeLlmsTxt(homepage: string): Promise<{ llmsTxtUrl?: string; llmsFullTxtUrl?: string }> {
+  const result: { llmsTxtUrl?: string; llmsFullTxtUrl?: string } = {};
+  try {
+    const fullRes = await fetchWithTimeout(`${homepage}/llms-full.txt`, 5000);
+    if (fullRes.ok) result.llmsFullTxtUrl = `${homepage}/llms-full.txt`;
+  } catch { /* timeout or network error */ }
+  try {
+    const res = await fetchWithTimeout(`${homepage}/llms.txt`, 5000);
+    if (res.ok) result.llmsTxtUrl = `${homepage}/llms.txt`;
+  } catch { /* timeout or network error */ }
+  return result;
+}
 
 function extractGithubUrl(repoField: unknown): string | undefined {
   if (typeof repoField === "string") {
@@ -48,12 +72,15 @@ async function resolveFromNpm(packageName: string): Promise<LibraryMatch | null>
   const homepage = pkg.homepage?.replace(/\/+$/, "") ?? "";
   const githubUrl = extractGithubUrl(pkg.repository);
 
+  const llmsProbe = homepage ? await probeLlmsTxt(homepage) : {};
+
   const result: LibraryMatch = {
     id: `npm:${pkg.name}`,
     name: pkg.name,
     description: pkg.description ?? "",
     docsUrl: homepage || `https://www.npmjs.com/package/${pkg.name}`,
-    llmsTxtUrl: homepage ? `${homepage}/llms.txt` : undefined,
+    llmsTxtUrl: llmsProbe.llmsTxtUrl,
+    ...(llmsProbe.llmsFullTxtUrl !== undefined && { llmsFullTxtUrl: llmsProbe.llmsFullTxtUrl }),
     githubUrl,
     score: 70,
     source: "npm",
@@ -75,24 +102,93 @@ async function resolveFromPypi(packageName: string): Promise<LibraryMatch | null
   const info = pkg.info;
   if (!info?.name) return null;
 
-  const homepage =
+  const homepageRaw =
     info.home_page ??
     info.project_urls?.["Documentation"] ??
     info.project_urls?.["Homepage"] ??
     `https://pypi.org/project/${info.name}`;
+  const homepage = homepageRaw.replace(/\/+$/, "");
+
+  const llmsProbe = await probeLlmsTxt(homepage);
 
   const result: LibraryMatch = {
     id: `pypi:${info.name}`,
     name: info.name,
     description: info.summary ?? "",
-    docsUrl: homepage.replace(/\/+$/, ""),
-    llmsTxtUrl: undefined,
+    docsUrl: homepage,
+    llmsTxtUrl: llmsProbe.llmsTxtUrl,
     githubUrl:
       info.project_urls?.["Source"] ??
       info.project_urls?.["Repository"] ??
       info.project_urls?.["GitHub"],
     score: 65,
     source: "pypi",
+  };
+
+  resolveCache.set(cacheKey, result);
+  return result;
+}
+
+async function resolveFromCrates(packageName: string): Promise<LibraryMatch | null> {
+  const cacheKey = `crates-resolve:${packageName}`;
+  const cached = resolveCache.get(cacheKey);
+  if (cached) return cached;
+
+  try {
+    const res = await fetchWithTimeout(
+      `https://crates.io/api/v1/crates/${encodeURIComponent(packageName)}`,
+      8000,
+    );
+    if (!res.ok) return null;
+    const data = (await res.json()) as CratesApiResponse;
+    if (!data?.crate?.name) return null;
+
+    const { crate } = data;
+    const homepage = (crate.documentation ?? crate.homepage ?? crate.repository ?? "").replace(/\/+$/, "");
+    const docsUrl = homepage || `https://crates.io/crates/${crate.name}`;
+
+    const llmsProbe = homepage ? await probeLlmsTxt(homepage) : {};
+
+    const result: LibraryMatch = {
+      id: `crates:${crate.name}`,
+      name: crate.name,
+      description: crate.description ?? "",
+      docsUrl,
+      llmsTxtUrl: llmsProbe.llmsTxtUrl,
+      ...(llmsProbe.llmsFullTxtUrl !== undefined && { llmsFullTxtUrl: llmsProbe.llmsFullTxtUrl }),
+      githubUrl: crate.repository?.includes("github.com") ? crate.repository : undefined,
+      score: 60,
+      source: "crates",
+    };
+
+    resolveCache.set(cacheKey, result);
+    return result;
+  } catch {
+    return null;
+  }
+}
+
+async function resolveFromGo(moduleName: string): Promise<LibraryMatch | null> {
+  const cacheKey = `go-resolve:${moduleName}`;
+  const cached = resolveCache.get(cacheKey);
+  if (cached) return cached;
+
+  const pageUrl = `https://pkg.go.dev/${moduleName}`;
+  const content = await fetchViaJina(pageUrl);
+  if (!content) return null;
+
+  const descMatch = content.match(/^(.{20,300})/m);
+  const description = descMatch?.[1]?.trim() ?? "";
+
+  const result: LibraryMatch = {
+    id: `go:${moduleName}`,
+    name: moduleName,
+    description,
+    docsUrl: pageUrl,
+    llmsTxtUrl: undefined,
+    githubUrl: moduleName.startsWith("github.com/") ? `https://${moduleName}` : undefined,
+    score: 55,
+    source: "go",
   };
 
   resolveCache.set(cacheKey, result);
@@ -116,6 +212,7 @@ function formatResults(matches: LibraryMatch[]): string {
     lines.push(`- **ID**: \`${m.id}\``);
     if (m.description) lines.push(`- **Description**: ${m.description}`);
     lines.push(`- **Docs**: ${m.docsUrl}`);
+    if (m.llmsFullTxtUrl) lines.push(`- **LLMs-full.txt**: ${m.llmsFullTxtUrl}`);
     if (m.llmsTxtUrl) lines.push(`- **LLMs.txt**: ${m.llmsTxtUrl}`);
     if (m.githubUrl) lines.push(`- **GitHub**: ${m.githubUrl}`);
     lines.push(`- **Source**: ${m.source}`);
@@ -194,6 +291,18 @@ IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library 
       if (matches.length === 0) {
         const pypiResult = await resolveFromPypi(name);
         if (pypiResult) matches.push(pypiResult);
+      }
+
+      // 5. Fallback to crates.io (Rust)
+      if (matches.length === 0) {
+        const cratesResult = await resolveFromCrates(name);
+        if (cratesResult) matches.push(cratesResult);
+      }
+
+      // 6. Fallback to Go pkg.go.dev
+      if (matches.length === 0) {
+        const goResult = await resolveFromGo(name);
+        if (goResult) matches.push(goResult);
       }
 
       // Boost score if query tokens match description/tags

@@ -20,9 +20,10 @@ export interface LibraryMatch {
   description: string;
   docsUrl: string;
   llmsTxtUrl: string | undefined;
+  llmsFullTxtUrl?: string;
   githubUrl: string | undefined;
   score: number;
-  source: "registry" | "npm" | "pypi" | "github";
+  source: "registry" | "npm" | "pypi" | "github" | "crates" | "go";
 }
 
 export interface DocResult {
@@ -44,6 +45,8 @@ export interface FetchResult {
   content: string;
   url: string;
   sourceType: DocResult["sourceType"];
+  contentHash?: string;
+  fetchedAt?: string;
 }
 
 export interface NpmPackageInfo {
