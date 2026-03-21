@@ -20,7 +20,7 @@ body:
     id: version
     attributes:
       label: GroundTruth version
-      placeholder: "2.5.3"
+      placeholder: "2.5.4"
     validations:
       required: true
   - type: dropdown

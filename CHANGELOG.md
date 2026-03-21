@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.5.4] — 2026-03-21
+
+- fix: close DNS rebinding TOCTOU gap with undici global dispatcher
+- fix: move mcp-publisher to release scripts after npm publish
+
+---
+
 ## [2.5.3] — 2026-03-21
 
 - fix: resolve all remaining security issues to enterprise grade
