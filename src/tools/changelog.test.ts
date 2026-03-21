@@ -222,7 +222,7 @@ describe("gt_changelog handler", () => {
       ["14", "14.2.0"],
     ])("filters content for version %s containing %s", async (version, versionLine) => {
       vi.mocked(lookupById).mockReturnValue(makeEntry());
-      const content = `### ${versionLine}\nThis release includes important changes.\n\n### v13.0.0\nOlder.`;
+      const content = `### ${versionLine}\nThis release includes important changes.\n\n### v13.0.1\nOlder.`;
       vi.mocked(fetchGitHubReleases).mockResolvedValue(content);
       const result = await handler({ libraryId: "vercel/next.js", version });
       expect(result.content[0]!.text).toBeDefined();
