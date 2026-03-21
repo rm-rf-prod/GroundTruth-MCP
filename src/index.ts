@@ -16,6 +16,15 @@ import { registerChangelogTool } from "./tools/changelog.js";
 import { registerCompatTool } from "./tools/compat.js";
 import { registerCompareTool } from "./tools/compare.js";
 import { registerExamplesTool } from "./tools/examples.js";
+import { registerMigrationTool } from "./tools/migration.js";
+import { registerBatchResolveTool } from "./tools/batch-resolve.js";
+import { ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { LIBRARY_REGISTRY } from "./sources/registry.js";
+import { fetchDocs } from "./services/fetcher.js";
+import { extractRelevantContent } from "./utils/extract.js";
+import { sanitizeContent } from "./utils/sanitize.js";
+import { withNotice } from "./utils/guard.js";
+import { DEFAULT_TOKEN_LIMIT } from "./constants.js";
 
 const server = new McpServer(
   { name: SERVER_NAME, version: SERVER_VERSION },
@@ -35,6 +44,8 @@ Tools:
 8. gt_compat — Check browser/runtime compatibility for a web API or CSS feature.
 9. gt_compare — Compare 2–3 libraries side-by-side.
 10. gt_examples — Find real-world code examples from GitHub for any library or pattern.
+11. gt_migration — Fetch migration guides, breaking changes, and upgrade instructions.
+12. gt_batch_resolve — Resolve multiple library names in one call (max 20).
 
 Workflows:
 "use gt" → gt_auto_scan({})
@@ -42,6 +53,7 @@ Workflows:
 "find and fix all issues" → gt_audit({ projectPath: "." })
 "check [topic]" → gt_search({ query: "[topic]" })
 "show me examples of [library]" → gt_examples
+"migrate [library]" → gt_migration({ libraryId: "[id]" })
 
 All content is fetched live from official sources — no stale training data.`,
   },
@@ -57,6 +69,47 @@ registerChangelogTool(server);
 registerCompatTool(server);
 registerCompareTool(server);
 registerExamplesTool(server);
+registerMigrationTool(server);
+registerBatchResolveTool(server);
+
+// MCP Resources — browsable documentation and registry data
+server.registerResource(
+  "library-registry",
+  "gt://registry",
+  { description: "List of all supported libraries with IDs and docs URLs" },
+  async () => ({
+    contents: [{
+      uri: "gt://registry",
+      mimeType: "application/json",
+      text: JSON.stringify(
+        LIBRARY_REGISTRY.map((e) => ({ id: e.id, name: e.name, docsUrl: e.docsUrl })),
+        null,
+        2,
+      ),
+    }],
+  }),
+);
+
+server.registerResource(
+  "library-docs",
+  new ResourceTemplate("gt://docs/{libraryId}", { list: undefined }),
+  { description: "Fetch documentation for a library by its registry ID" },
+  async (uri, { libraryId }) => {
+    const id = Array.isArray(libraryId) ? libraryId[0] ?? "" : libraryId;
+    const entry = LIBRARY_REGISTRY.find((e) => e.id === id);
+    if (!entry) {
+      return { contents: [{ uri: uri.href, mimeType: "text/plain", text: `Library not found: ${id}` }] };
+    }
+    try {
+      const result = await fetchDocs(entry.docsUrl, entry.llmsTxtUrl, entry.llmsFullTxtUrl);
+      const safe = sanitizeContent(result.content);
+      const { text } = extractRelevantContent(safe, "", DEFAULT_TOKEN_LIMIT);
+      return { contents: [{ uri: uri.href, mimeType: "text/markdown", text: withNotice(text) }] };
+    } catch {
+      return { contents: [{ uri: uri.href, mimeType: "text/plain", text: `Failed to fetch docs for ${entry.name}` }] };
+    }
+  },
+);
 
 // MCP Prompts — discoverable workflow templates shown as slash commands in compatible clients
 server.prompt(
@@ -117,10 +170,93 @@ server.prompt(
   }),
 );
 
+server.prompt(
+  "migration-guide",
+  "Check migration guides and breaking changes for upgrading a library between versions",
+  {
+    library: z.string().describe("Library to migrate, e.g. 'nextjs', 'react', 'tailwind'"),
+    fromVersion: z.string().optional().describe("Version migrating from, e.g. '14'"),
+    toVersion: z.string().optional().describe("Version migrating to, e.g. '15'"),
+  },
+  ({ library, fromVersion, toVersion }) => ({
+    messages: [{
+      role: "user",
+      content: {
+        type: "text",
+        text: `Use gt_changelog and gt_get_docs to find the migration guide for ${library}${fromVersion ? ` from v${fromVersion}` : ""}${toVersion ? ` to v${toVersion}` : ""}. List all breaking changes, required code modifications, and step-by-step upgrade instructions.`,
+      },
+    }],
+  }),
+);
+
+server.prompt(
+  "find-examples",
+  "Find real-world code examples of a pattern using a specific library",
+  {
+    library: z.string().describe("Library name, e.g. 'react', 'drizzle-orm'"),
+    pattern: z.string().describe("Pattern or feature, e.g. 'server actions', 'middleware', 'RLS policies'"),
+  },
+  ({ library, pattern }) => ({
+    messages: [{
+      role: "user",
+      content: {
+        type: "text",
+        text: `Use gt_examples to find real-world code examples of "${pattern}" using ${library}. Show the most relevant examples with context and explain the patterns used.`,
+      },
+    }],
+  }),
+);
+
+server.prompt(
+  "dependency-audit",
+  "Scan project dependencies for outdated patterns and fetch current best practices",
+  () => ({
+    messages: [{
+      role: "user",
+      content: {
+        type: "text",
+        text: "Use gt_auto_scan to detect all dependencies in this project, then for each one check if we're using any deprecated patterns. Flag outdated code and fetch the current recommended approach from official docs.",
+      },
+    }],
+  }),
+);
+
 async function main(): Promise<void> {
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
-  console.error(`${SERVER_NAME} v${SERVER_VERSION} running via stdio [${getInstallId()}]`);
+  const httpPort = process.env.GT_HTTP_PORT;
+
+  if (httpPort) {
+    const { StreamableHTTPServerTransport } = await import(
+      "@modelcontextprotocol/sdk/server/streamableHttp.js"
+    );
+    const http = await import("http");
+    const crypto = await import("crypto");
+
+    const transport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: () => crypto.randomUUID(),
+    });
+    transport.onclose = () => {};
+    await server.connect(transport as Parameters<typeof server.connect>[0]);
+
+    const httpServer = http.createServer(async (req, res) => {
+      if (req.method === "POST" && req.url === "/mcp") {
+        await transport.handleRequest(req, res);
+      } else if (req.method === "GET" && req.url === "/health") {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ status: "ok", version: SERVER_VERSION }));
+      } else {
+        res.writeHead(404);
+        res.end();
+      }
+    });
+
+    httpServer.listen(Number(httpPort), () => {
+      console.error(`${SERVER_NAME} v${SERVER_VERSION} running via HTTP on port ${httpPort} [${getInstallId()}]`);
+    });
+  } else {
+    const transport = new StdioServerTransport();
+    await server.connect(transport);
+    console.error(`${SERVER_NAME} v${SERVER_VERSION} running via stdio [${getInstallId()}]`);
+  }
 
   // Non-blocking cache prune — removes expired entries and caps at 1000 files
   diskDocCache.prune(1000).catch(() => {});

@@ -34,6 +34,70 @@ describe("LIBRARY_REGISTRY", () => {
       }
     }
   });
+
+  it("all llmsTxtUrl values are HTTPS URLs when present", () => {
+    for (const entry of LIBRARY_REGISTRY) {
+      if (entry.llmsTxtUrl) {
+        expect(entry.llmsTxtUrl, `${entry.id} llmsTxtUrl`).toMatch(/^https:\/\//);
+      }
+    }
+  });
+
+  it("all llmsFullTxtUrl values are HTTPS URLs when present", () => {
+    for (const entry of LIBRARY_REGISTRY) {
+      if (entry.llmsFullTxtUrl) {
+        expect(entry.llmsFullTxtUrl, `${entry.id} llmsFullTxtUrl`).toMatch(/^https:\/\//);
+      }
+    }
+  });
+
+  it("all bestPracticesPaths start with / when present", () => {
+    for (const entry of LIBRARY_REGISTRY) {
+      if (entry.bestPracticesPaths) {
+        for (const path of entry.bestPracticesPaths) {
+          expect(path, `${entry.id} path: ${path}`).toMatch(/^\//);
+        }
+      }
+    }
+  });
+
+  it("all urlPatterns contain {slug} when present", () => {
+    for (const entry of LIBRARY_REGISTRY) {
+      if (entry.urlPatterns) {
+        for (const pattern of entry.urlPatterns) {
+          expect(pattern, `${entry.id} pattern: ${pattern}`).toContain("{slug}");
+        }
+      }
+    }
+  });
+
+  it("no duplicate aliases across different entries", () => {
+    const aliasMap = new Map<string, string>();
+    for (const entry of LIBRARY_REGISTRY) {
+      for (const alias of entry.aliases) {
+        const lower = alias.toLowerCase();
+        const existing = aliasMap.get(lower);
+        if (existing && existing !== entry.id) {
+          expect.fail(`Duplicate alias "${alias}" shared by ${existing} and ${entry.id}`);
+        }
+        aliasMap.set(lower, entry.id);
+      }
+    }
+  });
+
+  it("every entry has bestPracticesPaths", () => {
+    for (const entry of LIBRARY_REGISTRY) {
+      expect(entry.bestPracticesPaths, `${entry.id} missing bestPracticesPaths`).toBeDefined();
+      expect(entry.bestPracticesPaths!.length, `${entry.id} empty bestPracticesPaths`).toBeGreaterThan(0);
+    }
+  });
+
+  it("every entry has urlPatterns", () => {
+    for (const entry of LIBRARY_REGISTRY) {
+      expect(entry.urlPatterns, `${entry.id} missing urlPatterns`).toBeDefined();
+      expect(entry.urlPatterns!.length, `${entry.id} empty urlPatterns`).toBeGreaterThan(0);
+    }
+  });
 });
 
 describe("lookupById", () => {

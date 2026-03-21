@@ -25,6 +25,11 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
       "/docs/app/building-your-application/rendering",
       "/docs/app/building-your-application/caching",
     ],
+    urlPatterns: [
+      "/docs/app/{slug}",
+      "/docs/app/building-your-application/{slug}",
+      "/docs/app/api-reference/{slug}",
+    ],
   },
   {
     id: "facebook/react",
@@ -37,6 +42,15 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "react",
     language: ["typescript", "javascript"],
     tags: ["ui", "frontend", "library"],
+    bestPracticesPaths: [
+      "/learn/thinking-in-react",
+      "/learn/managing-state",
+      "/learn/escape-hatches",
+      "/learn/you-might-not-need-an-effect",
+      "/reference/rules",
+      "/reference/react/hooks",
+    ],
+    urlPatterns: ["/reference/react/{slug}", "/learn/{slug}"],
   },
   {
     id: "vuejs/vue",
@@ -49,18 +63,34 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "vue",
     language: ["typescript", "javascript"],
     tags: ["framework", "frontend"],
+    bestPracticesPaths: [
+      "/guide/best-practices/performance",
+      "/guide/best-practices/security",
+      "/guide/best-practices/accessibility",
+      "/guide/best-practices/production-deployment",
+      "/guide/scaling-up/state-management",
+    ],
+    urlPatterns: ["/guide/{slug}", "/api/{slug}"],
   },
   {
     id: "sveltejs/svelte",
     name: "Svelte",
-    aliases: ["svelte", "sveltekit"],
+    aliases: ["svelte"],
     description: "Cybernetically enhanced web apps",
     docsUrl: "https://svelte.dev/docs",
     llmsTxtUrl: "https://svelte.dev/llms.txt",
+    llmsFullTxtUrl: "https://svelte.dev/llms-full.txt",
     githubUrl: "https://github.com/sveltejs/svelte",
     npmPackage: "svelte",
     language: ["typescript", "javascript"],
     tags: ["framework", "frontend", "compiler"],
+    bestPracticesPaths: [
+      "/docs/svelte/best-practices",
+      "/docs/kit/performance",
+      "/docs/svelte/reactivity",
+      "/docs/kit/form-actions",
+    ],
+    urlPatterns: ["/docs/svelte/{slug}", "/docs/kit/{slug}"],
   },
   {
     id: "honojs/hono",
@@ -69,10 +99,18 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     description: "Fast, lightweight web framework for the Edge",
     docsUrl: "https://hono.dev/docs",
     llmsTxtUrl: "https://hono.dev/llms.txt",
+    llmsFullTxtUrl: "https://hono.dev/llms-full.txt",
     githubUrl: "https://github.com/honojs/hono",
     npmPackage: "hono",
     language: ["typescript", "javascript"],
     tags: ["framework", "edge", "backend", "api"],
+    bestPracticesPaths: [
+      "/docs/guides/best-practices",
+      "/docs/guides/middleware",
+      "/docs/guides/testing",
+      "/docs/guides/validation",
+    ],
+    urlPatterns: ["/docs/{slug}", "/docs/guides/{slug}", "/docs/api/{slug}"],
   },
   {
     id: "expressjs/express",
@@ -84,6 +122,13 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "express",
     language: ["typescript", "javascript"],
     tags: ["framework", "backend", "nodejs"],
+    bestPracticesPaths: [
+      "/en/advanced/best-practice-performance",
+      "/en/advanced/best-practice-security",
+      "/en/guide/error-handling",
+      "/en/guide/routing",
+    ],
+    urlPatterns: ["/en/guide/{slug}", "/en/advanced/{slug}", "/en/4x/{slug}"],
   },
 
   // ─── CSS / Styling ────────────────────────────────────────────────────────────
@@ -97,6 +142,14 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "tailwindcss",
     language: ["css"],
     tags: ["styling", "css", "utility-first"],
+    bestPracticesPaths: [
+      "/docs/utility-first",
+      "/docs/reusing-styles",
+      "/docs/adding-custom-styles",
+      "/docs/optimizing-for-production",
+      "/docs/responsive-design",
+    ],
+    urlPatterns: ["/docs/{slug}"],
   },
   {
     id: "shadcn/ui",
@@ -109,6 +162,14 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "@radix-ui/react-primitive",
     language: ["typescript"],
     tags: ["ui", "components", "accessible", "radix"],
+    bestPracticesPaths: [
+      "/docs/installation",
+      "/docs/theming",
+      "/docs/dark-mode",
+      "/docs/components",
+      "/docs/figma",
+    ],
+    urlPatterns: ["/docs/{slug}", "/docs/components/{slug}"],
   },
 
   // ─── Database / ORM ───────────────────────────────────────────────────────────
@@ -123,7 +184,15 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "drizzle-orm",
     language: ["typescript"],
     tags: ["orm", "database", "sql"],
-    bestPracticesPaths: ["/docs/migrations", "/docs/rls"],
+    bestPracticesPaths: [
+      "/docs/migrations",
+      "/docs/rls",
+      "/docs/guides",
+      "/docs/performance",
+      "/docs/joins",
+      "/docs/transactions",
+    ],
+    urlPatterns: ["/docs/{slug}", "/docs/guides/{slug}"],
   },
   {
     id: "prisma/prisma",
@@ -136,6 +205,14 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "prisma",
     language: ["typescript"],
     tags: ["orm", "database"],
+    bestPracticesPaths: [
+      "/docs/guides/performance-and-optimization",
+      "/docs/guides/database/best-practices",
+      "/docs/guides/testing",
+      "/docs/concepts/components/prisma-client",
+      "/docs/guides/migrate",
+    ],
+    urlPatterns: ["/docs/{slug}", "/docs/guides/{slug}", "/docs/concepts/{slug}"],
   },
   {
     id: "supabase/supabase",
@@ -157,6 +234,7 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
       "/docs/guides/storage",
       "/docs/guides/functions",
     ],
+    urlPatterns: ["/docs/guides/{slug}", "/docs/reference/javascript/{slug}"],
   },
 
   // ─── Validation / Schema ──────────────────────────────────────────────────────
@@ -171,6 +249,13 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "zod",
     language: ["typescript"],
     tags: ["validation", "schema", "types"],
+    bestPracticesPaths: [
+      "/basics",
+      "/parsing",
+      "/error-handling",
+      "/transforms",
+    ],
+    urlPatterns: ["/{slug}"],
   },
 
   // ─── State Management ─────────────────────────────────────────────────────────
@@ -185,6 +270,13 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "zustand",
     language: ["typescript", "javascript"],
     tags: ["state", "react"],
+    bestPracticesPaths: [
+      "/guides/updating-state",
+      "/guides/typescript",
+      "/guides/testing",
+      "/guides/practice/no-unnecessary-computations",
+    ],
+    urlPatterns: ["/guides/{slug}"],
   },
   {
     id: "TanStack/query",
@@ -197,6 +289,14 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "@tanstack/react-query",
     language: ["typescript"],
     tags: ["state", "async", "fetching", "react"],
+    bestPracticesPaths: [
+      "/query/latest/docs/framework/react/guides/important-defaults",
+      "/query/latest/docs/framework/react/guides/caching",
+      "/query/latest/docs/framework/react/guides/optimistic-updates",
+      "/query/latest/docs/framework/react/guides/testing",
+      "/query/latest/docs/framework/react/guides/ssr",
+    ],
+    urlPatterns: ["/query/latest/docs/framework/react/{slug}", "/query/latest/docs/framework/react/guides/{slug}"],
   },
 
   // ─── Testing ──────────────────────────────────────────────────────────────────
@@ -211,6 +311,14 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "vitest",
     language: ["typescript", "javascript"],
     tags: ["testing", "unit"],
+    bestPracticesPaths: [
+      "/guide/",
+      "/guide/mocking",
+      "/guide/snapshot",
+      "/guide/coverage",
+      "/guide/testing-types",
+    ],
+    urlPatterns: ["/guide/{slug}", "/api/{slug}", "/config/{slug}"],
   },
   {
     id: "microsoft/playwright",
@@ -222,6 +330,14 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "@playwright/test",
     language: ["typescript", "javascript"],
     tags: ["testing", "e2e", "browser"],
+    bestPracticesPaths: [
+      "/docs/best-practices",
+      "/docs/test-assertions",
+      "/docs/locators",
+      "/docs/auth",
+      "/docs/test-configuration",
+    ],
+    urlPatterns: ["/docs/{slug}", "/docs/api/class-{slug}"],
   },
 
   // ─── Build Tools ──────────────────────────────────────────────────────────────
@@ -236,6 +352,14 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "vite",
     language: ["typescript", "javascript"],
     tags: ["build", "bundler", "dev-server"],
+    bestPracticesPaths: [
+      "/guide/features",
+      "/guide/performance",
+      "/guide/build",
+      "/guide/ssr",
+      "/guide/env-and-mode",
+    ],
+    urlPatterns: ["/guide/{slug}", "/config/{slug}"],
   },
 
   // ─── AI / ML ──────────────────────────────────────────────────────────────────
@@ -250,6 +374,15 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "ai",
     language: ["typescript"],
     tags: ["ai", "llm", "streaming"],
+    bestPracticesPaths: [
+      "/docs/ai-sdk-core/overview",
+      "/docs/ai-sdk-ui/overview",
+      "/docs/ai-sdk-core/agents",
+      "/docs/ai-sdk-core/tools-and-tool-calling",
+      "/docs/ai-sdk-core/generating-structured-data",
+      "/docs/ai-sdk-core/streaming",
+    ],
+    urlPatterns: ["/docs/{slug}", "/docs/ai-sdk-core/{slug}", "/docs/ai-sdk-ui/{slug}"],
   },
 
   // ─── Mobile / React Native ────────────────────────────────────────────────────
@@ -264,6 +397,14 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "expo",
     language: ["typescript", "javascript"],
     tags: ["mobile", "react-native", "cross-platform"],
+    bestPracticesPaths: [
+      "/develop/development-builds/introduction",
+      "/guides/file-based-routing",
+      "/router/introduction",
+      "/eas",
+      "/deploy/submit-to-app-stores",
+    ],
+    urlPatterns: ["/docs/{slug}", "/router/{slug}", "/versions/latest/sdk/{slug}"],
   },
   {
     id: "facebook/react-native",
@@ -276,6 +417,14 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "react-native",
     language: ["typescript", "javascript"],
     tags: ["mobile", "cross-platform", "native"],
+    bestPracticesPaths: [
+      "/docs/performance",
+      "/docs/style",
+      "/docs/testing-overview",
+      "/architecture/overview",
+      "/docs/security",
+    ],
+    urlPatterns: ["/docs/{slug}", "/docs/components/{slug}"],
   },
 
   // ─── Python ───────────────────────────────────────────────────────────────────
@@ -286,8 +435,17 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     description: "FastAPI framework, high performance, easy to learn",
     docsUrl: "https://fastapi.tiangolo.com",
     githubUrl: "https://github.com/tiangolo/fastapi",
+    pypiPackage: "fastapi",
     language: ["python"],
     tags: ["framework", "backend", "api", "async"],
+    bestPracticesPaths: [
+      "/tutorial/",
+      "/advanced/",
+      "/deployment/",
+      "/async/",
+      "/tutorial/security/",
+    ],
+    urlPatterns: ["/tutorial/{slug}", "/advanced/{slug}"],
   },
   {
     id: "django/django",
@@ -296,8 +454,17 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     description: "The web framework for perfectionists with deadlines",
     docsUrl: "https://docs.djangoproject.com/en/stable",
     githubUrl: "https://github.com/django/django",
+    pypiPackage: "django",
     language: ["python"],
     tags: ["framework", "backend", "fullstack"],
+    bestPracticesPaths: [
+      "/en/stable/topics/security/",
+      "/en/stable/topics/performance/",
+      "/en/stable/topics/testing/",
+      "/en/stable/misc/design-philosophies/",
+      "/en/stable/howto/deployment/",
+    ],
+    urlPatterns: ["/en/stable/topics/{slug}", "/en/stable/ref/{slug}", "/en/stable/howto/{slug}"],
   },
 
   // ─── Infrastructure ───────────────────────────────────────────────────────────
@@ -308,10 +475,19 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     description: "The web framework for content-driven websites",
     docsUrl: "https://docs.astro.build",
     llmsTxtUrl: "https://docs.astro.build/llms.txt",
+    llmsFullTxtUrl: "https://docs.astro.build/llms-full.txt",
     githubUrl: "https://github.com/withastro/astro",
     npmPackage: "astro",
     language: ["typescript", "javascript"],
     tags: ["framework", "ssg", "content"],
+    bestPracticesPaths: [
+      "/en/guides/best-practices/",
+      "/en/guides/performance/",
+      "/en/guides/deploy/",
+      "/en/guides/server-side-rendering/",
+      "/en/guides/content-collections/",
+    ],
+    urlPatterns: ["/en/guides/{slug}", "/en/reference/{slug}"],
   },
   {
     id: "withastro/starlight",
@@ -323,6 +499,13 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "@astrojs/starlight",
     language: ["typescript"],
     tags: ["docs", "astro", "static"],
+    bestPracticesPaths: [
+      "/getting-started/",
+      "/guides/customization/",
+      "/guides/i18n/",
+      "/guides/sidebar/",
+    ],
+    urlPatterns: ["/guides/{slug}", "/reference/{slug}"],
   },
 
   // ─── AI / LLM SDKs ────────────────────────────────────────────────────────────
@@ -337,6 +520,14 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "@anthropic-ai/sdk",
     language: ["typescript", "javascript"],
     tags: ["ai", "llm", "sdk"],
+    bestPracticesPaths: [
+      "/en/docs/build-with-claude/overview",
+      "/en/docs/build-with-claude/tool-use",
+      "/en/docs/build-with-claude/prompt-engineering/overview",
+      "/en/docs/build-with-claude/streaming",
+      "/en/docs/build-with-claude/prompt-caching",
+    ],
+    urlPatterns: ["/en/docs/{slug}", "/en/docs/build-with-claude/{slug}", "/en/api/{slug}"],
   },
   {
     id: "anthropics/claude-code",
@@ -431,6 +622,7 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
       "/en/legal-and-compliance",
       "/en/changelog",
     ],
+    urlPatterns: ["/en/{slug}"],
   },
   {
     id: "anthropics/claude-agent-sdk",
@@ -472,6 +664,7 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
       "/en/agent-sdk/claude-code-features",
       "/en/agent-sdk/migration-guide",
     ],
+    urlPatterns: ["/en/agent-sdk/{slug}"],
   },
   {
     id: "openai/openai-node",
@@ -483,6 +676,14 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "openai",
     language: ["typescript", "javascript"],
     tags: ["ai", "llm", "sdk"],
+    bestPracticesPaths: [
+      "/docs/guides/text-generation",
+      "/docs/guides/function-calling",
+      "/docs/guides/structured-outputs",
+      "/docs/guides/prompt-engineering",
+      "/docs/guides/production-best-practices",
+    ],
+    urlPatterns: ["/docs/{slug}", "/docs/guides/{slug}", "/docs/api-reference/{slug}"],
   },
   {
     id: "modelcontextprotocol/sdk",
@@ -495,6 +696,14 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "@modelcontextprotocol/sdk",
     language: ["typescript"],
     tags: ["ai", "mcp", "sdk"],
+    bestPracticesPaths: [
+      "/docs/concepts/architecture",
+      "/docs/concepts/tools",
+      "/docs/concepts/resources",
+      "/docs/concepts/prompts",
+      "/docs/concepts/transports",
+    ],
+    urlPatterns: ["/docs/{slug}", "/docs/concepts/{slug}"],
   },
 
   // ─── Frameworks ────────────────────────────────────────────────────────────────
@@ -508,6 +717,13 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "@remix-run/react",
     language: ["typescript", "javascript"],
     tags: ["framework", "fullstack", "react"],
+    bestPracticesPaths: [
+      "/docs/guides/data-loading",
+      "/docs/guides/form-validation",
+      "/docs/guides/styling",
+      "/docs/guides/deployment",
+    ],
+    urlPatterns: ["/docs/{slug}", "/docs/guides/{slug}", "/docs/api/{slug}"],
   },
   {
     id: "nuxt/nuxt",
@@ -516,10 +732,18 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     description: "The intuitive Vue framework for building universal web applications",
     docsUrl: "https://nuxt.com/docs",
     llmsTxtUrl: "https://nuxt.com/llms.txt",
+    llmsFullTxtUrl: "https://nuxt.com/llms-full.txt",
     githubUrl: "https://github.com/nuxt/nuxt",
     npmPackage: "nuxt",
     language: ["typescript", "javascript"],
     tags: ["framework", "vue", "fullstack"],
+    bestPracticesPaths: [
+      "/docs/guide/concepts/rendering",
+      "/docs/guide/best-practices/performance",
+      "/docs/guide/directory-structure",
+      "/docs/guide/going-further/experimental-features",
+    ],
+    urlPatterns: ["/docs/guide/{slug}", "/docs/api/{slug}"],
   },
   {
     id: "sveltejs/kit",
@@ -532,6 +756,13 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "@sveltejs/kit",
     language: ["typescript", "javascript"],
     tags: ["framework", "svelte", "fullstack"],
+    bestPracticesPaths: [
+      "/docs/kit/performance",
+      "/docs/kit/form-actions",
+      "/docs/kit/hooks",
+      "/docs/kit/routing",
+    ],
+    urlPatterns: ["/docs/kit/{slug}", "/docs/svelte/{slug}"],
   },
   {
     id: "solidjs/solid",
@@ -544,6 +775,13 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "solid-js",
     language: ["typescript", "javascript"],
     tags: ["framework", "ui", "reactive"],
+    bestPracticesPaths: [
+      "/concepts/signals",
+      "/guides/state-management",
+      "/guides/routing",
+      "/guides/fetching-data",
+    ],
+    urlPatterns: ["/concepts/{slug}", "/guides/{slug}", "/reference/{slug}"],
   },
   {
     id: "fastify/fastify",
@@ -556,6 +794,13 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "fastify",
     language: ["typescript", "javascript"],
     tags: ["framework", "backend", "http"],
+    bestPracticesPaths: [
+      "/docs/latest/Guides/Getting-Started",
+      "/docs/latest/Guides/Testing",
+      "/docs/latest/Guides/Plugins-Guide",
+      "/docs/latest/Guides/Recommendations",
+    ],
+    urlPatterns: ["/docs/latest/{slug}", "/docs/latest/Guides/{slug}", "/docs/latest/Reference/{slug}"],
   },
   {
     id: "trpc/trpc",
@@ -568,6 +813,13 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "@trpc/server",
     language: ["typescript"],
     tags: ["api", "rpc", "typesafe"],
+    bestPracticesPaths: [
+      "/docs/server/procedures",
+      "/docs/client/nextjs",
+      "/docs/server/middlewares",
+      "/docs/server/error-handling",
+    ],
+    urlPatterns: ["/docs/{slug}", "/docs/server/{slug}", "/docs/client/{slug}"],
   },
 
   // ─── State / Validation ────────────────────────────────────────────────────────
@@ -581,6 +833,13 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "jotai",
     language: ["typescript", "javascript"],
     tags: ["state", "react", "atoms"],
+    bestPracticesPaths: [
+      "/docs/guides/typescript",
+      "/docs/guides/testing",
+      "/docs/guides/performance",
+      "/docs/guides/composing-atoms",
+    ],
+    urlPatterns: ["/docs/{slug}", "/docs/guides/{slug}", "/docs/utilities/{slug}"],
   },
   {
     id: "fabian-hiller/valibot",
@@ -593,6 +852,13 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "valibot",
     language: ["typescript"],
     tags: ["validation", "schema", "types"],
+    bestPracticesPaths: [
+      "/guides/introduction/",
+      "/guides/migrate-from-zod/",
+      "/guides/schemas/",
+      "/guides/methods/",
+    ],
+    urlPatterns: ["/guides/{slug}", "/api/{slug}"],
   },
   {
     id: "Effect-TS/effect",
@@ -605,6 +871,13 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "effect",
     language: ["typescript"],
     tags: ["functional", "effects", "typescript"],
+    bestPracticesPaths: [
+      "/docs/introduction",
+      "/docs/error-management/expected-errors",
+      "/docs/concurrency/basic-concurrency",
+      "/docs/guides/configuration",
+    ],
+    urlPatterns: ["/docs/{slug}", "/docs/guides/{slug}"],
   },
 
   // ─── Auth ──────────────────────────────────────────────────────────────────────
@@ -618,6 +891,13 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "next-auth",
     language: ["typescript", "javascript"],
     tags: ["auth", "oauth", "sessions"],
+    bestPracticesPaths: [
+      "/getting-started",
+      "/getting-started/providers",
+      "/concepts/session-management",
+      "/getting-started/deployment",
+    ],
+    urlPatterns: ["/getting-started/{slug}", "/concepts/{slug}", "/guides/{slug}"],
   },
 
   // ─── Database / Backend ────────────────────────────────────────────────────────
@@ -631,6 +911,13 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "socket.io",
     language: ["typescript", "javascript"],
     tags: ["realtime", "websockets", "networking"],
+    bestPracticesPaths: [
+      "/docs/v4/",
+      "/docs/v4/performance-tuning/",
+      "/docs/v4/rooms/",
+      "/docs/v4/middlewares/",
+    ],
+    urlPatterns: ["/docs/v4/{slug}"],
   },
   {
     id: "mongoose/mongoose",
@@ -642,6 +929,13 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "mongoose",
     language: ["typescript", "javascript"],
     tags: ["database", "mongodb", "odm"],
+    bestPracticesPaths: [
+      "/docs/guide.html",
+      "/docs/best_practices.html",
+      "/docs/indexes.html",
+      "/docs/middleware.html",
+    ],
+    urlPatterns: ["/docs/{slug}"],
   },
 
   // ─── Content / CMS ─────────────────────────────────────────────────────────────
@@ -656,6 +950,13 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "payload",
     language: ["typescript"],
     tags: ["cms", "headless", "nextjs"],
+    bestPracticesPaths: [
+      "/docs/getting-started/what-is-payload",
+      "/docs/configuration/overview",
+      "/docs/access-control/overview",
+      "/docs/fields/overview",
+    ],
+    urlPatterns: ["/docs/{slug}", "/docs/fields/{slug}", "/docs/admin/{slug}"],
   },
 
   // ─── Tooling / Runtime ─────────────────────────────────────────────────────────
@@ -669,6 +970,13 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     githubUrl: "https://github.com/oven-sh/bun",
     language: ["typescript", "javascript"],
     tags: ["runtime", "bundler", "tooling"],
+    bestPracticesPaths: [
+      "/docs",
+      "/docs/runtime/modules",
+      "/docs/bundler",
+      "/docs/test/writing",
+    ],
+    urlPatterns: ["/docs/{slug}", "/guides/{slug}"],
   },
   {
     id: "denoland/deno",
@@ -680,6 +988,13 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     githubUrl: "https://github.com/denoland/deno",
     language: ["typescript", "javascript"],
     tags: ["runtime", "deno", "secure"],
+    bestPracticesPaths: [
+      "/runtime/fundamentals/",
+      "/runtime/contributing/style_guide/",
+      "/runtime/fundamentals/security/",
+      "/deploy/",
+    ],
+    urlPatterns: ["/runtime/{slug}", "/deploy/{slug}"],
   },
   {
     id: "storybookjs/storybook",
@@ -691,6 +1006,13 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "storybook",
     language: ["typescript", "javascript"],
     tags: ["ui", "components", "testing"],
+    bestPracticesPaths: [
+      "/docs/get-started",
+      "/docs/writing-stories",
+      "/docs/writing-tests",
+      "/docs/configure",
+    ],
+    urlPatterns: ["/docs/{slug}", "/docs/api/{slug}"],
   },
 
   // ─── Animation / Graphics ──────────────────────────────────────────────────────
@@ -704,6 +1026,13 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "motion",
     language: ["typescript", "javascript"],
     tags: ["animation", "react", "ui"],
+    bestPracticesPaths: [
+      "/docs/",
+      "/docs/animate",
+      "/docs/gestures",
+      "/docs/layout-animations",
+    ],
+    urlPatterns: ["/docs/{slug}"],
   },
   {
     id: "mrdoob/three.js",
@@ -715,6 +1044,11 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "three",
     language: ["typescript", "javascript"],
     tags: ["3d", "webgl", "graphics"],
+    bestPracticesPaths: [
+      "/docs/index.html#manual/en/introduction/Creating-a-scene",
+      "/docs/index.html#manual/en/introduction/How-to-dispose-of-objects",
+    ],
+    urlPatterns: ["/docs/index.html#manual/en/{slug}", "/docs/index.html#api/en/{slug}"],
   },
 
   // ─── Google / Firebase / GCP ────────────────────────────────────────────────
@@ -746,6 +1080,7 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
       "/gemini-api/docs/grounding",
       "/gemini-api/docs/live-api",
     ],
+    urlPatterns: ["/gemini-api/docs/{slug}"],
   },
   {
     id: "google/generative-ai-python",
@@ -757,6 +1092,13 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     pypiPackage: "google-generativeai",
     language: ["python"],
     tags: ["ai", "llm", "google", "gemini", "sdk"],
+    bestPracticesPaths: [
+      "/gemini-api/docs/get-started/tutorial",
+      "/gemini-api/docs/function-calling",
+      "/gemini-api/docs/structured-output",
+      "/gemini-api/docs/embeddings",
+    ],
+    urlPatterns: ["/gemini-api/docs/{slug}"],
   },
   {
     id: "firebase/firebase-js-sdk",
@@ -780,6 +1122,7 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
       "/docs/remote-config",
       "/docs/app-check",
     ],
+    urlPatterns: ["/docs/{slug}"],
   },
   {
     id: "googleapis/google-cloud-node",
@@ -801,6 +1144,7 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
       "/iam/docs",
       "/logging/docs",
     ],
+    urlPatterns: ["/{slug}/docs"],
   },
   {
     id: "googleapis/google-api-nodejs-client",
@@ -812,6 +1156,12 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "googleapis",
     language: ["typescript", "javascript"],
     tags: ["google", "api", "sheets", "drive", "calendar", "youtube"],
+    bestPracticesPaths: [
+      "/api-client-library/javascript/start/start-node",
+      "/sheets/api/guides/concepts",
+      "/drive/api/guides/about-sdk",
+    ],
+    urlPatterns: ["/api-client-library/javascript/{slug}"],
   },
   {
     id: "google/vertex-ai-sdk",
@@ -828,6 +1178,7 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
       "/vertex-ai/docs/generative-ai/embeddings/get-text-embeddings",
       "/vertex-ai/docs/training/overview",
     ],
+    urlPatterns: ["/vertex-ai/docs/{slug}", "/vertex-ai/docs/generative-ai/{slug}"],
   },
   {
     id: "google/maps-js-api",
@@ -846,6 +1197,7 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
       "/maps/documentation/javascript/places",
       "/maps/documentation/javascript/directions",
     ],
+    urlPatterns: ["/maps/documentation/javascript/{slug}"],
   },
   {
     id: "google/material-web",
@@ -857,6 +1209,13 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "@material/web",
     language: ["typescript", "javascript"],
     tags: ["ui", "components", "google", "design-system"],
+    bestPracticesPaths: [
+      "/foundations",
+      "/styles",
+      "/components",
+      "/develop/web",
+    ],
+    urlPatterns: ["/foundations/{slug}", "/components/{slug}", "/styles/{slug}"],
   },
   {
     id: "flutter/flutter",
@@ -877,6 +1236,7 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
       "/deployment",
       "/perf",
     ],
+    urlPatterns: ["/docs/{slug}", "/cookbook/{slug}"],
   },
   {
     id: "angular/angular",
@@ -899,6 +1259,7 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
       "/guide/http",
       "/guide/testing",
     ],
+    urlPatterns: ["/guide/{slug}", "/essentials/{slug}"],
   },
 
   // ─── Anthropic / Claude (expanded) ──────────────────────────────────────────
@@ -913,6 +1274,13 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     pypiPackage: "anthropic",
     language: ["python"],
     tags: ["ai", "llm", "sdk", "claude"],
+    bestPracticesPaths: [
+      "/en/docs/build-with-claude/overview",
+      "/en/docs/build-with-claude/tool-use",
+      "/en/docs/build-with-claude/prompt-engineering/overview",
+      "/en/docs/build-with-claude/streaming",
+    ],
+    urlPatterns: ["/en/docs/{slug}", "/en/docs/build-with-claude/{slug}"],
   },
   {
     id: "anthropics/anthropic-api",
@@ -950,6 +1318,7 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
       "/en/docs/resources/model-deprecations",
       "/en/docs/resources/glossary",
     ],
+    urlPatterns: ["/en/docs/{slug}", "/en/docs/build-with-claude/{slug}", "/en/api/{slug}"],
   },
 
   // ─── OpenAI (expanded) ──────────────────────────────────────────────────────
@@ -963,6 +1332,13 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     pypiPackage: "openai",
     language: ["python"],
     tags: ["ai", "llm", "sdk", "openai"],
+    bestPracticesPaths: [
+      "/docs/guides/text-generation",
+      "/docs/guides/function-calling",
+      "/docs/guides/structured-outputs",
+      "/docs/guides/production-best-practices",
+    ],
+    urlPatterns: ["/docs/{slug}", "/docs/guides/{slug}"],
   },
   {
     id: "openai/openai-api",
@@ -996,6 +1372,7 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
       "/docs/guides/production-best-practices",
       "/docs/guides/latency-optimization",
     ],
+    urlPatterns: ["/docs/{slug}", "/docs/guides/{slug}", "/docs/api-reference/{slug}"],
   },
   {
     id: "openai/openai-agents-python",
@@ -1021,6 +1398,7 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
       "/models",
       "/config",
     ],
+    urlPatterns: ["/{slug}"],
   },
 
   // ─── LangChain / LlamaIndex / AI Frameworks ────────────────────────────────
@@ -1045,6 +1423,7 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
       "/docs/how_to/tool_calling",
       "/docs/how_to/structured_output",
     ],
+    urlPatterns: ["/docs/{slug}", "/docs/how_to/{slug}", "/docs/tutorials/{slug}"],
   },
   {
     id: "langchain-ai/langchain",
@@ -1057,6 +1436,13 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     pypiPackage: "langchain",
     language: ["python"],
     tags: ["ai", "llm", "framework", "rag", "agents"],
+    bestPracticesPaths: [
+      "/docs/concepts/",
+      "/docs/how_to/",
+      "/docs/tutorials/rag/",
+      "/docs/tutorials/agents/",
+    ],
+    urlPatterns: ["/docs/{slug}", "/docs/how_to/{slug}", "/docs/tutorials/{slug}"],
   },
   {
     id: "langchain-ai/langgraph",
@@ -1075,6 +1461,7 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
       "/concepts",
       "/how-tos",
     ],
+    urlPatterns: ["/tutorials/{slug}", "/concepts/{slug}", "/how-tos/{slug}"],
   },
   {
     id: "run-llama/llama_index",
@@ -1093,6 +1480,7 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
       "/en/stable/module_guides/querying",
       "/en/stable/module_guides/deploying",
     ],
+    urlPatterns: ["/en/stable/{slug}", "/en/stable/module_guides/{slug}"],
   },
   {
     id: "joaomdmoura/crewai",
@@ -1105,6 +1493,14 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     pypiPackage: "crewai",
     language: ["python"],
     tags: ["ai", "agent", "multi-agent", "orchestration"],
+    bestPracticesPaths: [
+      "/introduction",
+      "/concepts/agents",
+      "/concepts/tasks",
+      "/concepts/crews",
+      "/concepts/tools",
+    ],
+    urlPatterns: ["/concepts/{slug}", "/how-to/{slug}"],
   },
   {
     id: "microsoft/autogen",
@@ -1116,6 +1512,12 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     pypiPackage: "autogen-agentchat",
     language: ["python"],
     tags: ["ai", "agent", "multi-agent", "microsoft"],
+    bestPracticesPaths: [
+      "/docs/Getting-Started",
+      "/docs/Use-Cases/agent_chat",
+      "/docs/FAQ",
+    ],
+    urlPatterns: ["/docs/{slug}", "/docs/Use-Cases/{slug}"],
   },
 
   // ─── AI Model Providers ─────────────────────────────────────────────────────
@@ -1139,6 +1541,7 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
       "/capabilities/agents",
       "/capabilities/finetuning",
     ],
+    urlPatterns: ["/capabilities/{slug}", "/getting-started/{slug}"],
   },
   {
     id: "cohere-ai/cohere-typescript",
@@ -1158,6 +1561,7 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
       "/docs/rerank-api",
       "/docs/rag",
     ],
+    urlPatterns: ["/docs/{slug}"],
   },
   {
     id: "groq/groq-typescript",
@@ -1170,6 +1574,12 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "groq-sdk",
     language: ["typescript", "javascript"],
     tags: ["ai", "llm", "sdk", "inference", "fast"],
+    bestPracticesPaths: [
+      "/docs/quickstart",
+      "/docs/text-chat",
+      "/docs/tool-use",
+    ],
+    urlPatterns: ["/docs/{slug}"],
   },
   {
     id: "replicate/replicate-javascript",
@@ -1182,6 +1592,12 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "replicate",
     language: ["typescript", "javascript"],
     tags: ["ai", "ml", "inference", "open-source"],
+    bestPracticesPaths: [
+      "/docs/get-started/nodejs",
+      "/docs/reference/http",
+      "/docs/guides/fine-tune-a-model",
+    ],
+    urlPatterns: ["/docs/{slug}", "/docs/guides/{slug}", "/docs/reference/{slug}"],
   },
   {
     id: "together-ai/together-typescript",
@@ -1194,6 +1610,12 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "together-ai",
     language: ["typescript", "javascript"],
     tags: ["ai", "llm", "inference", "open-source"],
+    bestPracticesPaths: [
+      "/docs/quickstart",
+      "/docs/inference-models",
+      "/docs/fine-tuning",
+    ],
+    urlPatterns: ["/docs/{slug}"],
   },
   {
     id: "fireworks-ai/fireworks-js",
@@ -1205,6 +1627,12 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "@fireworks-ai/fireworks-js",
     language: ["typescript", "javascript"],
     tags: ["ai", "llm", "inference"],
+    bestPracticesPaths: [
+      "/guides/querying-text-models",
+      "/guides/querying-vision-language-models",
+      "/guides/function-calling",
+    ],
+    urlPatterns: ["/guides/{slug}", "/api-reference/{slug}"],
   },
 
   // ─── Vector Databases ───────────────────────────────────────────────────────
@@ -1225,6 +1653,7 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
       "/guides/data/query-data",
       "/guides/indexes/create-index",
     ],
+    urlPatterns: ["/guides/{slug}", "/guides/data/{slug}", "/guides/indexes/{slug}"],
   },
   {
     id: "chroma-core/chromadb",
@@ -1238,6 +1667,13 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     pypiPackage: "chromadb",
     language: ["typescript", "javascript", "python"],
     tags: ["database", "vector", "embeddings", "ai", "open-source"],
+    bestPracticesPaths: [
+      "/docs/overview/getting-started",
+      "/docs/collections/create-get-delete",
+      "/docs/collections/add-data",
+      "/docs/collections/query-data",
+    ],
+    urlPatterns: ["/docs/{slug}", "/docs/collections/{slug}"],
   },
   {
     id: "weaviate/typescript-client",
@@ -1250,6 +1686,13 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "weaviate-client",
     language: ["typescript", "javascript"],
     tags: ["database", "vector", "embeddings", "ai"],
+    bestPracticesPaths: [
+      "/developers/weaviate/starter-guides",
+      "/developers/weaviate/manage-data",
+      "/developers/weaviate/search",
+      "/developers/weaviate/configuration",
+    ],
+    urlPatterns: ["/developers/weaviate/{slug}"],
   },
   {
     id: "qdrant/js-client-rest",
@@ -1262,6 +1705,12 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "@qdrant/js-client-rest",
     language: ["typescript", "javascript"],
     tags: ["database", "vector", "search", "ai"],
+    bestPracticesPaths: [
+      "/documentation/guides/",
+      "/documentation/concepts/",
+      "/documentation/quick-start/",
+    ],
+    urlPatterns: ["/documentation/{slug}", "/documentation/guides/{slug}"],
   },
 
   // ─── AI Audio / Voice ───────────────────────────────────────────────────────
@@ -1275,6 +1724,12 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "elevenlabs",
     language: ["typescript", "javascript"],
     tags: ["ai", "audio", "tts", "voice"],
+    bestPracticesPaths: [
+      "/docs/quickstart",
+      "/docs/api-reference/text-to-speech",
+      "/docs/guides/voice-cloning",
+    ],
+    urlPatterns: ["/docs/{slug}", "/docs/api-reference/{slug}", "/docs/guides/{slug}"],
   },
   {
     id: "deepgram/deepgram-js-sdk",
@@ -1287,6 +1742,12 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "@deepgram/sdk",
     language: ["typescript", "javascript"],
     tags: ["ai", "audio", "stt", "tts", "speech"],
+    bestPracticesPaths: [
+      "/docs/getting-started",
+      "/docs/speech-to-text",
+      "/docs/text-to-speech",
+    ],
+    urlPatterns: ["/docs/{slug}", "/reference/{slug}"],
   },
   {
     id: "AssemblyAI/assemblyai-node-sdk",
@@ -1298,6 +1759,12 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "assemblyai",
     language: ["typescript", "javascript"],
     tags: ["ai", "audio", "stt", "transcription"],
+    bestPracticesPaths: [
+      "/docs/getting-started",
+      "/docs/speech-to-text/pre-recorded",
+      "/docs/speech-to-text/streaming",
+    ],
+    urlPatterns: ["/docs/{slug}", "/docs/speech-to-text/{slug}"],
   },
 
   // ─── AI Image / Video ──────────────────────────────────────────────────────
@@ -1309,6 +1776,11 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     docsUrl: "https://platform.stability.ai/docs",
     language: ["typescript", "javascript", "python"],
     tags: ["ai", "image", "generation", "stable-diffusion"],
+    bestPracticesPaths: [
+      "/docs/getting-started",
+      "/docs/api-reference",
+    ],
+    urlPatterns: ["/docs/{slug}"],
   },
   {
     id: "fal-ai/fal-js",
@@ -1321,6 +1793,11 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "@fal-ai/client",
     language: ["typescript", "javascript"],
     tags: ["ai", "inference", "image", "video"],
+    bestPracticesPaths: [
+      "/docs/quickstart",
+      "/docs/model-endpoints",
+    ],
+    urlPatterns: ["/docs/{slug}"],
   },
 
   // ─── Hugging Face ───────────────────────────────────────────────────────────
@@ -1334,6 +1811,11 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "@huggingface/inference",
     language: ["typescript", "javascript"],
     tags: ["ai", "ml", "inference", "hub", "models"],
+    bestPracticesPaths: [
+      "/docs/huggingface.js/inference/overview",
+      "/docs/huggingface.js/hub/overview",
+    ],
+    urlPatterns: ["/docs/huggingface.js/{slug}"],
   },
   {
     id: "huggingface/transformers.js",
@@ -1345,6 +1827,11 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "@huggingface/transformers",
     language: ["typescript", "javascript"],
     tags: ["ai", "ml", "browser", "inference", "wasm"],
+    bestPracticesPaths: [
+      "/docs/transformers.js/index",
+      "/docs/transformers.js/guides/node-esm",
+    ],
+    urlPatterns: ["/docs/transformers.js/{slug}"],
   },
   {
     id: "huggingface/transformers",
@@ -1356,6 +1843,12 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     pypiPackage: "transformers",
     language: ["python"],
     tags: ["ai", "ml", "nlp", "vision", "models"],
+    bestPracticesPaths: [
+      "/docs/transformers/main/en/quicktour",
+      "/docs/transformers/main/en/performance",
+      "/docs/transformers/main/en/training",
+    ],
+    urlPatterns: ["/docs/transformers/main/en/{slug}"],
   },
 
   // ─── ML / Deep Learning ─────────────────────────────────────────────────────
@@ -1369,6 +1862,12 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     pypiPackage: "torch",
     language: ["python"],
     tags: ["ml", "deep-learning", "neural-networks", "gpu"],
+    bestPracticesPaths: [
+      "/docs/stable/notes/cuda",
+      "/tutorials/beginner/basics/intro",
+      "/docs/stable/notes/multiprocessing",
+    ],
+    urlPatterns: ["/docs/stable/{slug}", "/tutorials/{slug}"],
   },
   {
     id: "tensorflow/tensorflow",
@@ -1380,6 +1879,13 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     pypiPackage: "tensorflow",
     language: ["python"],
     tags: ["ml", "deep-learning", "neural-networks", "google"],
+    bestPracticesPaths: [
+      "/guide",
+      "/tutorials",
+      "/guide/keras",
+      "/guide/gpu",
+    ],
+    urlPatterns: ["/guide/{slug}", "/tutorials/{slug}", "/api_docs/python/{slug}"],
   },
 
   // ─── Payments / Email / Services ────────────────────────────────────────────
@@ -1401,6 +1907,7 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
       "/webhooks",
       "/security",
     ],
+    urlPatterns: ["/payments/{slug}", "/billing/{slug}", "/webhooks/{slug}"],
   },
   {
     id: "resend/resend-node",
@@ -1413,6 +1920,12 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "resend",
     language: ["typescript", "javascript"],
     tags: ["email", "api", "transactional"],
+    bestPracticesPaths: [
+      "/docs/introduction",
+      "/docs/send-with-react",
+      "/docs/idempotency",
+    ],
+    urlPatterns: ["/docs/{slug}"],
   },
   {
     id: "upstash/redis",
@@ -1424,6 +1937,12 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "@upstash/redis",
     language: ["typescript", "javascript"],
     tags: ["database", "redis", "serverless", "edge", "cache"],
+    bestPracticesPaths: [
+      "/docs/redis/overall/getstarted",
+      "/docs/redis/sdks/ts/overview",
+      "/docs/qstash/overview",
+    ],
+    urlPatterns: ["/docs/redis/{slug}", "/docs/qstash/{slug}"],
   },
 
   // ─── Monitoring / Observability ─────────────────────────────────────────────
@@ -1437,6 +1956,13 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "@sentry/node",
     language: ["typescript", "javascript"],
     tags: ["monitoring", "errors", "performance", "tracing"],
+    bestPracticesPaths: [
+      "/platforms/javascript/",
+      "/platforms/javascript/performance/",
+      "/platforms/javascript/session-replay/",
+      "/platforms/javascript/guides/nextjs/",
+    ],
+    urlPatterns: ["/platforms/javascript/{slug}", "/platforms/javascript/guides/{slug}"],
   },
   {
     id: "PostHog/posthog-js",
@@ -1449,6 +1975,13 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "posthog-js",
     language: ["typescript", "javascript"],
     tags: ["analytics", "feature-flags", "product"],
+    bestPracticesPaths: [
+      "/docs/getting-started/install",
+      "/docs/product-analytics",
+      "/docs/feature-flags",
+      "/docs/session-replay",
+    ],
+    urlPatterns: ["/docs/{slug}"],
   },
 
   // ─── Workflow / Automation ──────────────────────────────────────────────────
@@ -1463,6 +1996,13 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "n8n",
     language: ["typescript"],
     tags: ["automation", "workflow", "integration"],
+    bestPracticesPaths: [
+      "/workflows/",
+      "/code/",
+      "/integrations/",
+      "/hosting/",
+    ],
+    urlPatterns: ["/workflows/{slug}", "/code/{slug}", "/integrations/{slug}"],
   },
   {
     id: "triggerdotdev/trigger.dev",
@@ -1475,6 +2015,12 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "@trigger.dev/sdk",
     language: ["typescript"],
     tags: ["jobs", "background", "workflow", "serverless"],
+    bestPracticesPaths: [
+      "/docs/quick-start",
+      "/docs/guides",
+      "/docs/examples",
+    ],
+    urlPatterns: ["/docs/{slug}", "/docs/guides/{slug}"],
   },
 
   // ─── Auth (additional) ──────────────────────────────────────────────────────
@@ -1489,6 +2035,13 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "better-auth",
     language: ["typescript"],
     tags: ["auth", "oauth", "sessions", "2fa"],
+    bestPracticesPaths: [
+      "/docs/installation",
+      "/docs/authentication/email-password",
+      "/docs/authentication/social-sign-on",
+      "/docs/plugins",
+    ],
+    urlPatterns: ["/docs/{slug}", "/docs/authentication/{slug}", "/docs/plugins/{slug}"],
   },
   {
     id: "lucia-auth/lucia",
@@ -1500,6 +2053,11 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "lucia",
     language: ["typescript"],
     tags: ["auth", "sessions"],
+    bestPracticesPaths: [
+      "/tutorials/",
+      "/guides/validate-session-cookies/",
+    ],
+    urlPatterns: ["/tutorials/{slug}", "/guides/{slug}"],
   },
 ];
 

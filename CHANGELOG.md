@@ -1,5 +1,33 @@
 # Changelog
 
+## [2.5.7] — 2026-03-21
+
+### Registry deep coverage enhancement
+
+Every public registry entry now has full `bestPracticesPaths` and `urlPatterns` coverage (100%, up from 26% and 7%). This means first-try hits on curated documentation paths instead of falling through to slow generic fallbacks.
+
+- feat: add bestPracticesPaths to all 97 public registry entries (was 23)
+- feat: add urlPatterns to all 97 public registry entries (was 6)
+- feat: add llmsFullTxtUrl for Svelte, Hono, Astro, Nuxt
+- feat: expand BEST_PRACTICES_URLS with 51 new library entries (230+ total)
+- feat: add 9 new GENERIC_BP_SUFFIXES patterns (30 total): advanced, security, performance, deployment, configuration, migration, testing, troubleshooting, best-practices
+- fix: remove broken llmsTxtUrl for Tailwind CSS (404)
+- fix: add missing pypiPackage to FastAPI and Django
+- fix: remove duplicate alias "sveltekit" (was on both sveltejs/svelte and sveltejs/kit)
+- fix: fix Express urlPattern `/en/4x/api` to use `{slug}` template
+- fix: add BEST_PRACTICES_URLS ID aliases for registry/BP key mismatches (mongoose, astro, effect, anthropic-sdk)
+- test: add 7 new structural validation tests for registry entries (llmsTxtUrl HTTPS, bestPracticesPaths format, urlPatterns {slug}, alias uniqueness, field coverage)
+- chore: sync improvements to private registry entries
+
+### Stats
+
+- 762 tests across 25 files (up from 755)
+- 97 public registry entries with 100% bestPracticesPaths and urlPatterns coverage
+- 230+ curated best-practice URL entries
+- 30 generic fallback path patterns
+
+---
+
 ## [2.5.6] — 2026-03-21
 
 - fix: improve doc quality for Supabase and all libraries

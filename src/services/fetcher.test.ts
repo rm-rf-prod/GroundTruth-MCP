@@ -13,6 +13,7 @@ import {
   isIndexContent,
   rankIndexLinks,
 } from "./fetcher.js";
+import { resetAllCircuits } from "./circuit-breaker.js";
 
 // ── Cache mock ──────────────────────────────────────────────────────────────
 // Factory is self-contained so vi.mock hoisting works correctly in ESM.
@@ -67,6 +68,7 @@ beforeEach(async () => {
   (diskDocCache as { clear: () => void }).clear();
   // Unset GitHub token env to avoid auth headers in tests
   delete process.env.GT_GITHUB_TOKEN;
+  resetAllCircuits();
 });
 
 // ── fetchWithTimeout ────────────────────────────────────────────────────────
@@ -689,10 +691,10 @@ describe("rankIndexLinks", () => {
     expect(result[0]).toBe("https://example.com/auth");
   });
 
-  it("returns top 3 links when no topic matches", () => {
-    const content = "- [A](https://a.com)\n- [B](https://b.com)\n- [C](https://c.com)\n- [D](https://d.com)";
+  it("returns top 5 links when no topic matches", () => {
+    const content = "- [A](https://a.com)\n- [B](https://b.com)\n- [C](https://c.com)\n- [D](https://d.com)\n- [E](https://e.com)\n- [F](https://f.com)";
     const result = rankIndexLinks(content, "");
-    expect(result).toHaveLength(3);
+    expect(result).toHaveLength(5);
   });
 
   it("returns empty array for content with no links", () => {

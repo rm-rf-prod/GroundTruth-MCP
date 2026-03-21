@@ -1,5 +1,5 @@
 import type { CacheEntry, LibraryMatch } from "../types.js";
-import { CACHE_TTL_MS, DISK_CACHE_DIR } from "../constants.js";
+import { CACHE_TTL_MS, DISK_CACHE_DIR, SWR_STALE_TTL_MS } from "../constants.js";
 import { createHash } from "crypto";
 import { readFile, writeFile, mkdir, unlink, readdir, stat } from "fs/promises";
 import { join } from "path";
@@ -7,6 +7,7 @@ import { join } from "path";
 class LRUCache<T> {
   private readonly store = new Map<string, CacheEntry<T>>();
   private readonly maxSize: number;
+  private readonly _staleKeys = new Set<string>();
 
   constructor(maxSize = 200) {
     this.maxSize = maxSize;
@@ -15,14 +16,26 @@ class LRUCache<T> {
   get(key: string): T | undefined {
     const entry = this.store.get(key);
     if (!entry) return undefined;
-    if (Date.now() > entry.expiresAt) {
+    const now = Date.now();
+    if (now > entry.expiresAt) {
+      if (now <= entry.expiresAt + SWR_STALE_TTL_MS) {
+        this._staleKeys.add(key);
+        this.store.delete(key);
+        this.store.set(key, entry);
+        return entry.data;
+      }
       this.store.delete(key);
       return undefined;
     }
-    // Move to end (most recently used)
     this.store.delete(key);
     this.store.set(key, entry);
     return entry.data;
+  }
+
+  getStaleKeys(): string[] {
+    const keys = [...this._staleKeys];
+    this._staleKeys.clear();
+    return keys;
   }
 
   set(key: string, data: T, ttlMs = CACHE_TTL_MS): void {
@@ -88,8 +101,11 @@ export class DiskCache {
     try {
       const content = await readFile(filePath, "utf-8");
       const entry = JSON.parse(content) as DiskCacheFile;
-      if (Date.now() > entry.expiresAt) {
-        // Expired — delete async, don't await
+      const now = Date.now();
+      if (now > entry.expiresAt) {
+        if (now <= entry.expiresAt + SWR_STALE_TTL_MS) {
+          return entry.data;
+        }
         unlink(filePath).catch(() => void 0);
         return undefined;
       }
@@ -116,7 +132,8 @@ export class DiskCache {
     try {
       const content = await readFile(filePath, "utf-8");
       const entry = JSON.parse(content) as DiskCacheFile;
-      return Date.now() <= entry.expiresAt;
+      const now = Date.now();
+      return now <= entry.expiresAt + SWR_STALE_TTL_MS;
     } catch {
       return false;
     }

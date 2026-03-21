@@ -12,6 +12,7 @@ export interface LibraryEntry {
   language: string[];
   tags: string[];
   bestPracticesPaths?: string[];
+  urlPatterns?: string[];
 }
 
 export interface LibraryMatch {
@@ -29,7 +30,7 @@ export interface LibraryMatch {
 export interface DocResult {
   content: string;
   sourceUrl: string;
-  sourceType: "llms-txt" | "llms-full-txt" | "jina" | "github-readme" | "direct" | "npm";
+  sourceType: "llms-txt" | "llms-full-txt" | "jina" | "github-readme" | "direct" | "npm" | "deep-fetch";
   libraryId: string;
   topic: string;
   truncated: boolean;
@@ -44,7 +45,7 @@ export interface CacheEntry<T> {
 export interface FetchResult {
   content: string;
   url: string;
-  sourceType: DocResult["sourceType"];
+  sourceType: DocResult["sourceType"] | "deep-fetch";
   contentHash?: string;
   fetchedAt?: string;
 }

@@ -32,11 +32,13 @@ describe("LRUCache", () => {
     expect(docCache.get("nonexistent-key-xyz")).toBeUndefined();
   });
 
-  it("evicts expired entries on get", async () => {
+  it("returns stale data within SWR window then evicts after", async () => {
     const { docCache } = await import("./cache.js");
     docCache.set("expiring", "value", 1000); // 1 second TTL
     expect(docCache.get("expiring")).toBe("value");
     vi.advanceTimersByTime(1001);
+    expect(docCache.get("expiring")).toBe("value"); // stale-while-revalidate
+    vi.advanceTimersByTime(60 * 60 * 1000); // past SWR window
     expect(docCache.get("expiring")).toBeUndefined();
   });
 
@@ -46,11 +48,13 @@ describe("LRUCache", () => {
     expect(docCache.has("alive")).toBe(true);
   });
 
-  it("has() returns false for expired entry", async () => {
+  it("has() returns true for stale entry within SWR window", async () => {
     const { docCache } = await import("./cache.js");
     docCache.set("dead", "data", 500);
     vi.advanceTimersByTime(501);
-    expect(docCache.has("dead")).toBe(false);
+    expect(docCache.has("dead")).toBe(true); // stale but within SWR window
+    vi.advanceTimersByTime(60 * 60 * 1000);
+    expect(docCache.has("dead")).toBe(false); // past SWR window
   });
 
   it("has() returns false for missing key", async () => {
@@ -76,14 +80,17 @@ describe("LRUCache", () => {
     expect(docCache.size()).toBe(before + 2);
   });
 
-  it("size() does not count expired entries (evicted on get)", async () => {
+  it("size() does not count fully expired entries (past SWR window)", async () => {
     vi.resetModules();
     const { docCache } = await import("./cache.js");
     docCache.clear();
     docCache.set("exp", "v", 100);
     expect(docCache.size()).toBe(1);
     vi.advanceTimersByTime(101);
-    docCache.get("exp"); // triggers eviction
+    docCache.get("exp"); // stale but still in SWR window — not evicted
+    expect(docCache.size()).toBe(1);
+    vi.advanceTimersByTime(60 * 60 * 1000);
+    docCache.get("exp"); // now past SWR — evicted
     expect(docCache.size()).toBe(0);
   });
 
@@ -98,9 +105,11 @@ describe("LRUCache", () => {
     const { docCache } = await import("./cache.js");
     docCache.set("short", "v", 200);
     vi.advanceTimersByTime(199);
-    expect(docCache.get("short")).toBe("v");
+    expect(docCache.get("short")).toBe("v"); // still fresh
     vi.advanceTimersByTime(2);
-    expect(docCache.get("short")).toBeUndefined();
+    expect(docCache.get("short")).toBe("v"); // stale but in SWR window
+    vi.advanceTimersByTime(60 * 60 * 1000);
+    expect(docCache.get("short")).toBeUndefined(); // past SWR
   });
 
   it("evicts the LRU (first inserted) entry when store reaches maxSize (200)", async () => {
@@ -180,28 +189,39 @@ describe("DiskCache", () => {
     expect(await cache.has("absent-key")).toBe(false);
   });
 
-  it("returns false for expired entries in has()", async () => {
+  it("has() returns true for stale entry within SWR and false after", async () => {
     const cache = await makeDiskCache(tmpDir);
-    const pastExpiry = Date.now() - 1000;
-    const entry = { data: "old value", expiresAt: pastExpiry };
+    const recentExpiry = Date.now() - 1000; // 1s past TTL — within SWR
+    const entry = { data: "old value", expiresAt: recentExpiry };
     const { createHash } = await import("crypto");
     const hash = createHash("sha256").update("expire-has-test").digest("hex");
     await writeFile(join(tmpDir, `${hash}.json`), JSON.stringify(entry), "utf-8");
-    const result = await cache.has("expire-has-test");
-    expect(result).toBe(false);
+    expect(await cache.has("expire-has-test")).toBe(true); // stale but within SWR
+
+    const oldExpiry = Date.now() - (61 * 60 * 1000); // 61min past — beyond SWR
+    const entry2 = { data: "dead", expiresAt: oldExpiry };
+    const hash2 = createHash("sha256").update("dead-has-test").digest("hex");
+    await writeFile(join(tmpDir, `${hash2}.json`), JSON.stringify(entry2), "utf-8");
+    expect(await cache.has("dead-has-test")).toBe(false);
   });
 
-  it("returns undefined for expired entries", async () => {
+  it("returns stale data within SWR window and undefined after", async () => {
     vi.useFakeTimers();
     const cache = await makeDiskCache(tmpDir);
-    const futureExpiry = Date.now() - 1000; // already expired
-    const entry = { data: "old value", expiresAt: futureExpiry };
-    // Write an already-expired entry directly to disk
+    const recentExpiry = Date.now() - 1000; // expired 1s ago — within SWR window
+    const entry1 = { data: "stale value", expiresAt: recentExpiry };
     const { createHash } = await import("crypto");
-    const hash = createHash("sha256").update("stale-key").digest("hex");
-    await writeFile(join(tmpDir, `${hash}.json`), JSON.stringify(entry), "utf-8");
-    const result = await cache.get("stale-key");
-    expect(result).toBeUndefined();
+    const hash1 = createHash("sha256").update("stale-key").digest("hex");
+    await writeFile(join(tmpDir, `${hash1}.json`), JSON.stringify(entry1), "utf-8");
+    const staleResult = await cache.get("stale-key");
+    expect(staleResult).toBe("stale value"); // SWR returns stale data
+
+    const oldExpiry = Date.now() - (61 * 60 * 1000); // expired 61min ago — past SWR
+    const entry2 = { data: "dead value", expiresAt: oldExpiry };
+    const hash2 = createHash("sha256").update("dead-key").digest("hex");
+    await writeFile(join(tmpDir, `${hash2}.json`), JSON.stringify(entry2), "utf-8");
+    const deadResult = await cache.get("dead-key");
+    expect(deadResult).toBeUndefined();
     vi.useRealTimers();
   });
 

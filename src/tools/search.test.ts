@@ -35,6 +35,10 @@ vi.mock("../utils/guard.js", () => ({
   EXTRACTION_REFUSAL: "EXTRACTION_REFUSED",
 }));
 
+vi.mock("../utils/quality.js", () => ({
+  computeQualityScore: vi.fn(() => 0.8),
+}));
+
 vi.mock("../services/cache.js", () => ({
   docCache: {
     get: vi.fn(() => undefined),
