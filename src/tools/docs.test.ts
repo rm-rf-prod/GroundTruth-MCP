@@ -38,7 +38,8 @@ vi.mock("../utils/guard.js", () => ({
 // ── Imports after mocks ─────────────────────────────────────────────────────
 
 import { lookupById, lookupByAlias } from "../sources/registry.js";
-import { fetchDocs, fetchGitHubContent, fetchViaJina } from "../services/fetcher.js";
+import { fetchDocs, fetchGitHubContent, fetchViaJina, isIndexContent, rankIndexLinks } from "../services/fetcher.js";
+import { sanitizeContent } from "../utils/sanitize.js";
 import { extractRelevantContent } from "../utils/extract.js";
 import { isExtractionAttempt } from "../utils/guard.js";
 
@@ -89,6 +90,9 @@ beforeEach(() => {
   vi.mocked(fetchGitHubContent).mockReset();
   vi.mocked(fetchViaJina).mockReset().mockResolvedValue(null);
   vi.mocked(isExtractionAttempt).mockReset().mockReturnValue(false);
+  vi.mocked(isIndexContent).mockReset().mockReturnValue(false);
+  vi.mocked(rankIndexLinks).mockReset().mockReturnValue([]);
+  vi.mocked(sanitizeContent).mockReset().mockImplementation((t: string) => t);
   vi.mocked(extractRelevantContent).mockImplementation((content, _topic, _tokens) => ({
     text: content,
     truncated: false,
@@ -330,6 +334,25 @@ describe("gt_get_docs handler", () => {
         expect.any(String),
         expect.any(Number),
       );
+    });
+  });
+
+  describe("index content deep linking", () => {
+    it("follows deep links when content is an index page", async () => {
+      vi.mocked(lookupById).mockReturnValue(makeEntry());
+      vi.mocked(fetchDocs).mockResolvedValue({
+        content: "- [Auth](https://example.com/auth)\n- [Routing](https://example.com/routing)",
+        url: "https://example.com/docs",
+        sourceType: "llms-txt",
+      });
+      vi.mocked(isIndexContent).mockReturnValueOnce(true);
+      vi.mocked(rankIndexLinks).mockReturnValue(["https://example.com/auth"]);
+      vi.mocked(fetchViaJina).mockResolvedValue("x".repeat(400));
+      vi.mocked(sanitizeContent).mockImplementation((t: string) => t);
+      vi.mocked(extractRelevantContent).mockReturnValue({ text: "auth docs content", truncated: false });
+
+      const result = await handler({ libraryId: "facebook/react", topic: "auth", tokens: 8000 });
+      expect(result.content[0]!.text).toContain("auth docs content");
     });
   });
 

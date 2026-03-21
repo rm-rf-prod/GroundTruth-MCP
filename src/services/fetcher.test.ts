@@ -8,7 +8,10 @@ import {
   fetchGitHubExamples,
   fetchNpmPackage,
   fetchPypiPackage,
+  fetchDevDocs,
   hashContent,
+  isIndexContent,
+  rankIndexLinks,
 } from "./fetcher.js";
 
 // ── Cache mock ──────────────────────────────────────────────────────────────
@@ -649,5 +652,105 @@ describe("fetchPypiPackage", () => {
     const result = await fetchPypiPackage("disk-pypi-pkg");
     expect(result).toMatchObject({ info: { name: "disk-pypi-pkg" } });
     expect(mockFetch).not.toHaveBeenCalled();
+  });
+});
+
+// ── isIndexContent ───────────────────────────────────────────────────────────
+
+describe("isIndexContent", () => {
+  it("returns true when >50% of lines are markdown links", () => {
+    const content = [
+      "# Index",
+      "- [Getting Started](https://example.com/start)",
+      "- [API Reference](https://example.com/api)",
+      "- [Guide](https://example.com/guide)",
+      "- [FAQ](https://example.com/faq)",
+      "- [Support](https://example.com/support)",
+    ].join("\n");
+    expect(isIndexContent(content)).toBe(true);
+  });
+
+  it("returns false for normal documentation content", () => {
+    const content = "# Guide\n\nThis is a guide about using the library.\n\nIt has multiple paragraphs of content.\n\nWith code examples and explanations.";
+    expect(isIndexContent(content)).toBe(false);
+  });
+
+  it("returns false for content with fewer than 5 lines", () => {
+    expect(isIndexContent("- [A](https://a.com)\n- [B](https://b.com)")).toBe(false);
+  });
+});
+
+// ── rankIndexLinks ───────────────────────────────────────────────────────────
+
+describe("rankIndexLinks", () => {
+  it("ranks links by topic relevance", () => {
+    const content = "- [Authentication Guide](https://example.com/auth)\n- [Routing](https://example.com/routing)\n- [Caching](https://example.com/cache)";
+    const result = rankIndexLinks(content, "authentication");
+    expect(result[0]).toBe("https://example.com/auth");
+  });
+
+  it("returns top 3 links when no topic matches", () => {
+    const content = "- [A](https://a.com)\n- [B](https://b.com)\n- [C](https://c.com)\n- [D](https://d.com)";
+    const result = rankIndexLinks(content, "");
+    expect(result).toHaveLength(3);
+  });
+
+  it("returns empty array for content with no links", () => {
+    expect(rankIndexLinks("no links here", "auth")).toEqual([]);
+  });
+});
+
+// ── fetchDevDocs ─────────────────────────────────────────────────────────────
+
+describe("fetchDevDocs", () => {
+  it("fetches docs via Jina for a known slug", async () => {
+    mockFetch.mockResolvedValueOnce(makeRes(JINA_LONG, 200));
+    const result = await fetchDevDocs("python", "async");
+    expect(result).not.toBeNull();
+  });
+
+  it("returns null when Jina returns short content", async () => {
+    mockFetch.mockResolvedValueOnce(makeRes("short", 200));
+    const result = await fetchDevDocs("python");
+    expect(result).toBeNull();
+  });
+});
+
+// ── fetchDocs contentHash — additional paths ─────────────────────────────────
+
+describe("fetchDocs contentHash — additional paths", () => {
+  it("memory cache path: includes contentHash and fetchedAt", async () => {
+    const { docCache } = await import("./cache.js");
+    docCache.set("docs:https://example.com/mem-hash", LONG);
+    const result = await fetchDocs("https://example.com/mem-hash");
+    expect(result.contentHash).toMatch(/^[a-f0-9]{16}$/);
+    expect(result.fetchedAt).toBeDefined();
+    expect(() => new Date(result.fetchedAt!)).not.toThrow();
+  });
+
+  it("Jina fallback path: includes contentHash and fetchedAt", async () => {
+    mockFetch.mockImplementation((url: RequestInfo | URL) => {
+      const u = url.toString();
+      if (u.includes("r.jina.ai")) return Promise.resolve(makeRes(JINA_LONG + "jinahash"));
+      return Promise.resolve(makeRes("", 404));
+    });
+    const result = await fetchDocs("https://example.com/jina-hash-path");
+    expect(result.contentHash).toMatch(/^[a-f0-9]{16}$/);
+    expect(result.fetchedAt).toBeDefined();
+    expect(result.sourceType).toBe("jina");
+  });
+
+  it("direct fetch path: includes contentHash and fetchedAt", async () => {
+    const directContent = LONG + "directhash";
+    mockFetch.mockImplementation((url: RequestInfo | URL) => {
+      const u = url.toString();
+      if (u.includes("r.jina.ai")) return Promise.resolve(makeRes("short", 200));
+      if (u === "https://example.com/direct-hash-path") return Promise.resolve(makeRes(directContent));
+      return Promise.resolve(makeRes("", 404));
+    });
+    const result = await fetchDocs("https://example.com/direct-hash-path");
+    expect(result.contentHash).toMatch(/^[a-f0-9]{16}$/);
+    expect(result.fetchedAt).toBeDefined();
+    expect(result.sourceType).toBe("direct");
   });
 });
