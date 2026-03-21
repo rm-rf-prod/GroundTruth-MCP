@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.4.1] — 2026-03-21
+
+- feat: expand registry with Google, AI providers, vector DBs + version check system
+- chore: update lockfile with eslint dependencies
+
+---
+
 ## [2.4.0] — 2026-03-19
 
 - refactor: perf, type safety, and linting improvements

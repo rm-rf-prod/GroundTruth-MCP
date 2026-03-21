@@ -15,7 +15,7 @@
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-ELv2-orange" alt="Elastic License 2.0" /></a>
   <img src="https://img.shields.io/badge/libraries-363%2B-teal" alt="363+ libraries" />
   <img src="https://img.shields.io/badge/audit_patterns-100%2B-red" alt="100+ audit patterns" />
-  <img src="https://img.shields.io/badge/tests-640-brightgreen" alt="640 tests" />
+  <img src="https://img.shields.io/badge/tests-550-brightgreen" alt="550 tests" />
   <img src="https://img.shields.io/badge/node-%3E%3D24-green" alt="Node 24+" />
   <img src="https://img.shields.io/badge/status-active%20development-blue" alt="Active Development" />
 </p>
@@ -409,7 +409,7 @@ The two tools approach the same problem from different angles. Context7 embeds d
 
 ## Tests
 
-640 tests across 20 files. Every audit pattern has a test. Every manifest parser has a test. If a pattern ships without a test, the CI pipeline says no before any human has to.
+550 tests across 20 files. Every audit pattern has a test. Every manifest parser has a test. If a pattern ships without a test, the CI pipeline says no before any human has to.
 
 ```bash
 npm test                # run all tests
