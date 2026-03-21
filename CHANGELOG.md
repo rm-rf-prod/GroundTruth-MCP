@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.5.2] — 2026-03-21
+
+- fix: security hardening, CI pipeline, and visibility improvements
+- feat: auto-publish to MCP Registry on version bump
+- fix: shorten registry description, push only new version tag
+
+---
+
 ## [2.5.1] — 2026-03-21
 
 - feat: add MCP Registry support
