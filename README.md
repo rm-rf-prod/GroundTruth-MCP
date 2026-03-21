@@ -15,7 +15,7 @@
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-ELv2-orange" alt="Elastic License 2.0" /></a>
   <img src="https://img.shields.io/badge/libraries-363%2B-teal" alt="363+ libraries" />
   <img src="https://img.shields.io/badge/audit_patterns-100%2B-red" alt="100+ audit patterns" />
-  <img src="https://img.shields.io/badge/tests-550-brightgreen" alt="550 tests" />
+  <img src="https://img.shields.io/badge/tests-676-brightgreen" alt="676 tests" />
   <img src="https://img.shields.io/badge/node-%3E%3D24-green" alt="Node 24+" />
   <img src="https://img.shields.io/badge/status-active%20development-blue" alt="Active Development" />
 </p>
@@ -84,7 +84,7 @@ Since the install uses `npx -y @groundtruth-mcp/gt-mcp@latest`, restarting your 
 
 ### Optional: GitHub token
 
-GroundTruth fetches README files, release notes, and migration guides from GitHub. Unauthenticated requests are rate-limited to 60/hr. If you build anything with more than a couple dependencies, you'll hit that by lunch.
+GroundTruth fetches README files, release notes, migration guides, and code examples from GitHub. Unauthenticated requests are rate-limited to 60/hr. If you build anything with more than a couple dependencies, you'll hit that by lunch.
 
 ```bash
 # Claude Code
@@ -108,19 +108,20 @@ A token with no extra scopes (public repo read) is enough. Takes the limit from 
 
 ## Tools
 
-Nine tools. Each does one thing and stops there.
+Ten tools. Each does one thing and stops there.
 
 | Tool | What it does |
 |---|---|
-| `gt_resolve_library` | Find a library by name — gets the registry entry and docs URL |
+| `gt_resolve_library` | Find a library by name — gets the registry entry and docs URL. Falls back to npm, PyPI, crates.io, and pkg.go.dev |
 | `gt_get_docs` | Fetch live docs for a specific topic (not whatever was cached six months ago) |
 | `gt_best_practices` | Get patterns, anti-patterns, and config guidance for any library |
-| `gt_auto_scan` | Read `package.json` / `requirements.txt`, fetch best practices for everything in it |
+| `gt_auto_scan` | Read `package.json` / `requirements.txt`, detect lockfile versions, fetch best practices for everything in it |
 | `gt_search` | Search OWASP, MDN, web.dev, W3C, official language docs, and AI provider docs |
 | `gt_audit` | Scan your source files — finds real issues at exact `file:line` with live fixes attached |
 | `gt_changelog` | Fetch release notes before you run `npm update` and regret it |
 | `gt_compat` | Check browser and runtime compatibility — before Safari breaks your launch |
 | `gt_compare` | Compare 2-3 libraries side-by-side so you can finally pick one and move on |
+| `gt_examples` | Search GitHub for real-world code examples of any library or usage pattern |
 
 ---
 
@@ -234,6 +235,21 @@ gt_compare({ libraries: ["react", "solid-js"], criteria: "performance rendering"
 
 ---
 
+## `gt_examples` — see how other people actually use it
+
+Searches GitHub for real-world usage examples of any library or pattern. Returns code snippets from popular open-source projects with file paths and repository attribution. Useful when the docs tell you what an API does but not how anyone actually uses it in production.
+
+```
+gt_examples({ library: "drizzle-orm" })
+gt_examples({ library: "tanstack/query", pattern: "useMutation" })
+gt_examples({ library: "fastapi", pattern: "middleware", language: "python" })
+gt_examples({ library: "hono", pattern: "auth guard", maxResults: 10 })
+```
+
+Requires `GT_GITHUB_TOKEN` for higher rate limits. Without a token, GitHub Code Search allows 10 requests per minute.
+
+---
+
 ## `gt_search` — anything that isn't a specific library
 
 For questions not tied to a particular package. Pulls from OWASP, MDN, web.dev, W3C, official language docs, AI provider docs, Google developer docs, and everything else in the topic map below. Good for when you know what you need but not which library page it lives on.
@@ -320,6 +336,7 @@ gt_audit({ projectPath: ".", categories: ["security", "accessibility"] })
 gt_changelog({ libraryId: "vercel/next.js", version: "15" })
 gt_compat({ feature: "CSS container queries", environments: ["safari"] })
 gt_compare({ libraries: ["prisma", "drizzle-orm"], criteria: "TypeScript support" })
+gt_examples({ library: "hono", pattern: "middleware" })
 ```
 
 ---
@@ -335,7 +352,7 @@ For every library docs request, GroundTruth tries sources in this order and stop
 1. **`llms.txt` / `llms-full.txt`** — context files published by the project maintainer specifically for LLM consumption. More reliable than scraping the docs site.
 2. **Jina Reader** (`r.jina.ai`) — converts the official docs page to clean markdown. Handles JS-rendered sites that would return nothing via a plain fetch.
 3. **GitHub README / releases** — latest release notes and README from the project repository.
-4. **npm / PyPI metadata** — fallback for packages outside the curated registry.
+4. **npm / PyPI / crates.io / pkg.go.dev** — fallback for packages outside the curated registry, with automatic `llms.txt` probing on discovered homepages.
 
 ---
 
@@ -396,7 +413,9 @@ Context7 is solid. Here's why I reach for this instead.
 | Changelog lookup | Yes — GitHub Releases, CHANGELOG.md, docs site | No |
 | Browser compatibility | Yes — MDN + caniuse.com | No |
 | Library comparison | Yes — 2-3 libraries side-by-side, any criteria | No |
-| Libraries | 363+ curated + npm/PyPI fallback | ~130 |
+| Code examples | Yes — GitHub Code Search for real-world usage | No |
+| Lockfile detection | Yes — reads exact versions from lockfiles | No |
+| Libraries | 363+ curated + npm/PyPI/crates.io/Go fallback | ~130 |
 | AI coverage | Claude, OpenAI, Gemini, Mistral, Cohere, Groq, LangChain, LlamaIndex, CrewAI, 20+ more | Limited |
 | Google APIs | Full coverage — Maps, Analytics, Ads, Cloud, Firebase, Vertex AI, 30+ services | Partial |
 | Python / Rust / Go | Yes | Limited |
@@ -409,7 +428,7 @@ The two tools approach the same problem from different angles. Context7 embeds d
 
 ## Tests
 
-550 tests across 20 files. Every audit pattern has a test. Every manifest parser has a test. If a pattern ships without a test, the CI pipeline says no before any human has to.
+676 tests across 22 files. Every audit pattern has a test. Every manifest parser has a test. If a pattern ships without a test, the CI pipeline says no before any human has to.
 
 ```bash
 npm test                # run all tests
@@ -424,9 +443,23 @@ npm run typecheck       # TypeScript strict check (no emit)
 | `src/tools/auto-scan.test.ts` | All 8 manifest parsers using temp directories (package.json, requirements.txt, pyproject.toml, Cargo.toml, go.mod, pom.xml, composer.json, build.gradle) |
 | `src/utils/extract.test.ts` | Topic relevance ranking, truncation, document order preservation |
 | `src/utils/sanitize.test.ts` | Prompt injection stripping, `<script>`/`<style>` removal, navigation link cleanup |
+| `src/utils/lockfile.test.ts` | Lockfile version detection for package-lock, pnpm-lock, yarn.lock, Cargo.lock |
+| `src/tools/examples.test.ts` | GitHub Code Search, caching, rate limit handling, error states |
 | `src/utils/version-check.test.ts` | Version comparison, update notification formatting, pending update state |
 
 Tests run in CI on every push and pull request to `main`. See `.github/workflows/ci.yml`.
+
+---
+
+## Environment variables
+
+All optional. GroundTruth works out of the box with zero configuration.
+
+| Variable | Purpose | Default |
+|---|---|---|
+| `GT_GITHUB_TOKEN` | GitHub API auth — raises rate limit from 60 to 5000 req/hr | none |
+| `GT_CACHE_DIR` | Disk cache location for persistent cross-session caching | `~/.gt-mcp-cache` |
+| `GT_CONCURRENCY` | Parallel fetch limit in `gt_auto_scan` | `6` |
 
 ---
 
