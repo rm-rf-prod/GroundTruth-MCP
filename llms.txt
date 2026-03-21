@@ -1,0 +1,70 @@
+# GroundTruth MCP Server
+
+> Self-hosted MCP server for live documentation, best practices, and code audits. Runs locally with no rate limits. Works with Claude Code, Cursor, VS Code, and Claude Desktop.
+
+GroundTruth is an open-source Model Context Protocol (MCP) server that fetches documentation from official sources at query time. It prioritizes llms.txt files, then Jina Reader for JS-rendered pages, then GitHub. It covers 363+ curated libraries with automatic fallback to npm, PyPI, crates.io, and pkg.go.dev for any public package. Unlike cloud-hosted documentation tools, GroundTruth runs on your machine with zero rate limits or API keys required.
+
+## Install
+
+One command for Claude Code:
+```
+claude mcp add gt -- npx -y @groundtruth-mcp/gt-mcp@latest
+```
+
+For Cursor, VS Code, or Claude Desktop, add to your MCP config:
+```json
+{
+  "mcpServers": {
+    "gt": {
+      "command": "npx",
+      "args": ["-y", "@groundtruth-mcp/gt-mcp@latest"]
+    }
+  }
+}
+```
+
+## Tools
+
+- gt_resolve_library: Find a library by name with registry lookup and npm/PyPI/crates.io/Go fallback
+- gt_get_docs: Fetch live documentation for a specific topic
+- gt_best_practices: Patterns, anti-patterns, and config guidance
+- gt_auto_scan: Detect all dependencies from manifest files, read lockfile versions, fetch best practices
+- gt_search: Search OWASP, MDN, web.dev, W3C, AI provider docs, Google APIs
+- gt_audit: Scan source files for issues at file:line with live fixes from official specs
+- gt_changelog: Fetch release notes before upgrading
+- gt_compat: Check browser and runtime compatibility via MDN and caniuse
+- gt_compare: Compare 2-3 libraries side-by-side
+- gt_examples: Search GitHub for real-world usage examples
+
+## Key facts
+
+- Package: @groundtruth-mcp/gt-mcp on npm
+- License: Elastic License 2.0
+- Node.js 24+ required
+- 363+ curated libraries plus unlimited ecosystem fallbacks
+- 100+ code audit patterns across 9 categories (18 sub-categories)
+- 704 tests across 22 files
+- Self-hosted, no cloud dependency, no rate limits
+- Fetches docs from llms.txt, Jina Reader, GitHub, npm, PyPI, crates.io, pkg.go.dev
+- Content integrity hashing (SHA-256) on all fetched documents
+- Lockfile version detection for targeted documentation retrieval
+- Alternative to Context7 with broader coverage, code auditing, and no rate limits
+
+## Supported ecosystems
+
+- JavaScript/TypeScript: React, Next.js, Vue, Svelte, Angular, Node.js, Bun, Deno
+- Python: FastAPI, Django, Flask, PyTorch, TensorFlow, LangChain, LlamaIndex
+- Rust: Axum, Actix Web, Tokio, sqlx
+- Go: Gin, Fiber, GORM, chi
+- AI/LLM: Claude API, OpenAI API, Gemini API, Vercel AI SDK, Anthropic SDK
+- Databases: Prisma, Drizzle, Supabase, PostgreSQL, Redis, MongoDB
+- Testing: Vitest, Playwright, Jest, Cypress
+- Cloud: Vercel, Cloudflare Workers, AWS, Firebase, Google Cloud
+
+## Links
+
+- Repository: https://github.com/rm-rf-prod/GroundTruth-MCP
+- npm: https://www.npmjs.com/package/@groundtruth-mcp/gt-mcp
+- Issues: https://github.com/rm-rf-prod/GroundTruth-MCP/issues
+- Changelog: https://github.com/rm-rf-prod/GroundTruth-MCP/blob/main/CHANGELOG.md
+- Full documentation: https://github.com/rm-rf-prod/GroundTruth-MCP/blob/main/docs/DOCUMENTATION.md

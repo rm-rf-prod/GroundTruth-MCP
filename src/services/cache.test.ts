@@ -180,6 +180,14 @@ describe("DiskCache", () => {
     expect(await cache.has("absent-key")).toBe(false);
   });
 
+  it("returns false for expired entries in has()", async () => {
+    const cache = await makeDiskCache(tmpDir);
+    await cache.set("expire-has-test", "data", 1);
+    await new Promise(r => setTimeout(r, 10));
+    const result = await cache.has("expire-has-test");
+    expect(result).toBe(false);
+  });
+
   it("returns undefined for expired entries", async () => {
     vi.useFakeTimers();
     const cache = await makeDiskCache(tmpDir);

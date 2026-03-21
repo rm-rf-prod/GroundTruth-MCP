@@ -48,6 +48,9 @@ vi.mock("./tools/compat.js", () => ({
 vi.mock("./tools/compare.js", () => ({
   registerCompareTool: vi.fn(),
 }));
+vi.mock("./tools/examples.js", () => ({
+  registerExamplesTool: vi.fn(),
+}));
 
 // ── process.exit guard ──────────────────────────────────────────────────────
 
@@ -75,6 +78,7 @@ import { registerAuditTool } from "./tools/audit.js";
 import { registerChangelogTool } from "./tools/changelog.js";
 import { registerCompatTool } from "./tools/compat.js";
 import { registerCompareTool } from "./tools/compare.js";
+import { registerExamplesTool } from "./tools/examples.js";
 import { SERVER_NAME, SERVER_VERSION } from "./constants.js";
 
 // ── Tests ───────────────────────────────────────────────────────────────────
@@ -142,7 +146,11 @@ describe("index.ts bootstrap", () => {
       expect(registerCompareTool).toHaveBeenCalledOnce();
     });
 
-    it("calls all 9 registration functions", () => {
+    it("calls registerExamplesTool", () => {
+      expect(registerExamplesTool).toHaveBeenCalledOnce();
+    });
+
+    it("calls all 10 registration functions", () => {
       const allCalled = [
         registerResolveTool,
         registerDocsTool,
@@ -153,6 +161,7 @@ describe("index.ts bootstrap", () => {
         registerChangelogTool,
         registerCompatTool,
         registerCompareTool,
+        registerExamplesTool,
       ].every((fn) => vi.mocked(fn).mock.calls.length > 0);
       expect(allCalled).toBe(true);
     });
@@ -168,6 +177,7 @@ describe("index.ts bootstrap", () => {
       expect(vi.mocked(registerChangelogTool)).toHaveBeenCalledWith(serverInstance);
       expect(vi.mocked(registerCompatTool)).toHaveBeenCalledWith(serverInstance);
       expect(vi.mocked(registerCompareTool)).toHaveBeenCalledWith(serverInstance);
+      expect(vi.mocked(registerExamplesTool)).toHaveBeenCalledWith(serverInstance);
     });
   });
 
