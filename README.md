@@ -1,10 +1,14 @@
-<p align="center">
-<code>██████&nbsp;&nbsp;████████&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;███&nbsp;&nbsp;&nbsp;&nbsp;███&nbsp;&nbsp;&nbsp;██████&nbsp;&nbsp;██████</code><br/>
-<code>██&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;██&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;████&nbsp;&nbsp;████&nbsp;&nbsp;██&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;██&nbsp;&nbsp;&nbsp;██</code><br/>
-<code>██&nbsp;&nbsp;&nbsp;███&nbsp;&nbsp;&nbsp;&nbsp;██&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;██&nbsp;████&nbsp;██&nbsp;&nbsp;██&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;██████</code><br/>
-<code>██&nbsp;&nbsp;&nbsp;&nbsp;██&nbsp;&nbsp;&nbsp;&nbsp;██&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;██&nbsp;&nbsp;██&nbsp;&nbsp;██&nbsp;&nbsp;██&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;██</code><br/>
-<code>&nbsp;██████&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;██&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;██&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;██&nbsp;&nbsp;&nbsp;██████&nbsp;&nbsp;██</code>
-</p>
+<div align="center">
+<table><tr><td>
+<pre>
+   ██████  ████████     ███    ███   ██████  ██████
+  ██          ██        ████  ████  ██       ██   ██
+  ██   ███    ██        ██ ████ ██  ██       ██████
+  ██    ██    ██        ██  ██  ██  ██       ██
+   ██████     ██        ██      ██   ██████  ██
+</pre>
+</td></tr></table>
+</div>
 
 <h3 align="center">Your AI assistant just mass-produced deprecated code again.<br/>You merged it because the formatting was clean.<br/><br/>GroundTruth fixes that.</h3>
 
