@@ -39,6 +39,7 @@ export async function fetchWithTimeout(
 }
 
 async function tryFetch(url: string, retries = 1, extraHeaders?: Record<string, string>): Promise<string | null> {
+  try { assertPublicUrl(url); } catch { return null; }
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       const res = await fetchWithTimeout(url, FETCH_TIMEOUT_MS, extraHeaders);
