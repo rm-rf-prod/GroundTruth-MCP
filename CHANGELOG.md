@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.5.6] — 2026-03-21
+
+- fix: improve doc quality for Supabase and all libraries
+- fix: improve docs quality for topic queries and library resolution
+- chore: gitignore publishing guide
+
+---
+
 ## [2.5.5] — 2026-03-21
 
 - See diff for changes.
