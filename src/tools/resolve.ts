@@ -282,28 +282,24 @@ IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library 
         }
       }
 
-      // 3. Fallback to npm registry
-      if (matches.length === 0) {
-        const npmResult = await resolveFromNpm(name);
-        if (npmResult) matches.push(npmResult);
-      }
+      // 3. Fallback to package registries (npm, PyPI, crates.io, Go)
+      // Try even if fuzzy search returned results — external registries may have better matches
+      if (matches.length === 0 || matches.every((m) => m.source === "registry" && m.score < 90)) {
+        const [npmResult, pypiResult] = await Promise.all([
+          resolveFromNpm(name),
+          resolveFromPypi(name),
+        ]);
+        if (npmResult && !matches.some((m) => m.id === npmResult.id)) matches.push(npmResult);
+        if (pypiResult && !matches.some((m) => m.id === pypiResult.id)) matches.push(pypiResult);
 
-      // 4. Fallback to PyPI
-      if (matches.length === 0) {
-        const pypiResult = await resolveFromPypi(name);
-        if (pypiResult) matches.push(pypiResult);
-      }
-
-      // 5. Fallback to crates.io (Rust)
-      if (matches.length === 0) {
-        const cratesResult = await resolveFromCrates(name);
-        if (cratesResult) matches.push(cratesResult);
-      }
-
-      // 6. Fallback to Go pkg.go.dev
-      if (matches.length === 0) {
-        const goResult = await resolveFromGo(name);
-        if (goResult) matches.push(goResult);
+        if (matches.length === 0) {
+          const [cratesResult, goResult] = await Promise.all([
+            resolveFromCrates(name),
+            resolveFromGo(name),
+          ]);
+          if (cratesResult) matches.push(cratesResult);
+          if (goResult) matches.push(goResult);
+        }
       }
 
       // Boost score if query tokens match description/tags
