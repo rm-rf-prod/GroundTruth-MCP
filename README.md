@@ -111,7 +111,7 @@ A token with no extra scopes (public repo read) is enough. Takes the limit from 
 
 ## Tools
 
-Ten tools. Each does one thing and stops there.
+12 tools. Each does one thing and stops there.
 
 | Tool | What it does |
 |---|---|
@@ -488,7 +488,7 @@ That's it. No Docker. No config files. No environment variables unless you want 
 
 ## Active development
 
-GroundTruth is under active development. New curated registry entries, audit patterns, search topics, and features are added regularly. The registry covers 422+ libraries with 100% bestPracticesPaths and urlPatterns coverage, 230+ curated best-practice URL entries, and 30 generic fallback path patterns. Automatic fallback to npm, PyPI, crates.io, and pkg.go.dev means any public package is resolvable out of the box.
+GroundTruth is under active development. New curated registry entries, audit patterns, search topics, and features are added regularly. The registry covers 422+ libraries with 100% bestPracticesPaths and urlPatterns coverage, 422+ curated best-practice URL entries, and 30 generic fallback path patterns. Automatic fallback to npm, PyPI, crates.io, and pkg.go.dev means any public package is resolvable out of the box.
 
 Recent additions include comprehensive coverage for Google Gemini API, Anthropic Claude API (tool use, prompt caching, vision, extended thinking, computer use, streaming, batches), OpenAI API (chat, responses, function calling, structured output, embeddings, fine-tuning, realtime, agents), and 20+ additional AI providers and frameworks.
 
