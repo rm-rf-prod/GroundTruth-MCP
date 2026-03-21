@@ -26,7 +26,7 @@ const InputSchema = z.object({
     .string()
     .max(50)
     .optional()
-    .describe("Version to scope results to, e.g. '14', '3.0.0'. Focuses extraction on version-specific patterns."),
+    .describe("Version to scope results to, e.g. '14', '3.0.1'. Focuses extraction on version-specific patterns."),
   tokens: z
     .number()
     .int()

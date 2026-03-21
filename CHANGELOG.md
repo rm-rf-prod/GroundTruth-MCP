@@ -1,5 +1,11 @@
 # Changelog
 
+## [3.0.1] — 2026-03-21
+
+- See diff for changes.
+
+---
+
 ## [3.0.0] — 2026-03-21
 
 - feat: automate private registry swap in publish pipeline
