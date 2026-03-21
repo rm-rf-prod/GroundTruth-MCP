@@ -1291,7 +1291,7 @@ export const AUDIT_PATTERNS: AuditPattern[] = [
     title: "Missing prefers-reduced-motion for animation",
     detail: "CSS animations must respect prefers-reduced-motion for vestibular safety",
     fix: "Wrap animation in @media (prefers-reduced-motion: no-preference) { ... }",
-    docsQuery: "CSS prefers-reduced-motion accessibility WCAG 2.5.4",
+    docsQuery: "CSS prefers-reduced-motion accessibility WCAG 2.5.5",
     test: (line, content) => {
       if (!/@keyframes|animation:/.test(line)) return null;
       return !content.includes("prefers-reduced-motion") ? line : null;
