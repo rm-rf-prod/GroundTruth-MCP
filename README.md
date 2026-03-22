@@ -17,7 +17,7 @@
   <a href="https://github.com/rm-rf-prod/GroundTruth-MCP/actions/workflows/ci.yml"><img src="https://github.com/rm-rf-prod/GroundTruth-MCP/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-ELv2-orange" alt="Elastic License 2.0" /></a>
   <img src="https://img.shields.io/badge/libraries-422%2B-teal" alt="422+ curated libraries" />
-  <img src="https://img.shields.io/badge/audit_patterns-100%2B-red" alt="100+ audit patterns" />
+  <img src="https://img.shields.io/badge/audit_patterns-107%2B-red" alt="107+ audit patterns" />
   <img src="https://img.shields.io/badge/tests-758-brightgreen" alt="758 tests" />
   <img src="https://img.shields.io/badge/tools-12-blue" alt="12 tools" />
   <img src="https://img.shields.io/badge/node-%3E%3D24-green" alt="Node 24+" />
@@ -135,7 +135,7 @@ gt_examples({ library: "hono", pattern: "middleware" })
 
 ## `gt_audit` — the one that finds what you missed
 
-Walks your project, runs 100+ patterns across 18 categories, pinpoints issues at `file:line`, then fetches fix guidance from the authoritative source.
+Walks your project, runs 107+ patterns across 18 categories, pinpoints issues at `file:line`, then fetches fix guidance from the authoritative source.
 
 ```
 gt_audit({ categories: ["all"] })                      // all 18 categories
@@ -262,7 +262,7 @@ Context7 is solid. Here's why I reach for this instead.
 | Transport | Stdio + Streamable HTTP | Stdio + Streamable HTTP |
 | Source priority | llms.txt -> Jina -> GitHub -> npm/PyPI | Vector DB with proprietary crawl pipeline |
 | Tools | 12 specialized tools | 2 tools |
-| Code audit | 100+ patterns, 18 categories, file:line, live fixes | No |
+| Code audit | 107+ patterns, 18 categories, file:line, live fixes | No |
 | Freeform search | OWASP, MDN, AI docs, Google APIs, web standards | Library docs only |
 | Changelog, compat, compare, examples, migration | Yes | No |
 | MCP Resources + Prompts | 2 resources, 8 prompts | No |

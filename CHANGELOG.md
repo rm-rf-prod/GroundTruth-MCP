@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.0.3] — 2026-03-22
+
+- fix: correct test count badge to 758
+- feat: add mobile audit patterns, fix ws_ naming, fix duplicate aliases
+
+---
+
 ## [3.0.2] — 2026-03-21
 
 - fix: improve audit tool descriptions for broad queries
