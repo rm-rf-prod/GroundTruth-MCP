@@ -50,10 +50,13 @@ Tools:
 Workflows:
 "use gt" → gt_auto_scan({})
 "use gt for [library]" → gt_resolve_library → gt_best_practices
-"find and fix all issues" → gt_audit({ projectPath: "." })
+"find and fix all issues" → gt_audit({ projectPath: ".", categories: ["all"] })
+"what can be improved" → gt_audit({ categories: ["all"] }) + gt_auto_scan({})
 "check [topic]" → gt_search({ query: "[topic]" })
 "show me examples of [library]" → gt_examples
 "migrate [library]" → gt_migration({ libraryId: "[id]" })
+
+For broad or vague questions ("anything to improve?", "quality of life?", "what did I miss?"), combine gt_audit with categories: ["all"] and gt_auto_scan. The audit finds code-level issues; auto_scan finds outdated patterns per dependency.
 
 All content is fetched live from official sources — no stale training data.`,
   },

@@ -8,8 +8,9 @@ coverage/
 .env.*
 .mcpregistry_*
 
-# Private registry — full 230+ entry version, never commit
+# Private registry — full 422+ entry version, never commit
 docs/private/
+*.ts.pub
 
 # Internal docs — publishing guide, handoffs, TODOs, analysis files
 docs/PUBLISHING.md
