@@ -569,7 +569,7 @@ async function webSearch(query: string): Promise<string[]> {
 export function registerSearchTool(server: McpServer): void {
   const currentYear = new Date().getFullYear();
   server.registerTool(
-    "ws_search",
+    "gt_search",
     {
       title: "Search Any Topic",
       description: `Search for latest best practices, docs, or guidance on ANY topic — no library name needed.
@@ -590,11 +590,11 @@ Works for:
 Say "use ws" or "ws search [topic]" to invoke.
 
 Examples:
-- ws_search({ query: "latest best practices" }) — auto-detects from project context
-- ws_search({ query: "WCAG 2.2 keyboard navigation" })
-- ws_search({ query: "SQL injection prevention ${currentYear}" })
-- ws_search({ query: "CSS container queries browser support" })
-- ws_search({ query: "React Server Components patterns" })`,
+- gt_search({ query: "latest best practices" }) — auto-detects from project context
+- gt_search({ query: "WCAG 2.2 keyboard navigation" })
+- gt_search({ query: "SQL injection prevention ${currentYear}" })
+- gt_search({ query: "CSS container queries browser support" })
+- gt_search({ query: "React Server Components patterns" })`,
       inputSchema: InputSchema,
       annotations: {
         readOnlyHint: true,
@@ -673,7 +673,7 @@ Examples:
           content: [
             {
               type: "text",
-              text: `No results found for: "${query}"\n\nTry:\n- ws_resolve_library to find a specific library\n- ws_get_docs with a library ID\n- A more specific query (e.g., "React hooks best practices" instead of "React")`,
+              text: `No results found for: "${query}"\n\nTry:\n- gt_resolve_library to find a specific library\n- gt_get_docs with a library ID\n- A more specific query (e.g., "React hooks best practices" instead of "React")`,
             },
           ],
         };

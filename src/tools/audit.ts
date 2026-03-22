@@ -1384,6 +1384,104 @@ export const AUDIT_PATTERNS: AuditPattern[] = [
       return /\.toLocaleString\(\s*\)/.test(line) ? line : null;
     },
   },
+
+  // === CODE QUALITY ===
+  {
+    category: "node",
+    severity: "low",
+    title: "TODO/FIXME left in code",
+    detail: "Unresolved TODO or FIXME markers indicate untracked technical debt",
+    fix: "Resolve the TODO, file an issue, or remove it if no longer relevant",
+    docsQuery: "technical debt management TODO tracking",
+    test: (line) => {
+      if (line.trim().startsWith("//") || line.trim().startsWith("#") || line.trim().startsWith("*")) {
+        return /\b(?:TODO|FIXME|HACK|XXX|WORKAROUND)\b/i.test(line) ? line : null;
+      }
+      return null;
+    },
+  },
+
+  // === MOBILE (additional) ===
+  {
+    category: "mobile",
+    severity: "medium",
+    title: "StyleSheet.create inside component body",
+    detail: "Defining StyleSheet.create inside a component recreates styles on every render. Move it outside the component.",
+    fix: "Move StyleSheet.create to module scope: const styles = StyleSheet.create({...}) after the component",
+    docsQuery: "React Native StyleSheet.create performance outside component",
+    test: (line, content) => {
+      if (!/StyleSheet\.create/.test(line)) return null;
+      const idx = content.indexOf(line);
+      const before = content.slice(Math.max(0, idx - 2000), idx);
+      const hasComponentAbove = /(?:function\s+\w+|const\s+\w+\s*=\s*(?:\([^)]*\)|[^=])*=>|class\s+\w+)/.test(before);
+      const hasReturnAbove = /\breturn\s*\(/.test(before);
+      return hasComponentAbove && hasReturnAbove ? line : null;
+    },
+  },
+  {
+    category: "mobile",
+    severity: "high",
+    title: "Hardcoded pixel dimensions without responsive scaling",
+    detail: "Hardcoded width/height pixel values break on different screen sizes. Use Dimensions, useWindowDimensions, or percentage-based layouts.",
+    fix: "Use useWindowDimensions() or percentage values: width: '80%' instead of width: 320",
+    docsQuery: "React Native responsive design Dimensions useWindowDimensions",
+    test: (line) => {
+      return /(?:width|height):\s*(?:3[2-9]\d|[4-9]\d\d|\d{4,})/.test(line) ? line : null;
+    },
+  },
+  {
+    category: "mobile",
+    severity: "medium",
+    title: "ScrollView wrapping FlatList or SectionList",
+    detail: "Nesting a FlatList inside a ScrollView disables virtualization and causes performance issues",
+    fix: "Remove the outer ScrollView, use ListHeaderComponent and ListFooterComponent instead",
+    docsQuery: "React Native FlatList ScrollView nesting performance VirtualizedList",
+    test: (line, content) => {
+      if (!/<ScrollView/.test(line)) return null;
+      const idx = content.indexOf(line);
+      const after = content.slice(idx, idx + 3000);
+      return /(?:<FlatList|<SectionList)/.test(after) ? line : null;
+    },
+  },
+  {
+    category: "mobile",
+    severity: "medium",
+    title: "Image without explicit dimensions",
+    detail: "Images without width and height cause layout shifts during loading",
+    fix: "Add explicit width and height to all Image components, or use aspectRatio with one dimension",
+    docsQuery: "React Native Image dimensions layout shift performance",
+    test: (line, content) => {
+      if (!/<Image\s/.test(line)) return null;
+      const idx = content.indexOf(line);
+      const nearby = content.slice(idx, idx + 500);
+      return !/(?:width|height)\s*[:=]/.test(nearby) && !/style=/.test(nearby) ? line : null;
+    },
+  },
+  {
+    category: "mobile",
+    severity: "low",
+    title: "console.log or console.warn in component",
+    detail: "Console statements in React Native components impact bridge performance and should be removed before production",
+    fix: "Remove console statements or use __DEV__ guard: if (__DEV__) console.log(...)",
+    docsQuery: "React Native console.log performance production __DEV__",
+    test: (line) => {
+      return /\bconsole\.(?:log|warn|error|debug|info)\s*\(/.test(line) ? line : null;
+    },
+  },
+  {
+    category: "mobile",
+    severity: "high",
+    title: "Missing error boundary in navigation screen",
+    detail: "Unhandled errors in navigation screens crash the entire app. Wrap screens in error boundaries.",
+    fix: "Add ErrorBoundary wrapper: <ErrorBoundary fallback={<CrashScreen />}><Screen /></ErrorBoundary>",
+    docsQuery: "React Native error boundary navigation crash handling",
+    test: (line, content) => {
+      if (!/Screen\s+name=/.test(line)) return null;
+      const idx = content.indexOf(line);
+      const nearby = content.slice(Math.max(0, idx - 500), idx + 500);
+      return !/ErrorBoundary/.test(nearby) ? line : null;
+    },
+  },
 ];
 
 async function readProjectFiles(
