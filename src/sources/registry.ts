@@ -761,21 +761,6 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     urlPatterns: ["/docs/en/{slug}"],
     bestPracticesPaths: ["/repo/docs/getting-started","/repo/docs/guides","/repo/docs"],
   },
-  // ─── MCP ─────────────────────────────────────────────────────────────────────
-  {
-    id: "modelcontextprotocol/typescript-sdk",
-    name: "MCP TypeScript SDK",
-    aliases: ["mcp", "mcp sdk", "model context protocol", "@modelcontextprotocol/sdk"],
-    description: "Official TypeScript SDK for Model Context Protocol",
-    docsUrl: "https://modelcontextprotocol.io/docs",
-    llmsTxtUrl: "https://modelcontextprotocol.io/llms.txt",
-    githubUrl: "https://github.com/modelcontextprotocol/typescript-sdk",
-    npmPackage: "@modelcontextprotocol/sdk",
-    language: ["typescript"],
-    tags: ["mcp", "ai", "tooling"],
-    bestPracticesPaths: ["/docs/concepts/tools","/docs/concepts/resources"],
-    urlPatterns: ["/docs/{slug}","/docs/concepts/{slug}"],
-  },
   // ─── Python Frameworks ───────────────────────────────────────────────────────
   {
     id: "tiangolo/fastapi",
@@ -1739,7 +1724,7 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
   {
     id: "pmndrs/react-three-fiber",
     name: "React Three Fiber",
-    aliases: ["react-three-fiber", "@react-three/fiber", "r3f", "three.js", "threejs", "three"],
+    aliases: ["react-three-fiber", "@react-three/fiber", "r3f"],
     description: "React renderer for Three.js — 3D graphics in React",
     docsUrl: "https://r3f.docs.pmnd.rs",
     githubUrl: "https://github.com/pmndrs/react-three-fiber",
@@ -2713,7 +2698,7 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
   {
     id: "simplewebauthn/server",
     name: "SimpleWebAuthn",
-    aliases: ["@simplewebauthn/server", "@simplewebauthn/browser", "simplewebauthn", "webauthn"],
+    aliases: ["@simplewebauthn/server", "@simplewebauthn/browser", "simplewebauthn", "simple-webauthn"],
     description: "Simple WebAuthn for server and browser — passkeys/biometric auth",
     docsUrl: "https://simplewebauthn.dev/docs",
     githubUrl: "https://github.com/MasterKale/SimpleWebAuthn",
@@ -3508,8 +3493,8 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
   // ─── Python AI/ML ─────────────────────────────────────────────────────────────
   {
     id: "langchain-ai/langchain",
-    name: "LangChain",
-    aliases: ["langchain", "langchain-python", "langchain ai"],
+    name: "LangChain Python",
+    aliases: ["langchain-python", "langchain python", "langchain ai python"],
     description: "Framework for LLM-powered applications in Python",
     docsUrl: "https://python.langchain.com/docs/introduction",
     llmsTxtUrl: "https://python.langchain.com/llms.txt",
@@ -3522,8 +3507,8 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
   },
   {
     id: "run-llama/llama_index",
-    name: "LlamaIndex",
-    aliases: ["llamaindex", "llama-index", "llama_index"],
+    name: "LlamaIndex Python",
+    aliases: ["llamaindex-python", "llama-index-python", "llama_index"],
     description: "Data framework for LLM applications — RAG and agents",
     docsUrl: "https://docs.llamaindex.ai/en/stable",
     llmsTxtUrl: "https://docs.llamaindex.ai/llms.txt",
@@ -5290,8 +5275,8 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
   // ─── API Tools ─────────────────────────────────────────────────────────────
   {
     id: "swagger-api/swagger-ui",
-    name: "Swagger / OpenAPI",
-    aliases: ["swagger", "openapi"],
+    name: "Swagger UI",
+    aliases: ["swagger-ui", "swagger ui"],
     description: "API documentation and design tools",
     docsUrl: "https://swagger.io/docs/",
     githubUrl: "https://github.com/swagger-api/swagger-ui",
@@ -5559,19 +5544,6 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     urlPatterns: ["/docs/{slug}","/docs/guides/{slug}","/docs/api/{slug}"],
 },
   // ─── Form Libraries ───────────────────────────────────────────────────────
-  {
-    id: "TanStack/form",
-    name: "TanStack Form",
-    aliases: ["tanstack-form"],
-    description: "Headless form state management",
-    docsUrl: "https://tanstack.com/form/latest",
-    githubUrl: "https://github.com/TanStack/form",
-    npmPackage: "@tanstack/react-form",
-    language: ["typescript"],
-    tags: ["forms", "state", "react"],    bestPracticesPaths: ["/query/latest/docs/framework/react/guides/important-defaults","/query/latest/docs/framework/react/guides/caching"],
-    urlPatterns: ["/query/latest/docs/framework/react/{slug}"],
-
-  },
   {
     id: "edmundhung/conform",
     name: "Conform",
