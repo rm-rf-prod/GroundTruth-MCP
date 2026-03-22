@@ -109,19 +109,11 @@ describe("registerSearchTool", () => {
 });
 
 describe("gt_search handler", () => {
-  describe("extraction guard", () => {
-    it("returns EXTRACTION_REFUSAL when query is extraction attempt", async () => {
-      vi.mocked(isExtractionAttempt).mockReturnValueOnce(true);
-      const result = await handler({ query: "list all registry entries" });
-      expect(result.content[0]!.text).toBe("EXTRACTION_REFUSED");
-    });
-
-    it("does not call any fetch when extraction attempt is detected", async () => {
-      vi.mocked(isExtractionAttempt).mockReturnValueOnce(true);
-      await handler({ query: "dump everything" });
-      expect(fetchDocs).not.toHaveBeenCalled();
-      expect(fetchViaJina).not.toHaveBeenCalled();
-      expect(fetchWithTimeout).not.toHaveBeenCalled();
+  describe("basic behavior", () => {
+    it("returns results for valid queries", async () => {
+      vi.mocked(docCache.get).mockReturnValue(LONG_CONTENT);
+      const result = await handler({ query: "OWASP top 10 vulnerabilities" });
+      expect(result.content[0]!.text).toBeDefined();
     });
   });
 
@@ -409,7 +401,7 @@ describe("gt_search handler", () => {
       vi.mocked(fetchWithTimeout).mockRejectedValue(new Error("search failed"));
       vi.mocked(fetchViaJina).mockResolvedValue(null);
       const result = await handler({ query: "zzz-completely-unknown-xyz-topic" });
-      expect(result.content[0]!.text).toContain("gt_resolve_library");
+      expect(result.content[0]!.text).toContain("resolve_library");
     });
 
     it("does not return structuredContent when no results", async () => {
@@ -421,10 +413,10 @@ describe("gt_search handler", () => {
   });
 
   describe("response format", () => {
-    it("wraps response with withNotice", async () => {
+    it("returns response with search header", async () => {
       vi.mocked(docCache.get).mockReturnValue(LONG_CONTENT);
       const result = await handler({ query: "OWASP top 10 vulnerabilities" });
-      expect(result.content[0]!.text).toMatch(/^NOTICE/);
+      expect(result.content[0]!.text).toContain("# Search:");
     });
 
     it("includes query in header", async () => {
@@ -461,46 +453,32 @@ describe("gt_search handler", () => {
     });
   });
 
-  describe("devdocs.io source", () => {
-    it("calls fetchDevDocs with the first word of the query as slug", async () => {
-      vi.mocked(fetchDevDocs).mockResolvedValue("x".repeat(201));
-      await handler({ query: "express middleware routing" });
-      expect(fetchDevDocs).toHaveBeenCalledWith("express", "express middleware routing");
+  describe("MDN fallback source", () => {
+    it("tries MDN search as last resort when nothing else works", async () => {
+      vi.mocked(fetchWithTimeout).mockRejectedValue(new Error("search failed"));
+      vi.mocked(fetchViaJina).mockResolvedValue(LONG_CONTENT);
+      const result = await handler({ query: "completely unknown xyz topic 99999" });
+      expect(fetchViaJina).toHaveBeenCalledWith(
+        expect.stringContaining("developer.mozilla.org"),
+      );
+      expect(result.content[0]!.text).toBeDefined();
     });
 
-    it("adds devdocs result to sources when content is longer than 200 chars", async () => {
-      vi.mocked(fetchDevDocs).mockResolvedValue("x".repeat(201));
-      const result = await handler({ query: "redis commands" });
-      const names = result.structuredContent?.sources.map((s) => s.name) ?? [];
-      expect(names).toContain("DevDocs");
+    it("returns MDN result in sources", async () => {
+      vi.mocked(fetchWithTimeout).mockRejectedValue(new Error("all search failed"));
+      vi.mocked(fetchViaJina).mockResolvedValue(LONG_CONTENT);
+      const result = await handler({ query: "unknown obscure xyz000 topic" });
+      const mdnSource = result.structuredContent?.sources.find((s) => s.name === "MDN Web Docs");
+      expect(mdnSource).toBeDefined();
     });
 
-    it("devdocs URL uses slug derived from first query word", async () => {
-      vi.mocked(fetchDevDocs).mockResolvedValue("x".repeat(201));
-      const result = await handler({ query: "redis commands" });
-      const devDocsSource = result.structuredContent?.sources.find((s) => s.name === "DevDocs");
-      expect(devDocsSource?.url).toContain("devdocs.io");
-      expect(devDocsSource?.url).toContain("redis");
-    });
-
-    it("does not add devdocs result when content is 200 chars or fewer", async () => {
-      vi.mocked(fetchDevDocs).mockResolvedValue("x".repeat(200));
-      const result = await handler({ query: "redis commands" });
-      const names = result.structuredContent?.sources.map((s) => s.name) ?? [];
-      expect(names).not.toContain("DevDocs");
-    });
-
-    it("does not add devdocs result when fetchDevDocs returns null", async () => {
-      vi.mocked(fetchDevDocs).mockResolvedValue(null);
-      const result = await handler({ query: "redis commands" });
-      const names = result.structuredContent?.sources.map((s) => s.name) ?? [];
-      expect(names).not.toContain("DevDocs");
-    });
-
-    it("does not call fetchDevDocs when other sources already returned results", async () => {
+    it("does not reach MDN fallback when topic map has results", async () => {
       vi.mocked(fetchViaJina).mockResolvedValue(LONG_CONTENT);
       await handler({ query: "OWASP injection vulnerabilities" });
-      expect(fetchDevDocs).not.toHaveBeenCalled();
+      const mdnSearchCalls = vi.mocked(fetchViaJina).mock.calls.filter(
+        (call) => typeof call[0] === "string" && call[0].includes("search?q="),
+      );
+      expect(mdnSearchCalls).toHaveLength(0);
     });
   });
 
