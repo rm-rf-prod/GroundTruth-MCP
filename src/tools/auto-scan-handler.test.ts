@@ -181,7 +181,7 @@ describe("gt_auto_scan handler", () => {
     it("skips SKIP_DEPS entries (typescript, eslint, prettier)", async () => {
       await mockPackageJson(
         { react: "^18.0.0" },
-        { typescript: "^5.0.0", eslint: "^8.0.0", prettier: "^3.0.2" },
+        { typescript: "^5.0.0", eslint: "^8.0.0", prettier: "^3.0.3" },
       );
       vi.mocked(fetchDocs).mockResolvedValue(makeFetchResult());
       await handler({});

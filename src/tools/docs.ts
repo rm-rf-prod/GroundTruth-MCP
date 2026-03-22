@@ -29,7 +29,7 @@ const InputSchema = z.object({
     .string()
     .max(50)
     .optional()
-    .describe("Version to fetch docs for, e.g. '14', '3.0.2', 'v2'. Tries GitHub tag and npm version page."),
+    .describe("Version to fetch docs for, e.g. '14', '3.0.3', 'v2'. Tries GitHub tag and npm version page."),
   tokens: z
     .number()
     .int()

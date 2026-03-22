@@ -111,7 +111,7 @@ Fetches live documentation for a library, filtered by topic. Supports version-sp
 |---|---|---|---|
 | `libraryId` | string | yes | ID from gt_resolve_library, or a docs URL, or `npm:package` / `pypi:package` |
 | `topic` | string | no | What to learn: "routing", "authentication", "middleware" |
-| `version` | string | no | Version filter: "14", "3.0.2", "v2" |
+| `version` | string | no | Version filter: "14", "3.0.3", "v2" |
 | `tokens` | number | no | Max tokens to return (default: 8000, max: 20000) |
 
 **How it resolves the library:**
