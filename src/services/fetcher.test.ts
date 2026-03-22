@@ -491,7 +491,7 @@ describe("fetchGitHubReleases", () => {
   it("serves disk cache hit: warms memory cache and returns without fetching", async () => {
     const { diskDocCache } = await import("./cache.js");
     const disk = diskDocCache as { get: (k: string) => Promise<string | undefined>; set: (k: string, v: string) => Promise<void>; clear: () => void };
-    const cachedReleases = "## Recent Releases\n\n### v3.0.0\nCached from disk.\n";
+    const cachedReleases = "## Recent Releases\n\n### v3.0.3\nCached from disk.\n";
     await disk.set("gh-releases:org/disk-releases-repo", cachedReleases);
     const result = await fetchGitHubReleases("https://github.com/org/disk-releases-repo");
     expect(result).toBe(cachedReleases);
