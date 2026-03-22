@@ -1,5 +1,32 @@
 # Changelog
 
+## [3.0.3] — 2026-03-22
+
+- fix: correct test count badge to 758
+- feat: add mobile audit patterns, fix ws_ naming, fix duplicate aliases
+
+---
+
+## [3.0.2] — 2026-03-21
+
+- fix: improve audit tool descriptions for broad queries
+- docs: update DOCUMENTATION.md to match v3.0.0
+- docs: trim README, move detailed content to DOCUMENTATION.md
+
+---
+
+## [3.0.1] — 2026-03-21
+
+- See diff for changes.
+
+---
+
+## [3.0.0] — 2026-03-21
+
+- feat: automate private registry swap in publish pipeline
+
+---
+
 ## [2.6.0] — 2026-03-21
 
 - feat: registry deep coverage — 100% bestPracticesPaths and urlPatterns
