@@ -9,18 +9,19 @@ import { docCache, diskDocCache } from "./cache.js";
 import { assertPublicUrl } from "../utils/guard.js";
 import { convertHtmlToMarkdown } from "../utils/html-to-md.js";
 
-function isBlockedIP(address: string): boolean {
+export function isBlockedIP(address: string): boolean {
   if (isIPv4(address)) {
     const parts = address.split(".").map(Number);
     const int = ((parts[0]! << 24) | (parts[1]! << 16) | (parts[2]! << 8) | parts[3]!) >>> 0;
+    // All masks use >>> 0 to stay in unsigned 32-bit space (JS bitwise & returns signed)
     return (
-      (int & 0xff000000) === 0x7f000000 || // 127.0.0.0/8
-      (int & 0xff000000) === 0x00000000 || // 0.0.0.0/8
-      (int & 0xff000000) === 0x0a000000 || // 10.0.0.0/8
-      (int & 0xfff00000) === 0xac100000 || // 172.16.0.0/12
-      (int & 0xffff0000) === 0xc0a80000 || // 192.168.0.0/16
-      (int & 0xffff0000) === 0xa9fe0000 || // 169.254.0.0/16
-      (int & 0xf0000000) === 0xe0000000    // 224.0.0.0/4 multicast
+      ((int & 0xff000000) >>> 0) === 0x7f000000 || // 127.0.0.0/8
+      ((int & 0xff000000) >>> 0) === 0x00000000 || // 0.0.0.0/8
+      ((int & 0xff000000) >>> 0) === 0x0a000000 || // 10.0.0.0/8
+      ((int & 0xfff00000) >>> 0) === 0xac100000 || // 172.16.0.0/12
+      ((int & 0xffff0000) >>> 0) === 0xc0a80000 || // 192.168.0.0/16
+      ((int & 0xffff0000) >>> 0) === 0xa9fe0000 || // 169.254.0.0/16
+      ((int & 0xf0000000) >>> 0) === 0xe0000000    // 224.0.0.0/4 multicast
     );
   }
   if (isIPv6(address)) {
@@ -42,13 +43,15 @@ setGlobalDispatcher(new Agent({
       dns.lookup(hostname, { ...options, all: true }, (err, addresses) => {
         if (err) return callback(err, "", 4);
         const entries = (Array.isArray(addresses) ? addresses : [{ address: addresses as unknown as string, family: 4 }]) as Array<{ address: string; family: number }>;
-        for (const entry of entries) {
-          if (isBlockedIP(entry.address)) {
-            return callback(new Error(`SSRF blocked: ${hostname} -> ${entry.address}`), "", entry.family as 4 | 6);
-          }
+        const safe = entries.filter((entry) => !isBlockedIP(entry.address));
+        if (safe.length === 0) {
+          return callback(new Error(`SSRF blocked: ${hostname} resolves to private/blocked IP`), "", 4);
         }
-        const first = entries[0];
-        if (!first) return callback(new Error(`DNS lookup returned no addresses for ${hostname}`), "", 4);
+        // Undici expects array format when options.all is true, single entry otherwise
+        if (options.all) {
+          return (callback as unknown as (err: null, entries: Array<{ address: string; family: number }>) => void)(null, safe);
+        }
+        const first = safe[0]!;
         callback(null, first.address, first.family as 4 | 6);
       });
     },
