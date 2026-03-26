@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.2.0] — 2026-03-26
+
+- fix: detect Gatsby HTML blobs + add React/Next.js topic patterns
+- fix: HTML blob detection, Accept-Language header, search URL gate
+
+---
+
 ## [3.1.0] — 2026-03-26
 
 - fix: undici DNS callback format + SSRF bypass for high-byte IP ranges
