@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { fetchViaJina } from "../services/fetcher.js";
+import { fetchViaJina, fetchAsMarkdownRace } from "../services/fetcher.js";
 import { extractRelevantContent } from "../utils/extract.js";
 import { sanitizeContent } from "../utils/sanitize.js";
 import { isExtractionAttempt, withNotice, EXTRACTION_REFUSAL } from "../utils/guard.js";
@@ -70,7 +70,7 @@ export function registerCompatTool(server: McpServer): void {
           .find((u) => u.includes("mozilla.org")) ??
         `https://developer.mozilla.org/en-US/search?q=${featureEncoded}+browser+compatibility`;
 
-      const mdnContent = await fetchViaJina(mdnUrl);
+      const mdnContent = await fetchAsMarkdownRace(mdnUrl);
       if (mdnContent && mdnContent.length > 200) {
         const safe = sanitizeContent(mdnContent);
         const { text } = extractRelevantContent(safe, searchTopic, Math.floor(tokens * 0.6));
@@ -82,7 +82,7 @@ export function registerCompatTool(server: McpServer): void {
         feature,
       );
       if (results.length === 0 || isCssOrBrowser) {
-        const caniuseContent = await fetchViaJina(`https://caniuse.com/?search=${featureEncoded}`);
+        const caniuseContent = await fetchAsMarkdownRace(`https://caniuse.com/?search=${featureEncoded}`);
         if (caniuseContent && caniuseContent.length > 200) {
           const safe = sanitizeContent(caniuseContent);
           const { text } = extractRelevantContent(safe, `${feature} browser support`, Math.floor(tokens * 0.4));

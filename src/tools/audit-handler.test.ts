@@ -13,6 +13,7 @@ vi.mock("fs/promises", () => ({
 vi.mock("../services/fetcher.js", () => ({
   fetchDocs: vi.fn(),
   fetchViaJina: vi.fn(),
+  fetchAsMarkdownRace: vi.fn(),
   fetchGitHubReleases: vi.fn(),
   fetchGitHubExamples: vi.fn(),
 }));
@@ -36,6 +37,7 @@ vi.mock("../utils/sanitize.js", () => ({
 import { registerAuditTool } from "./audit.js";
 import {
   fetchViaJina,
+  fetchAsMarkdownRace,
   fetchDocs,
   fetchGitHubReleases,
   fetchGitHubExamples,
@@ -108,6 +110,7 @@ beforeEach(async () => {
   vi.mocked(fsp.stat).mockReset().mockResolvedValue({ size: 500 } as unknown as never);
 
   vi.mocked(fetchViaJina).mockReset().mockResolvedValue("");
+  vi.mocked(fetchAsMarkdownRace).mockReset().mockResolvedValue("");
   vi.mocked(fetchDocs).mockReset().mockResolvedValue(null as never);
   vi.mocked(fetchGitHubReleases).mockReset().mockResolvedValue(null);
   vi.mocked(fetchGitHubExamples).mockReset().mockResolvedValue(null);
@@ -266,21 +269,21 @@ describe("gt_audit handler — issues found", () => {
     expect(result.structuredContent?.filesScanned).toBe(3);
   });
 
-  it("includes best-practice content when fetchViaJina returns non-empty", async () => {
+  it("includes best-practice content when fetchAsMarkdownRace returns non-empty", async () => {
     await mockFiles([{ name: "app.ts", content: LINE_WITH_ISSUE }]);
     const BP = "Use 100dvh for dynamic viewport height on mobile browsers. ".repeat(5);
-    vi.mocked(fetchViaJina).mockResolvedValue(BP);
+    vi.mocked(fetchAsMarkdownRace).mockResolvedValue(BP);
     const result = await handler({ ...DEFAULTS, projectPath: PROJECT_PATH });
     // The best practice content is included in the text output
     expect(result.content[0]!.text).toContain("Live best practice");
   });
 
-  it("calls fetchViaJina for CSS/viewport-related issues", async () => {
+  it("calls fetchAsMarkdownRace for CSS/viewport-related issues", async () => {
     await mockFiles([{ name: "app.ts", content: LINE_WITH_ISSUE }]);
-    vi.mocked(fetchViaJina).mockResolvedValue("");
+    vi.mocked(fetchAsMarkdownRace).mockResolvedValue("");
     await handler({ ...DEFAULTS, projectPath: PROJECT_PATH });
-    // The docsQuery for 100vh issue contains "viewport" — fetchBestPractice calls fetchViaJina
-    expect(fetchViaJina).toHaveBeenCalled();
+    // The docsQuery for 100vh issue contains "viewport" — fetchBestPractice calls fetchAsMarkdownRace
+    expect(fetchAsMarkdownRace).toHaveBeenCalled();
   });
 });
 

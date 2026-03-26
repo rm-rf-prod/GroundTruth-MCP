@@ -1,6 +1,6 @@
 import type { FetchResult } from "../types.js";
 import { tokenize } from "../utils/extract.js";
-import { fetchViaJina, isIndexContent, rankIndexLinks, fetchSitemapUrls } from "./fetcher.js";
+import { fetchViaJina, fetchAsMarkdownRace, isIndexContent, rankIndexLinks, fetchSitemapUrls } from "./fetcher.js";
 import {
   DEEP_FETCH_MAX_PAGES,
   DEEP_FETCH_RELEVANCE_THRESHOLD,
@@ -111,6 +111,16 @@ export function buildTopicUrls(
     "/docs/concepts/{slug}",
     "/docs/getting-started/{slug}",
     "/docs/reference/{slug}",
+    "/docs/guide/{slug}",
+    "/docs/advanced/{slug}",
+    "/docs/recipes/{slug}",
+    "/docs/how-to/{slug}",
+    "/docs/tutorials/{slug}",
+    "/api/{slug}",
+    "/guides/{slug}",
+    "/concepts/{slug}",
+    "/examples/{slug}",
+    "/cookbook/{slug}",
   ];
 
   const allPatterns = [
@@ -144,7 +154,7 @@ async function fetchFirstSuccessful(
   try {
     return await Promise.any(
       urls.map(async (url) => {
-        const content = await fetchViaJina(url);
+        const content = await fetchAsMarkdownRace(url);
         if (content && content.length >= minLength) {
           return { content, url, sourceType: "deep-fetch" as const };
         }
@@ -163,7 +173,7 @@ async function fetchMultiplePages(
   const batch = urls.slice(0, maxPages);
   const results = await Promise.allSettled(
     batch.map(async (url) => {
-      const content = await fetchViaJina(url);
+      const content = await fetchAsMarkdownRace(url);
       if (content && content.length >= 300) {
         return { content, url };
       }
@@ -209,7 +219,7 @@ export async function deepFetchForTopic(
   const pipeline = async (): Promise<FetchResult> => {
     const topicUrls = buildTopicUrls(docsUrl, topic, urlPatterns);
     if (topicUrls.length > 0) {
-      const directHit = await fetchFirstSuccessful(topicUrls.slice(0, 6));
+      const directHit = await fetchFirstSuccessful(topicUrls.slice(0, 12));
       if (directHit) return directHit;
     }
 
@@ -219,7 +229,7 @@ export async function deepFetchForTopic(
       if (pages.length > 0) {
         return {
           content: assemblePages(pages),
-          url: pages[0]!.url,
+          url: pages[0]?.url ?? "",
           sourceType: "deep-fetch",
         };
       }
@@ -236,7 +246,7 @@ export async function deepFetchForTopic(
         if (pages.length > 0) {
           return {
             content: assemblePages(pages),
-            url: pages[0]!.url,
+            url: pages[0]?.url ?? "",
             sourceType: "deep-fetch",
           };
         }
@@ -255,7 +265,7 @@ export async function deepFetchForTopic(
         if (pages.length > 0) {
           return {
             content: assemblePages(pages),
-            url: pages[0]!.url,
+            url: pages[0]?.url ?? "",
             sourceType: "deep-fetch",
           };
         }

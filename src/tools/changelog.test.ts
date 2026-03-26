@@ -13,6 +13,7 @@ vi.mock("../services/fetcher.js", () => ({
   fetchGitHubReleases: vi.fn(),
   fetchGitHubContent: vi.fn(),
   fetchViaJina: vi.fn(),
+  fetchAsMarkdownRace: vi.fn(),
 }));
 
 vi.mock("../utils/extract.js", () => ({
@@ -39,7 +40,7 @@ vi.mock("../services/cache.js", () => ({
 // ── Imports after mocks ──────────────────────────────────────────────────────
 
 import { lookupById, lookupByAlias } from "../sources/registry.js";
-import { fetchGitHubReleases, fetchGitHubContent, fetchViaJina } from "../services/fetcher.js";
+import { fetchGitHubReleases, fetchGitHubContent, fetchViaJina, fetchAsMarkdownRace } from "../services/fetcher.js";
 import { isExtractionAttempt, withNotice } from "../utils/guard.js";
 import { docCache } from "../services/cache.js";
 import { extractRelevantContent } from "../utils/extract.js";
@@ -83,6 +84,7 @@ beforeEach(() => {
   vi.mocked(fetchGitHubReleases).mockReset();
   vi.mocked(fetchGitHubContent).mockReset();
   vi.mocked(fetchViaJina).mockReset();
+  vi.mocked(fetchAsMarkdownRace).mockReset().mockResolvedValue(null);
   vi.mocked(isExtractionAttempt).mockReset().mockReturnValue(false);
   vi.mocked(docCache.get).mockReset().mockReturnValue(undefined);
   vi.mocked(docCache.set).mockReset();
@@ -176,21 +178,21 @@ describe("gt_changelog handler", () => {
   });
 
   describe("Jina fallback", () => {
-    it("falls back to fetchViaJina when both GitHub fetches fail", async () => {
+    it("falls back to fetchAsMarkdownRace when both GitHub fetches fail", async () => {
       vi.mocked(lookupById).mockReturnValue(makeEntry());
       vi.mocked(fetchGitHubReleases).mockResolvedValue(null);
       vi.mocked(fetchGitHubContent).mockResolvedValue(null);
-      vi.mocked(fetchViaJina).mockResolvedValue("## Changelog\nSome content here for testing.");
+      vi.mocked(fetchAsMarkdownRace).mockResolvedValue("## Changelog\nSome content here for testing.");
       await handler({ libraryId: "vercel/next.js" });
-      expect(fetchViaJina).toHaveBeenCalledWith(expect.stringContaining("changelog"));
+      expect(fetchAsMarkdownRace).toHaveBeenCalledWith(expect.stringContaining("changelog"));
     });
 
     it("uses docsUrl when entry has no githubUrl", async () => {
       vi.mocked(lookupById).mockReturnValue(makeEntry({ githubUrl: undefined }));
-      vi.mocked(fetchViaJina).mockResolvedValue("## Changelog\nSome content here for testing.");
+      vi.mocked(fetchAsMarkdownRace).mockResolvedValue("## Changelog\nSome content here for testing.");
       await handler({ libraryId: "vercel/next.js" });
       expect(fetchGitHubReleases).not.toHaveBeenCalled();
-      expect(fetchViaJina).toHaveBeenCalledWith(expect.stringContaining("nextjs.org"));
+      expect(fetchAsMarkdownRace).toHaveBeenCalledWith(expect.stringContaining("nextjs.org"));
     });
   });
 
@@ -199,7 +201,7 @@ describe("gt_changelog handler", () => {
       vi.mocked(lookupById).mockReturnValue(makeEntry());
       vi.mocked(fetchGitHubReleases).mockResolvedValue(null);
       vi.mocked(fetchGitHubContent).mockResolvedValue(null);
-      vi.mocked(fetchViaJina).mockResolvedValue(null);
+      vi.mocked(fetchAsMarkdownRace).mockResolvedValue(null);
       const result = await handler({ libraryId: "vercel/next.js" });
       expect(result.content[0]!.text).toContain("No changelog found");
       expect(withNotice).toHaveBeenCalled();
@@ -209,7 +211,7 @@ describe("gt_changelog handler", () => {
       vi.mocked(lookupById).mockReturnValue(makeEntry());
       vi.mocked(fetchGitHubReleases).mockResolvedValue("hi");
       vi.mocked(fetchGitHubContent).mockResolvedValue(null);
-      vi.mocked(fetchViaJina).mockResolvedValue(null);
+      vi.mocked(fetchAsMarkdownRace).mockResolvedValue(null);
       const result = await handler({ libraryId: "vercel/next.js" });
       expect(result.content[0]!.text).toContain("No changelog found");
     });

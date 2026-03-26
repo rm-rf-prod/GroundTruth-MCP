@@ -1,11 +1,11 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { fuzzySearch, lookupById } from "../sources/registry.js";
-import { fetchDocs, fetchWithTimeout, fetchViaJina } from "../services/fetcher.js";
+import { fetchDocs, fetchWithTimeout, fetchViaJina, fetchDevDocs, fetchAsMarkdownRace } from "../services/fetcher.js";
 import { extractRelevantContent } from "../utils/extract.js";
 import { sanitizeContent } from "../utils/sanitize.js";
 import { docCache } from "../services/cache.js";
-import { DEFAULT_TOKEN_LIMIT } from "../constants.js";
+import { DEFAULT_TOKEN_LIMIT, MAX_TOKEN_LIMIT } from "../constants.js";
 
 const InputSchema = z.object({
   query: z
@@ -19,9 +19,9 @@ const InputSchema = z.object({
     .number()
     .int()
     .min(1000)
-    .max(DEFAULT_TOKEN_LIMIT)
+    .max(MAX_TOKEN_LIMIT)
     .default(DEFAULT_TOKEN_LIMIT)
-    .describe("Max tokens to return"),
+    .describe(`Max tokens to return (default: ${DEFAULT_TOKEN_LIMIT}, max: ${MAX_TOKEN_LIMIT})`),
 });
 
 // Curated topic-to-URL map for docs-only topics that have no npm package
@@ -148,11 +148,7 @@ const TOPIC_URL_MAP: Array<{ patterns: string[]; urls: string[]; name: string }>
     ],
     name: "Image Optimization",
   },
-  {
-    patterns: ["speculation rules", "prefetch", "prerender", "instant navigation"],
-    urls: ["https://developer.chrome.com/docs/web-platform/prerender-pages"],
-    name: "Speculation Rules API",
-  },
+  // Speculation Rules — see expanded entry below in Chrome Platform section
   // MDN Web APIs
   {
     patterns: ["fetch api", "fetch()", "fetchapi", "http request javascript"],
@@ -460,6 +456,246 @@ const TOPIC_URL_MAP: Array<{ patterns: string[]; urls: string[]; name: string }>
     name: 'React Native New Architecture',
   },
 
+  // Schema.org / Structured Data / Rich Results
+  {
+    patterns: ["schema.org", "structured data", "json-ld", "rich results", "rich snippets"],
+    urls: [
+      "https://schema.org/docs/gs.html",
+      "https://developers.google.com/search/docs/appearance/structured-data/intro-structured-data",
+    ],
+    name: "Schema.org / Structured Data",
+  },
+  {
+    patterns: ["localbusiness", "local business schema", "areaserved", "local seo schema", "geo schema"],
+    urls: [
+      "https://schema.org/LocalBusiness",
+      "https://developers.google.com/search/docs/appearance/structured-data/local-business",
+    ],
+    name: "LocalBusiness Schema",
+  },
+  {
+    patterns: ["organization schema", "organization structured data"],
+    urls: [
+      "https://schema.org/Organization",
+      "https://developers.google.com/search/docs/appearance/structured-data/organization",
+    ],
+    name: "Organization Schema",
+  },
+  {
+    patterns: ["faq schema", "faq structured data", "faqpage"],
+    urls: ["https://developers.google.com/search/docs/appearance/structured-data/faqpage"],
+    name: "FAQ Schema",
+  },
+  {
+    patterns: ["breadcrumb schema", "breadcrumb structured data"],
+    urls: ["https://developers.google.com/search/docs/appearance/structured-data/breadcrumb"],
+    name: "Breadcrumb Schema",
+  },
+  {
+    patterns: ["article schema", "article structured data", "newsarticle"],
+    urls: ["https://developers.google.com/search/docs/appearance/structured-data/article"],
+    name: "Article Schema",
+  },
+  {
+    patterns: ["product schema", "product structured data", "review schema", "aggregate rating"],
+    urls: ["https://developers.google.com/search/docs/appearance/structured-data/product"],
+    name: "Product Schema",
+  },
+  {
+    patterns: ["howto schema", "how-to structured data"],
+    urls: ["https://developers.google.com/search/docs/appearance/structured-data/how-to"],
+    name: "HowTo Schema",
+  },
+  {
+    patterns: ["sitelinks searchbox", "website schema", "searchaction"],
+    urls: ["https://developers.google.com/search/docs/appearance/structured-data/sitelinks-searchbox"],
+    name: "Sitelinks Searchbox Schema",
+  },
+
+  // SEO Topics
+  {
+    patterns: ["internal linking", "link equity", "link juice", "anchor text", "nofollow", "rel nofollow"],
+    urls: [
+      "https://developers.google.com/search/docs/crawling-indexing/links-crawlable",
+      "https://developers.google.com/search/docs/fundamentals/seo-starter-guide",
+    ],
+    name: "Internal Linking / Link Equity",
+  },
+  {
+    patterns: ["link building", "backlink", "backlinks", "link building strategy", "off-page seo"],
+    urls: [
+      "https://developers.google.com/search/docs/fundamentals/seo-starter-guide",
+      "https://developers.google.com/search/docs/essentials/spam-policies",
+    ],
+    name: "Link Building / Backlinks",
+  },
+  {
+    patterns: ["robots.txt", "robots txt", "crawl budget", "crawling", "indexing"],
+    urls: [
+      "https://developers.google.com/search/docs/crawling-indexing/robots/intro",
+      "https://developer.mozilla.org/en-US/docs/Glossary/Robots.txt",
+    ],
+    name: "Robots.txt / Crawling",
+  },
+  {
+    patterns: ["sitemap", "xml sitemap", "sitemap.xml"],
+    urls: ["https://developers.google.com/search/docs/crawling-indexing/sitemaps/overview"],
+    name: "XML Sitemaps",
+  },
+  {
+    patterns: ["canonical", "canonical url", "duplicate content", "rel canonical"],
+    urls: ["https://developers.google.com/search/docs/crawling-indexing/consolidate-duplicate-urls"],
+    name: "Canonical URLs",
+  },
+  {
+    patterns: ["hreflang", "international seo", "multilingual", "multi-language"],
+    urls: [
+      "https://developers.google.com/search/docs/specialty/international/localized-versions",
+    ],
+    name: "Hreflang / International SEO",
+  },
+  {
+    patterns: ["seo", "search engine optimization", "google ranking", "serp"],
+    urls: [
+      "https://developers.google.com/search/docs/fundamentals/seo-starter-guide",
+      "https://web.dev/explore/progressive-web-apps",
+    ],
+    name: "SEO Fundamentals",
+  },
+  {
+    patterns: ["heading hierarchy", "heading structure", "h1 h2 h3", "heading seo"],
+    urls: [
+      "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/Heading_Elements",
+      "https://webaim.org/techniques/semanticstructure/",
+    ],
+    name: "Heading Hierarchy",
+  },
+  {
+    patterns: ["e-e-a-t", "eeat", "expertise experience authority trust", "google quality"],
+    urls: [
+      "https://developers.google.com/search/docs/fundamentals/creating-helpful-content",
+    ],
+    name: "E-E-A-T / Content Quality",
+  },
+  {
+    patterns: ["page experience", "mobile friendly", "mobile first", "mobile usability"],
+    urls: [
+      "https://developers.google.com/search/docs/appearance/page-experience",
+      "https://web.dev/articles/mobile-first-design",
+    ],
+    name: "Page Experience / Mobile",
+  },
+
+  // Chrome Platform / Browser APIs
+  {
+    patterns: ["speculation rules", "prefetch", "prerender", "instant navigation", "speculative loading"],
+    urls: [
+      "https://developer.chrome.com/docs/web-platform/prerender-pages",
+      "https://developer.mozilla.org/en-US/docs/Web/API/Speculation_Rules_API",
+    ],
+    name: "Speculation Rules API",
+  },
+  {
+    patterns: ["permissions policy", "feature policy", "document policy"],
+    urls: [
+      "https://developer.chrome.com/docs/privacy-security/permissions-policy",
+      "https://developer.mozilla.org/en-US/docs/Web/HTTP/Permissions_Policy",
+    ],
+    name: "Permissions Policy",
+  },
+  {
+    patterns: ["reporting api", "nel", "network error logging", "report-to"],
+    urls: ["https://developer.chrome.com/docs/capabilities/web-apis/reporting-api"],
+    name: "Reporting API / NEL",
+  },
+  {
+    patterns: ["trusted types", "dom xss", "dom-based xss prevention"],
+    urls: ["https://developer.mozilla.org/en-US/docs/Web/API/Trusted_Types_API"],
+    name: "Trusted Types API",
+  },
+  {
+    patterns: ["priority hints", "fetchpriority", "resource priority"],
+    urls: ["https://web.dev/articles/fetch-priority"],
+    name: "Priority Hints / fetchpriority",
+  },
+  {
+    patterns: ["subresource integrity", "sri", "integrity attribute"],
+    urls: ["https://developer.mozilla.org/en-US/docs/Web/Security/Subresource_Integrity"],
+    name: "Subresource Integrity (SRI)",
+  },
+  {
+    patterns: ["popover api", "popover", "popup"],
+    urls: ["https://developer.mozilla.org/en-US/docs/Web/API/Popover_API"],
+    name: "Popover API",
+  },
+  {
+    patterns: ["dialog element", "modal dialog", "html dialog"],
+    urls: ["https://developer.mozilla.org/en-US/docs/Web/HTML/Element/dialog"],
+    name: "HTML Dialog Element",
+  },
+  {
+    patterns: ["scroll-driven animation", "scroll timeline", "view timeline"],
+    urls: ["https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_scroll-driven_animations"],
+    name: "Scroll-driven Animations",
+  },
+  {
+    patterns: ["css nesting", "css nest", "nested css"],
+    urls: ["https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_nesting"],
+    name: "CSS Nesting",
+  },
+  {
+    patterns: ["css has selector", ":has()", "parent selector css"],
+    urls: ["https://developer.mozilla.org/en-US/docs/Web/CSS/:has"],
+    name: "CSS :has() Selector",
+  },
+  {
+    patterns: ["color-mix", "oklch", "oklab", "css color spaces", "css color function"],
+    urls: ["https://developer.mozilla.org/en-US/docs/Web/CSS/color_value"],
+    name: "CSS Color Functions",
+  },
+
+  // Database Topics
+  {
+    patterns: ["sql", "sql query", "sql optimization", "sql performance", "database query"],
+    urls: ["https://www.postgresql.org/docs/current/sql-select.html"],
+    name: "SQL",
+  },
+  {
+    patterns: ["database design", "database schema", "normalization", "database modeling"],
+    urls: ["https://www.postgresql.org/docs/current/ddl.html"],
+    name: "Database Design",
+  },
+
+  // Email / Communication
+  {
+    patterns: ["email authentication", "spf", "dkim", "dmarc", "email deliverability"],
+    urls: [
+      "https://cheatsheetseries.owasp.org/cheatsheets/Email_Security_Cheat_Sheet.html",
+    ],
+    name: "Email Authentication (SPF/DKIM/DMARC)",
+  },
+
+  // AI / LLM
+  {
+    patterns: ["prompt engineering", "prompt design", "prompt best practices"],
+    urls: [
+      "https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/overview",
+      "https://platform.openai.com/docs/guides/prompt-engineering",
+    ],
+    name: "Prompt Engineering",
+  },
+  {
+    patterns: ["rag", "retrieval augmented generation", "vector search"],
+    urls: [
+      "https://python.langchain.com/docs/tutorials/rag/",
+    ],
+    name: "RAG / Retrieval Augmented Generation",
+  },
+  {
+    patterns: ["llms.txt", "ai crawling", "llms txt standard"],
+    urls: ["https://llmstxt.org/"],
+    name: "llms.txt Standard",
+  },
 ];
 
 export function findTopicUrls(query: string): Array<{ urls: string[]; name: string }> {
@@ -487,7 +723,8 @@ async function fetchTopicContent(url: string, query: string, tokens: number): Pr
   const cached = docCache.get(cacheKey);
   if (typeof cached === "string") return cached;
 
-  const raw = await fetchViaJina(url);
+  // Use fetchAsMarkdownRace: tries direct HTML extraction first, Jina as fallback
+  const raw = await fetchAsMarkdownRace(url);
   if (!raw || raw.length < 200) return "";
   const safe = sanitizeContent(raw);
   const { text } = extractRelevantContent(safe, query, tokens);
@@ -511,32 +748,157 @@ function normalizeQueryYear(query: string): string {
 }
 
 const AUTHORITATIVE_DOMAINS =
-  "developer.mozilla.org|web.dev|owasp.org|cheatsheetseries.owasp.org|w3.org|webkit.org|whatwg.org|tc39.es|v8.dev|nodejs.org|docs.github.com|webaim.org|www.typescriptlang.org|vitest.dev|playwright.dev|jestjs.io|docs.astro.build|svelte.dev|vuejs.org|reactnative.dev";
+  "developer.mozilla.org|web.dev|owasp.org|cheatsheetseries.owasp.org|w3.org|webkit.org|whatwg.org|tc39.es|v8.dev|nodejs.org|docs.github.com|webaim.org|www.typescriptlang.org|vitest.dev|playwright.dev|jestjs.io|docs.astro.build|svelte.dev|vuejs.org|reactnative.dev|react.dev|nextjs.org|tailwindcss.com|orm.drizzle.team|supabase.com|vercel.com|docs.nestjs.com|fastapi.tiangolo.com|docs.python.org|doc.rust-lang.org|go.dev|kotlinlang.org|docs.flutter.dev|angular.dev|tanstack.com|hono.dev|elysiajs.com|zod.dev|prisma.io|stripe.com|clerk.com|authjs.dev|docs.expo.dev|firebase.google.com|ai.google.dev|platform.openai.com|docs.anthropic.com|sdk.vercel.ai|docs.deno.com|bun.sh|docs.sentry.io|turbo.build|biomejs.dev|docs.docker.com|kubernetes.io|docs.github.com|vite.dev|redis.io|www.postgresql.org|www.mongodb.com|developer.chrome.com|schema.org|developers.google.com|css-tricks.com|smashingmagazine.com|www.w3schools.com|learn.microsoft.com|docs.aws.amazon.com|cloud.google.com|docs.cloudflare.com|graphql.org|grpc.io|opentelemetry.io|www.elastic.co|helm.sh|prometheus.io|grafana.com|llmstxt.org|docs.pydantic.dev|docs.rs|crates.io|pkg.go.dev|hex.pm|hexdocs.pm|pub.dev|pypi.org|rubygems.org|packagist.org|nuget.org|mvnrepository.com|expressjs.com|fastify.dev|elixir-lang.org|www.rust-lang.org|kotlinlang.org|www.scala-lang.org|typst.app|daisyui.com|ui.shadcn.com|headlessui.com|mantine.dev|ant.design|mui.com|chakra-ui.com|www.radix-ui.com|ariakit.org";
 
 const AUTHORITATIVE_URL_PATTERN = new RegExp(
   `https?:\\/\\/(?:${AUTHORITATIVE_DOMAINS})[^"<\\s]*`,
   "g",
 );
 
-function extractUrlsFromHtml(html: string): string[] {
+/** Extract URLs from HTML anchor href attributes (standard search result format) */
+function extractHrefUrls(html: string): string[] {
   const urls: string[] = [];
+  const hrefRe = /href="(https?:\/\/[^"]+)"/g;
   let match;
-  while ((match = AUTHORITATIVE_URL_PATTERN.exec(html)) !== null && urls.length < 3) {
-    const url = match[0]?.replace(/['">\s].*$/, "");
-    if (url && !urls.includes(url)) urls.push(url);
+  while ((match = hrefRe.exec(html)) !== null && urls.length < 8) {
+    const url = match[1]?.replace(/&amp;/g, "&");
+    if (!url) continue;
+    try {
+      const hostname = new URL(url).hostname;
+      if (
+        hostname.includes("google.") ||
+        hostname.includes("bing.") ||
+        hostname.includes("duckduckgo.") ||
+        hostname.includes("yahoo.") ||
+        hostname.includes("yandex.") ||
+        hostname === "r.search.yahoo.com"
+      ) continue;
+      if (
+        /\.(pdf|zip|tar|gz|exe|dmg|pkg|deb|rpm)$/i.test(url) ||
+        /\.(png|jpg|jpeg|gif|svg|ico|webp)$/i.test(url)
+      ) continue;
+      if (!urls.includes(url)) urls.push(url);
+    } catch { /* invalid URL */ }
   }
   return urls;
 }
 
-// Use DuckDuckGo lite HTML search, with a Bing fallback if DDG fails
+function extractUrlsFromHtml(html: string): string[] {
+  const urls: string[] = [];
+  let match;
+
+  // First pass: authoritative domains (highest priority)
+  while ((match = AUTHORITATIVE_URL_PATTERN.exec(html)) !== null && urls.length < 5) {
+    const url = match[0]?.replace(/['">\s].*$/, "");
+    if (url && !urls.includes(url)) urls.push(url);
+  }
+
+  // Second pass: any documentation-looking href from search results
+  if (urls.length < 3) {
+    const hrefUrls = extractHrefUrls(html);
+    for (const url of hrefUrls) {
+      if (urls.length >= 5) break;
+      if (!urls.includes(url)) {
+        // Prioritize URLs that look like documentation
+        if (/\/docs?\/|\/guide|\/api\/|\/reference|\/learn|\/tutorial|\/getting-started/i.test(url)) {
+          urls.push(url);
+        }
+      }
+    }
+    // If still not enough, add any remaining hrefs
+    for (const url of hrefUrls) {
+      if (urls.length >= 5) break;
+      if (!urls.includes(url)) urls.push(url);
+    }
+  }
+
+  return urls;
+}
+
+/**
+ * Universal direct URL construction — the global fallback that makes ANY topic findable.
+ * For any query, we construct URLs on well-known documentation sites using the query as a slug.
+ * This ensures we never return "no results" for a topic that has documentation somewhere.
+ */
+function buildDirectDocsUrls(query: string): Array<{ url: string; name: string }> {
+  const slug = query
+    .toLowerCase()
+    .replace(/\b(?:best practices|latest|how to|guide|tutorial|docs?|documentation|api|reference)\b/g, "")
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+
+  const searchSlug = query
+    .toLowerCase()
+    .replace(/\b(?:best practices|latest|how to|2[0-9]{3})\b/g, "")
+    .trim()
+    .replace(/\s+/g, "+");
+
+  if (!slug || slug.length < 2) return [];
+
+  const candidates: Array<{ url: string; name: string }> = [];
+
+  // Google Search Developers (SEO, structured data, Search Console)
+  candidates.push(
+    { url: `https://developers.google.com/search/docs/appearance/structured-data/${slug}`, name: "Google Search Central" },
+    { url: `https://developers.google.com/search/docs/${slug}`, name: "Google Search Docs" },
+  );
+
+  // MDN Web Docs (the universal web reference)
+  candidates.push(
+    { url: `https://developer.mozilla.org/en-US/docs/Web/API/${slug.replace(/-/g, "_")}`, name: "MDN Web API" },
+    { url: `https://developer.mozilla.org/en-US/docs/Web/CSS/${slug}`, name: "MDN CSS" },
+    { url: `https://developer.mozilla.org/en-US/docs/Web/HTML/Element/${slug}`, name: "MDN HTML" },
+    { url: `https://developer.mozilla.org/en-US/docs/Web/HTTP/${slug}`, name: "MDN HTTP" },
+  );
+
+  // web.dev (performance, best practices)
+  candidates.push(
+    { url: `https://web.dev/articles/${slug}`, name: "web.dev" },
+  );
+
+  // Chrome DevRel (browser APIs, platform features)
+  candidates.push(
+    { url: `https://developer.chrome.com/docs/web-platform/${slug}`, name: "Chrome DevRel" },
+    { url: `https://developer.chrome.com/docs/capabilities/${slug}`, name: "Chrome Capabilities" },
+  );
+
+  // OWASP (security)
+  candidates.push(
+    { url: `https://cheatsheetseries.owasp.org/cheatsheets/${slug.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join("_")}_Cheat_Sheet.html`, name: "OWASP Cheat Sheet" },
+  );
+
+  // Schema.org (structured data)
+  const pascalSlug = slug.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join("");
+  candidates.push(
+    { url: `https://schema.org/${pascalSlug}`, name: "Schema.org" },
+  );
+
+  return candidates;
+}
+
+/**
+ * Build Jina Reader fallback URLs for queries that don't match any known pattern.
+ * Uses web.dev search and Google Search Central as last-resort documentation sources.
+ */
+function buildJinaFallbackUrls(query: string): Array<{ url: string; name: string }> {
+  const encoded = encodeURIComponent(query);
+  return [
+    { url: `https://web.dev/search?q=${encoded}`, name: "web.dev search" },
+    { url: `https://developers.google.com/search?q=${encoded}`, name: "Google Developers search" },
+  ];
+}
+
+// Use DuckDuckGo lite HTML search, with Bing and Brave fallbacks
 async function webSearch(query: string): Promise<string[]> {
   const currentYear = new Date().getFullYear();
-  const siteRestrict =
-    "site:developer.mozilla.org OR site:web.dev OR site:owasp.org OR site:w3.org OR site:cheatsheetseries.owasp.org OR site:webaim.org OR site:typescriptlang.org official docs";
+  const docsHint = "official docs documentation guide reference";
 
-  // Primary: DuckDuckGo Lite
+  // Primary: DuckDuckGo Lite (no site restrict to get broader results)
   try {
-    const searchQuery = encodeURIComponent(`${query} ${currentYear} ${siteRestrict}`);
+    const searchQuery = encodeURIComponent(`${query} ${currentYear} ${docsHint}`);
     const res = await fetchWithTimeout(
       `https://html.duckduckgo.com/html/?q=${searchQuery}`,
       10_000,
@@ -549,9 +911,9 @@ async function webSearch(query: string): Promise<string[]> {
     }
   } catch { /* DDG failed — fall through */ }
 
-  // Fallback: Bing search (structured result links in HTML)
+  // Fallback 1: Bing search
   try {
-    const bingQuery = encodeURIComponent(`${query} ${currentYear} ${siteRestrict}`);
+    const bingQuery = encodeURIComponent(`${query} ${currentYear} ${docsHint}`);
     const res = await fetchWithTimeout(
       `https://www.bing.com/search?q=${bingQuery}`,
       10_000,
@@ -559,9 +921,25 @@ async function webSearch(query: string): Promise<string[]> {
     );
     if (res.ok) {
       const html = await res.text();
-      return extractUrlsFromHtml(html);
+      const urls = extractUrlsFromHtml(html);
+      if (urls.length > 0) return urls;
     }
   } catch { /* Bing also failed */ }
+
+  // Fallback 2: Brave search (often better for technical queries)
+  try {
+    const braveQuery = encodeURIComponent(`${query} ${docsHint}`);
+    const res = await fetchWithTimeout(
+      `https://search.brave.com/search?q=${braveQuery}`,
+      10_000,
+      { Accept: "text/html" },
+    );
+    if (res.ok) {
+      const html = await res.text();
+      const urls = extractUrlsFromHtml(html);
+      if (urls.length > 0) return urls;
+    }
+  } catch { /* Brave also failed */ }
 
   return [];
 }
@@ -642,24 +1020,84 @@ Examples:
         if (results.length >= 3) break;
       }
 
-      // 3. If still no results, try web search for authoritative URLs then fetch via Jina
+      // 3. Try direct URL construction for common documentation sites
+      if (results.length === 0) {
+        const directUrls = buildDirectDocsUrls(query);
+        if (directUrls.length > 0) {
+          const directResults = await Promise.allSettled(
+            directUrls.slice(0, 4).map(async (candidate) => {
+              const content = await fetchTopicContent(candidate.url, query, Math.floor(tokens / 2));
+              if (content.length > 200) {
+                return { source: candidate.name, url: candidate.url, content };
+              }
+              throw new Error("no content");
+            }),
+          );
+          for (const result of directResults) {
+            if (result.status === "fulfilled") {
+              results.push(result.value);
+              if (results.length >= 2) break;
+            }
+          }
+        }
+      }
+
+      // 5. If still no results, try web search for authoritative URLs then fetch via Jina
       if (results.length === 0) {
         const searchUrls = await webSearch(query);
-        for (const url of searchUrls) {
-          const content = await fetchTopicContent(url, query, tokens);
-          if (content.length > 200) {
-            try {
-              const hostname = new URL(url).hostname;
-              results.push({ source: hostname, url, content });
-            } catch {
-              results.push({ source: url, url, content });
+        // Fetch top 3 search results in parallel for speed
+        const searchResults = await Promise.allSettled(
+          searchUrls.slice(0, 3).map(async (url) => {
+            const content = await fetchTopicContent(url, query, Math.floor(tokens / 2));
+            if (content.length > 200) {
+              let source: string;
+              try { source = new URL(url).hostname; } catch { source = url; }
+              return { source, url, content };
             }
+            throw new Error("no content");
+          }),
+        );
+        for (const result of searchResults) {
+          if (result.status === "fulfilled") {
+            results.push(result.value);
+            if (results.length >= 2) break;
+          }
+        }
+      }
+
+      // 6. Fallback — try DevDocs (pre-parsed docs for 200+ technologies)
+      if (results.length === 0) {
+        const queryWords = query.toLowerCase().split(/\s+/).filter((w) => w.length > 2);
+        const techSlug = queryWords[0] ?? query.split(" ")[0] ?? "";
+        if (techSlug) {
+          const devDocsContent = await fetchDevDocs(techSlug, query);
+          if (devDocsContent && devDocsContent.length > 200) {
+            const safe = sanitizeContent(devDocsContent);
+            const { text } = extractRelevantContent(safe, query, tokens);
+            if (text.length > 200) {
+              results.push({
+                source: `DevDocs (${techSlug})`,
+                url: `https://devdocs.io/${techSlug}/`,
+                content: text,
+              });
+            }
+          }
+        }
+      }
+
+      // 7. Fallback — try Jina Reader directly on the query as a URL-like topic
+      if (results.length === 0) {
+        const jinaDirectUrls = buildJinaFallbackUrls(query);
+        for (const candidate of jinaDirectUrls.slice(0, 2)) {
+          const content = await fetchTopicContent(candidate.url, query, tokens);
+          if (content.length > 200) {
+            results.push({ source: candidate.name, url: candidate.url, content });
             break;
           }
         }
       }
 
-      // 4. Fallback — try fetching MDN search
+      // 8. Fallback — try fetching MDN search
       if (results.length === 0) {
         const mdnSearch = `https://developer.mozilla.org/en-US/search?q=${encodeURIComponent(query)}`;
         const content = await fetchTopicContent(mdnSearch, query, tokens);

@@ -1,7 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { lookupById, lookupByAlias } from "../sources/registry.js";
-import { fetchGitHubContent, fetchGitHubReleases, fetchViaJina } from "../services/fetcher.js";
+import { fetchGitHubContent, fetchGitHubReleases, fetchViaJina, fetchAsMarkdownRace } from "../services/fetcher.js";
 import { extractRelevantContent } from "../utils/extract.js";
 import { sanitizeContent } from "../utils/sanitize.js";
 import { computeQualityScore } from "../utils/quality.js";
@@ -123,7 +123,7 @@ Call gt_resolve_library first to get the libraryId.`,
           const origin = new URL(entry.docsUrl).origin;
           for (const suffix of MIGRATION_URL_SUFFIXES) {
             const url = `${origin}${suffix}`;
-            const content = await fetchViaJina(url);
+            const content = await fetchAsMarkdownRace(url);
             if (content && content.length > 300) {
               sections.push({ source: url, content });
               break;

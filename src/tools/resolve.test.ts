@@ -14,6 +14,7 @@ vi.mock("../services/fetcher.js", () => ({
   fetchPypiPackage: vi.fn(),
   fetchWithTimeout: vi.fn(async () => ({ ok: false } as Response)),
   fetchViaJina: vi.fn(async () => null),
+  fetchAsMarkdownRace: vi.fn(async () => null),
 }));
 
 vi.mock("../services/cache.js", () => ({
@@ -36,7 +37,7 @@ vi.mock("../utils/guard.js", () => ({
 // ── Imports after mocks ─────────────────────────────────────────────────────
 
 import { lookupByAlias, fuzzySearch } from "../sources/registry.js";
-import { fetchNpmPackage, fetchPypiPackage, fetchWithTimeout, fetchViaJina } from "../services/fetcher.js";
+import { fetchNpmPackage, fetchPypiPackage, fetchWithTimeout, fetchViaJina, fetchAsMarkdownRace } from "../services/fetcher.js";
 import { isExtractionAttempt } from "../utils/guard.js";
 
 // ── Handler capture ─────────────────────────────────────────────────────────
@@ -80,6 +81,7 @@ beforeEach(() => {
   vi.mocked(fetchPypiPackage).mockReset();
   vi.mocked(fetchWithTimeout).mockReset().mockResolvedValue({ ok: false } as Response);
   vi.mocked(fetchViaJina).mockReset().mockResolvedValue(null);
+  vi.mocked(fetchAsMarkdownRace).mockReset().mockResolvedValue(null);
   vi.mocked(isExtractionAttempt).mockReset().mockReturnValue(false);
 });
 
@@ -449,7 +451,7 @@ describe("gt_resolve_library handler", () => {
       vi.mocked(fetchNpmPackage).mockResolvedValue(null);
       vi.mocked(fetchPypiPackage).mockResolvedValue(null);
       vi.mocked(fetchWithTimeout).mockResolvedValue({ ok: false } as Response);
-      vi.mocked(fetchViaJina).mockResolvedValue("A Go module for doing things with bytes");
+      vi.mocked(fetchAsMarkdownRace).mockResolvedValue("A Go module for doing things with bytes");
       const result = await handler({ libraryName: "golang.org/x/text" });
       const matches = result.structuredContent!.matches as Array<{ source: string }>;
       expect(matches[0]!.source).toBe("go");
@@ -463,7 +465,7 @@ describe("gt_resolve_library handler", () => {
       vi.mocked(fetchNpmPackage).mockResolvedValue(null);
       vi.mocked(fetchPypiPackage).mockResolvedValue(null);
       vi.mocked(fetchWithTimeout).mockResolvedValue({ ok: false } as Response);
-      vi.mocked(fetchViaJina).mockResolvedValue(
+      vi.mocked(fetchAsMarkdownRace).mockResolvedValue(
         "Package gin implements a HTTP web framework\n\nMore content here",
       );
       const result = await handler({ libraryName: "github.com/gin-gonic/gin" });
@@ -478,7 +480,7 @@ describe("gt_resolve_library handler", () => {
       vi.mocked(fetchNpmPackage).mockResolvedValue(null);
       vi.mocked(fetchPypiPackage).mockResolvedValue(null);
       vi.mocked(fetchWithTimeout).mockResolvedValue({ ok: false } as Response);
-      vi.mocked(fetchViaJina).mockResolvedValue("A fast HTTP router for Go applications");
+      vi.mocked(fetchAsMarkdownRace).mockResolvedValue("A fast HTTP router for Go applications");
       const result = await handler({ libraryName: "github.com/julienschmidt/httprouter" });
       const matches = result.structuredContent!.matches as Array<{ githubUrl?: string }>;
       expect(matches[0]!.githubUrl).toBe("https://github.com/julienschmidt/httprouter");
@@ -490,7 +492,7 @@ describe("gt_resolve_library handler", () => {
       vi.mocked(fetchNpmPackage).mockResolvedValue(null);
       vi.mocked(fetchPypiPackage).mockResolvedValue(null);
       vi.mocked(fetchWithTimeout).mockResolvedValue({ ok: false } as Response);
-      vi.mocked(fetchViaJina).mockResolvedValue("Standard library utilities");
+      vi.mocked(fetchAsMarkdownRace).mockResolvedValue("Standard library utilities");
       const result = await handler({ libraryName: "golang.org/x/sync" });
       const matches = result.structuredContent!.matches as Array<{ docsUrl: string }>;
       expect(matches[0]!.docsUrl).toBe("https://pkg.go.dev/golang.org/x/sync");
@@ -502,19 +504,19 @@ describe("gt_resolve_library handler", () => {
       vi.mocked(fetchNpmPackage).mockResolvedValue(null);
       vi.mocked(fetchPypiPackage).mockResolvedValue(null);
       vi.mocked(fetchWithTimeout).mockResolvedValue({ ok: false } as Response);
-      vi.mocked(fetchViaJina).mockResolvedValue("Concurrency primitives for Go");
+      vi.mocked(fetchAsMarkdownRace).mockResolvedValue("Concurrency primitives for Go");
       const result = await handler({ libraryName: "golang.org/x/sync" });
       const matches = result.structuredContent!.matches as Array<{ score: number }>;
       expect(matches[0]!.score).toBe(55);
     });
 
-    it("returns no results when fetchViaJina returns null", async () => {
+    it("returns no results when fetchAsMarkdownRace returns null", async () => {
       vi.mocked(lookupByAlias).mockReturnValue(null);
       vi.mocked(fuzzySearch).mockReturnValue([]);
       vi.mocked(fetchNpmPackage).mockResolvedValue(null);
       vi.mocked(fetchPypiPackage).mockResolvedValue(null);
       vi.mocked(fetchWithTimeout).mockResolvedValue({ ok: false } as Response);
-      vi.mocked(fetchViaJina).mockResolvedValue(null);
+      vi.mocked(fetchAsMarkdownRace).mockResolvedValue(null);
       const result = await handler({ libraryName: "zzz-unknown-go-module" });
       expect(result.structuredContent!.matches).toHaveLength(0);
     });
