@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.0.7] — 2026-03-26
+
+- feat: universal dynamic resolution for all tools
+- fix: patch picomatch high severity vulnerability (ReDoS + method injection)
+
+---
+
 ## [3.0.6] — 2026-03-26
 
 - See diff for changes.
