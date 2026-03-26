@@ -564,4 +564,40 @@ describe("findTopicUrls", () => {
     const matches = findTopicUrls("how to cook pasta");
     expect(matches).toHaveLength(0);
   });
+
+  it("does not match TypeScript for 'robots.txt' (short pattern 'ts' boundary)", () => {
+    const matches = findTopicUrls("robots.txt crawl budget");
+    const names = matches.map((m) => m.name);
+    expect(names).not.toContain("TypeScript");
+    expect(names).toContain("Robots.txt / Crawling");
+  });
+
+  it("does not match PostgreSQL for 'page' (short pattern 'pg' boundary)", () => {
+    const matches = findTopicUrls("page speed optimization");
+    const names = matches.map((m) => m.name);
+    expect(names).not.toContain("PostgreSQL");
+  });
+
+  it("matches TypeScript when 'ts' appears as a standalone word", () => {
+    const matches = findTopicUrls("ts strict mode config");
+    const names = matches.map((m) => m.name);
+    expect(names).toContain("TypeScript");
+  });
+
+  it("matches React Server Components", () => {
+    const matches = findTopicUrls("React Server Components patterns");
+    expect(matches.length).toBeGreaterThan(0);
+    expect(matches[0]!.name).toBe("React Server Components");
+  });
+
+  it("matches prompt engineering", () => {
+    const matches = findTopicUrls("prompt engineering best practices LLM");
+    expect(matches.length).toBeGreaterThan(0);
+    expect(matches[0]!.name).toBe("Prompt Engineering");
+  });
+
+  it("matches building website", () => {
+    const matches = findTopicUrls("best practices building new website");
+    expect(matches.length).toBeGreaterThan(0);
+  });
 });

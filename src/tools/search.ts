@@ -285,8 +285,11 @@ const TOPIC_URL_MAP: Array<{ patterns: string[]; urls: string[]; name: string }>
   },
   // Infrastructure & DevOps
   {
-    patterns: ["docker", "dockerfile", "container", "docker compose"],
-    urls: ["https://docs.docker.com/get-started/"],
+    patterns: ["docker", "dockerfile", "docker compose", "multi-stage build", "docker best practices"],
+    urls: [
+      "https://docs.docker.com/build/building/best-practices/",
+      "https://docs.docker.com/get-started/",
+    ],
     name: "Docker",
   },
   {
@@ -295,8 +298,11 @@ const TOPIC_URL_MAP: Array<{ patterns: string[]; urls: string[]; name: string }>
     name: "Kubernetes",
   },
   {
-    patterns: ["github actions", "ci/cd", "workflow yaml", "github workflow"],
-    urls: ["https://docs.github.com/en/actions/writing-workflows"],
+    patterns: ["github actions", "ci/cd", "workflow yaml", "github workflow", "github actions best practices"],
+    urls: [
+      "https://docs.github.com/en/actions/writing-workflows",
+      "https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions",
+    ],
     name: "GitHub Actions",
   },
   {
@@ -725,6 +731,16 @@ const TOPIC_URL_MAP: Array<{ patterns: string[]; urls: string[]; name: string }>
     name: "Email Authentication (SPF/DKIM/DMARC)",
   },
 
+  // Web Development General
+  {
+    patterns: ["building website", "build website", "new website", "website best practices", "website checklist"],
+    urls: [
+      "https://developers.google.com/search/docs/fundamentals/seo-starter-guide",
+      "https://web.dev/explore/learn-core-web-vitals",
+    ],
+    name: "Website Best Practices",
+  },
+
   // AI / LLM
   {
     patterns: ["prompt engineering", "prompt design", "prompt best practices"],
@@ -748,6 +764,25 @@ const TOPIC_URL_MAP: Array<{ patterns: string[]; urls: string[]; name: string }>
   },
 ];
 
+/** Cache compiled regexes for topic patterns to avoid re-creation per call */
+const patternRegexCache = new Map<string, RegExp>();
+
+function matchesPattern(query: string, pattern: string): boolean {
+  // Multi-word patterns and long patterns: simple includes is safe
+  if (pattern.length >= 5 || pattern.includes(" ")) {
+    return query.includes(pattern);
+  }
+  // Short patterns (< 5 chars): use word boundary to prevent substring matches
+  // e.g. "ts" must not match "robots" or "events"
+  let re = patternRegexCache.get(pattern);
+  if (!re) {
+    const escaped = pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    re = new RegExp(`(?:^|[\\s,;:()\\[\\]/])${escaped}(?:$|[\\s,;:()\\[\\]/])`, "i");
+    patternRegexCache.set(pattern, re);
+  }
+  return re.test(query);
+}
+
 export function findTopicUrls(query: string): Array<{ urls: string[]; name: string }> {
   const q = query.toLowerCase();
   const matches: Array<{ urls: string[]; name: string; score: number }> = [];
@@ -755,7 +790,7 @@ export function findTopicUrls(query: string): Array<{ urls: string[]; name: stri
   for (const topic of TOPIC_URL_MAP) {
     let score = 0;
     for (const pattern of topic.patterns) {
-      if (q.includes(pattern)) {
+      if (matchesPattern(q, pattern)) {
         score += pattern.split(" ").length; // longer matches score higher
       }
     }
