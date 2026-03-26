@@ -1,7 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { fuzzySearch, lookupById } from "../sources/registry.js";
-import { fetchDocs, fetchWithTimeout, fetchViaJina, fetchDevDocs, fetchAsMarkdownRace } from "../services/fetcher.js";
+import { fetchDocs, fetchWithTimeout, fetchViaJina, fetchDevDocs, fetchAsMarkdownRace, isErrorPage } from "../services/fetcher.js";
 import { extractRelevantContent, normalizeQueryYear } from "../utils/extract.js";
 import { sanitizeContent } from "../utils/sanitize.js";
 import { docCache } from "../services/cache.js";
@@ -586,7 +586,7 @@ const TOPIC_URL_MAP: Array<{ patterns: string[]; urls: string[]; name: string }>
     name: "Link Building / Backlinks",
   },
   {
-    patterns: ["robots.txt", "robots txt", "crawl budget", "crawling", "indexing"],
+    patterns: ["robots.txt", "robots txt", "crawl budget", "crawling", "google indexing", "search indexing"],
     urls: [
       "https://developers.google.com/search/docs/crawling-indexing/robots/intro",
       "https://developer.mozilla.org/en-US/docs/Glossary/Robots.txt",
@@ -731,6 +731,41 @@ const TOPIC_URL_MAP: Array<{ patterns: string[]; urls: string[]; name: string }>
     name: "Email Authentication (SPF/DKIM/DMARC)",
   },
 
+  // WebAssembly
+  {
+    patterns: ["webassembly", "wasm", "wasm module", "wasm javascript"],
+    urls: [
+      "https://developer.mozilla.org/en-US/docs/WebAssembly",
+      "https://developer.mozilla.org/en-US/docs/WebAssembly/Concepts",
+    ],
+    name: "WebAssembly",
+  },
+  // Rendering strategies
+  {
+    patterns: ["server side rendering", "static site generation", "incremental static", "ssr vs ssg", "isr rendering", "rendering strategy"],
+    urls: [
+      "https://nextjs.org/docs/app/building-your-application/rendering",
+      "https://web.dev/articles/rendering-on-the-web",
+    ],
+    name: "Rendering Strategies (SSR/SSG/ISR)",
+  },
+  // HTTP fundamentals
+  {
+    patterns: ["http status code", "301 redirect", "302 redirect", "307 redirect", "status codes"],
+    urls: [
+      "https://developer.mozilla.org/en-US/docs/Web/HTTP/Status",
+      "https://developer.mozilla.org/en-US/docs/Web/HTTP/Redirections",
+    ],
+    name: "HTTP Status Codes & Redirects",
+  },
+  // JavaScript fundamentals
+  {
+    patterns: ["event loop", "microtask", "macrotask", "promise queue", "javascript runtime"],
+    urls: [
+      "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Event_loop",
+    ],
+    name: "JavaScript Event Loop",
+  },
   // Web Development General
   {
     patterns: ["building website", "build website", "new website", "website best practices", "website checklist"],
@@ -810,7 +845,7 @@ async function fetchTopicContent(url: string, query: string, tokens: number): Pr
 
   // Use fetchAsMarkdownRace: tries direct HTML extraction first, Jina as fallback
   const raw = await fetchAsMarkdownRace(url);
-  if (!raw || raw.length < 200) return "";
+  if (!raw || raw.length < 200 || isErrorPage(raw)) return "";
   const safe = sanitizeContent(raw);
   const { text } = extractRelevantContent(safe, query, tokens);
   docCache.set(cacheKey, text);

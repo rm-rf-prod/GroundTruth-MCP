@@ -1274,6 +1274,31 @@ async function fetchBestPracticesContent(
     }
   }
 
+  // 2d. Try docs-specific llms.txt / llms-full.txt (many sites have /docs/llms.txt separate from root)
+  const docsOrigin = (() => { try { return new URL(docsUrl).origin; } catch { return null; } })();
+  if (docsOrigin) {
+    const docsLlmsUrls = [
+      `${docsUrl}/llms-full.txt`,
+      `${docsUrl}/llms.txt`,
+      `${docsOrigin}/docs/llms-full.txt`,
+      `${docsOrigin}/docs/llms.txt`,
+    ].filter((u) => u !== llmsTxtUrl && u !== llmsFullTxtUrl);
+
+    for (const url of docsLlmsUrls) {
+      const raw = await fetchAsMarkdownRace(url).catch(() => null);
+      if (raw && raw.length > 500) {
+        const enrichedTopic = topic
+          ? `${topic} best practices patterns guide`
+          : "best practices patterns guide tips";
+        const safe = sanitizeContent(raw);
+        const { text: extracted, truncated } = extractRelevantContent(safe, enrichedTopic, tokens);
+        if (extracted.length > 200) {
+          return { text: extracted, sourceUrl: url, truncated };
+        }
+      }
+    }
+  }
+
   // 3. Fall back to main docs with topic = "best practices"
   try {
     let result = await fetchDocs(docsUrl, llmsTxtUrl, llmsFullTxtUrl, topic || undefined);
