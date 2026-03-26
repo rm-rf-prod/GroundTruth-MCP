@@ -1,5 +1,11 @@
 # Changelog
 
+## [3.0.6] — 2026-03-26
+
+- See diff for changes.
+
+---
+
 ## [3.0.5] — 2026-03-26
 
 - chore: bump to 3.0.4, update changelog with reliability overhaul
