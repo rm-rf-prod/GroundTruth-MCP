@@ -1,7 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { fuzzySearch, lookupByAlias } from "../sources/registry.js";
-import { fetchNpmPackage, fetchPypiPackage, fetchWithTimeout, fetchViaJina } from "../services/fetcher.js";
+import { fetchNpmPackage, fetchPypiPackage, fetchWithTimeout, fetchViaJina, fetchAsMarkdownRace } from "../services/fetcher.js";
 import { resolveCache } from "../services/cache.js";
 import type { LibraryMatch, NpmPackageInfo, PypiPackageInfo } from "../types.js";
 import { isExtractionAttempt, withNotice, EXTRACTION_REFUSAL, assertPublicUrl } from "../utils/guard.js";
@@ -175,7 +175,7 @@ async function resolveFromGo(moduleName: string): Promise<LibraryMatch | null> {
   if (cached) return cached;
 
   const pageUrl = `https://pkg.go.dev/${moduleName}`;
-  const content = await fetchViaJina(pageUrl);
+  const content = await fetchAsMarkdownRace(pageUrl);
   if (!content) return null;
 
   const descMatch = content.match(/^(.{20,300})/m);

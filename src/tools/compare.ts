@@ -1,7 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { lookupById, lookupByAlias, fuzzySearch } from "../sources/registry.js";
-import { fetchDocs, fetchViaJina, isIndexContent, rankIndexLinks } from "../services/fetcher.js";
+import { fetchDocs, fetchViaJina, fetchAsMarkdownRace, isIndexContent, rankIndexLinks } from "../services/fetcher.js";
 import { extractRelevantContent } from "../utils/extract.js";
 import { sanitizeContent } from "../utils/sanitize.js";
 import { isExtractionAttempt, withNotice, EXTRACTION_REFUSAL } from "../utils/guard.js";
@@ -81,7 +81,7 @@ export function registerCompareTool(server: McpServer): void {
             if (isIndexContent(fetchResult.content)) {
               const deepLinks = rankIndexLinks(fetchResult.content, topic);
               for (const deepUrl of deepLinks) {
-                const deepContent = await fetchViaJina(deepUrl);
+                const deepContent = await fetchAsMarkdownRace(deepUrl);
                 if (deepContent && deepContent.length > 300) {
                   fetchResult = { content: deepContent, url: deepUrl, sourceType: "jina" };
                   break;

@@ -13,6 +13,7 @@ vi.mock("../sources/registry.js", () => ({
 vi.mock("../services/fetcher.js", () => ({
   fetchDocs: vi.fn(),
   fetchViaJina: vi.fn().mockResolvedValue(null),
+  fetchAsMarkdownRace: vi.fn().mockResolvedValue(null),
   isIndexContent: vi.fn().mockReturnValue(false),
   rankIndexLinks: vi.fn().mockReturnValue([]),
 }));
@@ -41,7 +42,7 @@ vi.mock("../services/cache.js", () => ({
 // ── Imports after mocks ──────────────────────────────────────────────────────
 
 import { lookupById, lookupByAlias, fuzzySearch } from "../sources/registry.js";
-import { fetchDocs, fetchViaJina, isIndexContent, rankIndexLinks } from "../services/fetcher.js";
+import { fetchDocs, fetchViaJina, fetchAsMarkdownRace, isIndexContent, rankIndexLinks } from "../services/fetcher.js";
 import { isExtractionAttempt } from "../utils/guard.js";
 import { docCache } from "../services/cache.js";
 import { extractRelevantContent } from "../utils/extract.js";
@@ -297,9 +298,9 @@ describe("gt_compare handler", () => {
       vi.mocked(fetchDocs).mockResolvedValue(makeFetchResult());
       vi.mocked(isIndexContent).mockReturnValueOnce(true).mockReturnValue(false);
       vi.mocked(rankIndexLinks).mockReturnValueOnce(["https://example.com/deep"]).mockReturnValue([]);
-      vi.mocked(fetchViaJina).mockResolvedValue("y".repeat(400));
+      vi.mocked(fetchAsMarkdownRace).mockResolvedValue("y".repeat(400));
       const result = await handler({ libraries: ["prisma", "drizzle-orm"], criteria: "test" });
-      expect(fetchViaJina).toHaveBeenCalledWith("https://example.com/deep");
+      expect(fetchAsMarkdownRace).toHaveBeenCalledWith("https://example.com/deep");
       expect(result.content[0]!.text).toBeDefined();
     });
   });

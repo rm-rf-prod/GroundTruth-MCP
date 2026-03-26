@@ -1,13 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { mockFetchViaJina, mockIsIndexContent, mockRankIndexLinks } = vi.hoisted(() => ({
+const { mockFetchViaJina, mockFetchAsMarkdownRace, mockIsIndexContent, mockRankIndexLinks } = vi.hoisted(() => ({
   mockFetchViaJina: vi.fn<(url: string) => Promise<string | null>>(),
+  mockFetchAsMarkdownRace: vi.fn<(url: string) => Promise<string | null>>(),
   mockIsIndexContent: vi.fn<(content: string) => boolean>(),
   mockRankIndexLinks: vi.fn<(content: string, topic: string) => string[]>(),
 }));
 
 vi.mock("./fetcher.js", () => ({
   fetchViaJina: mockFetchViaJina,
+  fetchAsMarkdownRace: mockFetchAsMarkdownRace,
   isIndexContent: mockIsIndexContent,
   rankIndexLinks: mockRankIndexLinks,
 }));
@@ -24,6 +26,7 @@ import type { FetchResult } from "../types.js";
 beforeEach(() => {
   vi.restoreAllMocks();
   mockFetchViaJina.mockResolvedValue(null);
+  mockFetchAsMarkdownRace.mockResolvedValue(null);
   mockIsIndexContent.mockReturnValue(false);
   mockRankIndexLinks.mockReturnValue([]);
 });
@@ -192,7 +195,7 @@ describe("deepFetchForTopic", () => {
       "https://docs.example.com",
     );
     expect(result).toBe(relevantResult);
-    expect(mockFetchViaJina).not.toHaveBeenCalled();
+    expect(mockFetchAsMarkdownRace).not.toHaveBeenCalled();
   });
 
   it("returns original content when topic is empty", async () => {
@@ -202,7 +205,7 @@ describe("deepFetchForTopic", () => {
 
   it("tries direct topic URLs when relevance is low", async () => {
     const deepContent = "x".repeat(400);
-    mockFetchViaJina.mockImplementation(async (url: string) => {
+    mockFetchAsMarkdownRace.mockImplementation(async (url: string) => {
       if (url.includes("/docs/caching") || url.includes("/docs/guides/caching")) {
         return deepContent;
       }
@@ -230,7 +233,7 @@ describe("deepFetchForTopic", () => {
       "https://docs.example.com/zebra",
       "https://docs.example.com/a",
     ]);
-    mockFetchViaJina.mockImplementation(async (url: string) => {
+    mockFetchAsMarkdownRace.mockImplementation(async (url: string) => {
       if (url === "https://docs.example.com/zebra") {
         return "x".repeat(400);
       }
@@ -254,7 +257,7 @@ describe("deepFetchForTopic", () => {
     };
 
     mockIsIndexContent.mockReturnValue(false);
-    mockFetchViaJina.mockImplementation(async (url: string) => {
+    mockFetchAsMarkdownRace.mockImplementation(async (url: string) => {
       if (url === "https://docs.example.com/guides/middleware") {
         return "Detailed middleware patterns " + "x".repeat(400);
       }
@@ -271,7 +274,7 @@ describe("deepFetchForTopic", () => {
   });
 
   it("returns original when all deep-fetch attempts fail", async () => {
-    mockFetchViaJina.mockResolvedValue(null);
+    mockFetchAsMarkdownRace.mockResolvedValue(null);
     mockIsIndexContent.mockReturnValue(false);
 
     const result = await deepFetchForTopic(
@@ -283,8 +286,8 @@ describe("deepFetchForTopic", () => {
   });
 
   it("handles timeout gracefully", async () => {
-    mockFetchViaJina.mockImplementation(
-      () => new Promise((resolve) => setTimeout(() => resolve("x".repeat(400)), 30_000)),
+    mockFetchAsMarkdownRace.mockImplementation(
+      () => new Promise((resolve) => setTimeout(() => resolve("x".repeat(400)), 40_000)),
     );
 
     const result = await deepFetchForTopic(
@@ -295,7 +298,7 @@ describe("deepFetchForTopic", () => {
       5,
     );
     expect(result).toBe(baseResult);
-  }, 35_000);
+  }, 45_000);
 
   it("assembles multiple pages from index links", async () => {
     const indexResult: FetchResult = {
@@ -313,7 +316,7 @@ describe("deepFetchForTopic", () => {
     const pageA = "Content of page A " + "x".repeat(300);
     const pageB = "Content of page B " + "y".repeat(300);
 
-    mockFetchViaJina.mockImplementation(async (url: string) => {
+    mockFetchAsMarkdownRace.mockImplementation(async (url: string) => {
       if (url === "https://docs.example.com/a") return pageA;
       if (url === "https://docs.example.com/b") return pageB;
       return null;
@@ -333,7 +336,7 @@ describe("deepFetchForTopic", () => {
 
   it("uses custom urlPatterns", async () => {
     const deepContent = "x".repeat(400);
-    mockFetchViaJina.mockImplementation(async (url: string) => {
+    mockFetchAsMarkdownRace.mockImplementation(async (url: string) => {
       if (url.includes("/custom/caching")) return deepContent;
       return null;
     });

@@ -4,7 +4,7 @@ import { readdir, readFile, stat } from "fs/promises";
 import { join, extname, relative } from "path";
 import { lookupById } from "../sources/registry.js";
 import { safeguardPath } from "../utils/guard.js";
-import { fetchDocs, fetchGitHubExamples, fetchGitHubReleases, fetchViaJina, isIndexContent, rankIndexLinks } from "../services/fetcher.js";
+import { fetchDocs, fetchGitHubExamples, fetchGitHubReleases, fetchViaJina, fetchAsMarkdownRace, isIndexContent, rankIndexLinks } from "../services/fetcher.js";
 import { extractRelevantContent } from "../utils/extract.js";
 import { sanitizeContent } from "../utils/sanitize.js";
 
@@ -1598,7 +1598,7 @@ async function fetchBestPractice(query: string, tokens: number): Promise<string>
           if (isIndexContent(result.content)) {
             const deepLinks = rankIndexLinks(result.content, query);
             for (const deepUrl of deepLinks) {
-              const deepContent = await fetchViaJina(deepUrl);
+              const deepContent = await fetchAsMarkdownRace(deepUrl);
               if (deepContent && deepContent.length > 300) {
                 result = { content: deepContent, url: deepUrl, sourceType: "jina" };
                 break;
@@ -1623,7 +1623,7 @@ async function fetchBestPractice(query: string, tokens: number): Promise<string>
   }
 
   const jinaFetch = async (url: string): Promise<string> => {
-    const raw = await fetchViaJina(url);
+    const raw = await fetchAsMarkdownRace(url);
     if (!raw) return "";
     const { text } = extractRelevantContent(sanitizeContent(raw), query, tokens);
     return text;
