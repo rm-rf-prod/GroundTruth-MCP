@@ -1,5 +1,11 @@
 # Changelog
 
+## [3.1.0] — 2026-03-26
+
+- fix: undici DNS callback format + SSRF bypass for high-byte IP ranges
+
+---
+
 ## [3.0.7] — 2026-03-26
 
 - feat: universal dynamic resolution for all tools
