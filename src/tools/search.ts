@@ -387,6 +387,56 @@ const TOPIC_URL_MAP: Array<{ patterns: string[]; urls: string[]; name: string }>
     ],
     name: "Progressive Web Apps",
   },
+  // React (core)
+  {
+    patterns: ['react server components', 'rsc', 'server component', 'use client', 'use server', 'react server'],
+    urls: [
+      'https://react.dev/reference/rsc/server-components',
+      'https://react.dev/reference/rsc/use-server',
+    ],
+    name: 'React Server Components',
+  },
+  {
+    patterns: ['react hooks', 'usestate', 'useeffect', 'usememo', 'usecallback', 'useref', 'usecontext'],
+    urls: [
+      'https://react.dev/reference/react/hooks',
+      'https://react.dev/learn/escape-hatches',
+    ],
+    name: 'React Hooks',
+  },
+  {
+    patterns: ['react patterns', 'react best practices', 'react architecture', 'thinking in react'],
+    urls: [
+      'https://react.dev/learn/thinking-in-react',
+      'https://react.dev/learn/managing-state',
+    ],
+    name: 'React Patterns',
+  },
+  {
+    patterns: ['react 19', 'react actions', 'useactionstate', 'useoptimistic', 'react form actions'],
+    urls: [
+      'https://react.dev/blog/2024/12/05/react-19',
+      'https://react.dev/reference/react/useActionState',
+    ],
+    name: 'React 19',
+  },
+  // Next.js specific topics
+  {
+    patterns: ['next.js caching', 'nextjs cache', 'use cache', 'cache components', 'next.js rendering'],
+    urls: [
+      'https://nextjs.org/docs/app/building-your-application/caching',
+      'https://nextjs.org/docs/app/building-your-application/rendering',
+    ],
+    name: 'Next.js Caching & Rendering',
+  },
+  {
+    patterns: ['next.js routing', 'nextjs app router', 'parallel routes', 'intercepting routes', 'next.js middleware'],
+    urls: [
+      'https://nextjs.org/docs/app/building-your-application/routing',
+      'https://nextjs.org/docs/app/building-your-application/routing/parallel-routes',
+    ],
+    name: 'Next.js Routing',
+  },
   // React Native / Expo
   {
     patterns: ['react native', 'react-native', 'expo sdk', 'expo router', 'expo app'],
