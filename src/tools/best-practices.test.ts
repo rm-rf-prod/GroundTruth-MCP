@@ -12,6 +12,7 @@ vi.mock("../sources/registry.js", () => ({
 vi.mock("../services/fetcher.js", () => ({
   fetchDocs: vi.fn(),
   fetchViaJina: vi.fn(),
+  fetchAsMarkdownRace: vi.fn(),
   fetchGitHubContent: vi.fn(),
   fetchGitHubExamples: vi.fn(),
 }));
@@ -44,7 +45,7 @@ vi.mock("../utils/quality.js", () => ({
 // ── Imports after mocks ─────────────────────────────────────────────────────
 
 import { lookupById, lookupByAlias } from "../sources/registry.js";
-import { fetchDocs, fetchViaJina, fetchGitHubContent, fetchGitHubExamples } from "../services/fetcher.js";
+import { fetchDocs, fetchViaJina, fetchAsMarkdownRace, fetchGitHubContent, fetchGitHubExamples } from "../services/fetcher.js";
 import { deepFetchForTopic } from "../services/deep-fetch.js";
 import { isExtractionAttempt } from "../utils/guard.js";
 
@@ -90,6 +91,7 @@ beforeEach(() => {
   vi.mocked(lookupByAlias).mockReset();
   vi.mocked(fetchDocs).mockReset();
   vi.mocked(fetchViaJina).mockReset();
+  vi.mocked(fetchAsMarkdownRace).mockReset().mockResolvedValue(null);
   vi.mocked(fetchGitHubContent).mockReset();
   vi.mocked(fetchGitHubExamples).mockReset();
   vi.mocked(isExtractionAttempt).mockReset().mockReturnValue(false);
@@ -152,13 +154,13 @@ describe("gt_best_practices handler", () => {
   });
 
   describe("known best-practices URLs (raceUrls path)", () => {
-    it("uses fetchViaJina for known BP URLs and returns first hit", async () => {
+    it("uses fetchAsMarkdownRace for known BP URLs and returns first hit", async () => {
       // Use a library with known BP URLs in BEST_PRACTICES_URLS
       const entry = makeEntry({ id: "vercel/next.js" });
       vi.mocked(lookupById).mockReturnValue(entry);
-      vi.mocked(fetchViaJina).mockResolvedValue(BP_CONTENT);
+      vi.mocked(fetchAsMarkdownRace).mockResolvedValue(BP_CONTENT);
       const result = await handler({ libraryId: "vercel/next.js" });
-      expect(fetchViaJina).toHaveBeenCalled();
+      expect(fetchAsMarkdownRace).toHaveBeenCalled();
       expect(result.content[0]!.text).toContain("NOTICE");
     });
 

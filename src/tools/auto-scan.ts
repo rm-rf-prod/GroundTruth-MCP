@@ -3,7 +3,7 @@ import { z } from "zod";
 import { readFile } from "fs/promises";
 import { join } from "path";
 import { lookupByAlias, lookupById, fuzzySearch } from "../sources/registry.js";
-import { fetchDocs, fetchViaJina, isIndexContent, rankIndexLinks } from "../services/fetcher.js";
+import { fetchDocs, fetchViaJina, fetchAsMarkdownRace, isIndexContent, rankIndexLinks } from "../services/fetcher.js";
 import { extractRelevantContent } from "../utils/extract.js";
 import { isExtractionAttempt, withNotice, EXTRACTION_REFUSAL, safeguardPath } from "../utils/guard.js";
 import { sanitizeContent } from "../utils/sanitize.js";
@@ -453,7 +453,7 @@ Reads: package.json, requirements.txt, pyproject.toml, Cargo.toml, go.mod, pom.x
               if (isIndexContent(fetchResult.content)) {
                 const deepLinks = rankIndexLinks(fetchResult.content, enrichedTopic);
                 for (const deepUrl of deepLinks) {
-                  const deepContent = await fetchViaJina(deepUrl);
+                  const deepContent = await fetchAsMarkdownRace(deepUrl);
                   if (deepContent && deepContent.length > 300) {
                     fetchResult = { content: deepContent, url: deepUrl, sourceType: "jina" };
                     break;

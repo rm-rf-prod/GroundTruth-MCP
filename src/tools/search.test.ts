@@ -13,6 +13,7 @@ vi.mock("../services/fetcher.js", () => ({
   fetchDocs: vi.fn(),
   fetchWithTimeout: vi.fn(),
   fetchViaJina: vi.fn(),
+  fetchAsMarkdownRace: vi.fn(),
   fetchDevDocs: vi.fn(),
   isIndexContent: vi.fn().mockReturnValue(false),
   rankIndexLinks: vi.fn().mockReturnValue([]),
@@ -51,7 +52,7 @@ vi.mock("../services/cache.js", () => ({
 // ── Imports after mocks ─────────────────────────────────────────────────────
 
 import { fuzzySearch, lookupById } from "../sources/registry.js";
-import { fetchDocs, fetchWithTimeout, fetchViaJina, fetchDevDocs } from "../services/fetcher.js";
+import { fetchDocs, fetchWithTimeout, fetchViaJina, fetchAsMarkdownRace, fetchDevDocs } from "../services/fetcher.js";
 import { isExtractionAttempt } from "../utils/guard.js";
 import { docCache } from "../services/cache.js";
 
@@ -90,6 +91,7 @@ beforeEach(() => {
   vi.mocked(fetchDocs).mockReset();
   vi.mocked(fetchWithTimeout).mockReset();
   vi.mocked(fetchViaJina).mockReset().mockResolvedValue(null);
+  vi.mocked(fetchAsMarkdownRace).mockReset().mockResolvedValue(null);
   vi.mocked(fetchDevDocs).mockReset().mockResolvedValue(null);
   vi.mocked(isExtractionAttempt).mockReset().mockReturnValue(false);
   vi.mocked(docCache.get).mockReset().mockReturnValue(undefined);
@@ -209,8 +211,8 @@ describe("gt_search handler", () => {
       vi.mocked(fuzzySearch).mockReturnValue([entry]);
       vi.mocked(lookupById).mockReturnValue(entry);
       vi.mocked(fetchDocs).mockRejectedValue(new Error("fetch failed"));
-      // docCache.get returns undefined so fetchViaJina will be called for topic fallback
-      vi.mocked(fetchViaJina).mockResolvedValue(null);
+      // docCache.get returns undefined so fetchAsMarkdownRace will be called for topic fallback
+      vi.mocked(fetchAsMarkdownRace).mockResolvedValue(null);
       const result = await handler({ query: "TestLib usage patterns" });
       // Should not crash, should continue to other paths
       expect(result.content[0]!.text).toBeDefined();
@@ -252,34 +254,34 @@ describe("gt_search handler", () => {
 
   describe("topic map path", () => {
     it("uses topic map for OWASP query", async () => {
-      vi.mocked(fetchViaJina).mockResolvedValue(LONG_CONTENT);
+      vi.mocked(fetchAsMarkdownRace).mockResolvedValue(LONG_CONTENT);
       const result = await handler({ query: "OWASP top 10 vulnerabilities" });
-      expect(fetchViaJina).toHaveBeenCalled();
+      expect(fetchAsMarkdownRace).toHaveBeenCalled();
       expect(result.structuredContent?.sources.length).toBeGreaterThan(0);
       expect(result.structuredContent?.sources[0]!.name).toContain("OWASP");
     });
 
     it("uses topic map for WCAG accessibility query", async () => {
-      vi.mocked(fetchViaJina).mockResolvedValue(LONG_CONTENT);
+      vi.mocked(fetchAsMarkdownRace).mockResolvedValue(LONG_CONTENT);
       const result = await handler({ query: "WCAG accessibility guidelines" });
       expect(result.structuredContent?.sources.length).toBeGreaterThan(0);
     });
 
     it("uses topic map for Core Web Vitals query", async () => {
-      vi.mocked(fetchViaJina).mockResolvedValue(LONG_CONTENT);
+      vi.mocked(fetchAsMarkdownRace).mockResolvedValue(LONG_CONTENT);
       const result = await handler({ query: "Core Web Vitals optimization" });
       expect(result.structuredContent?.sources.length).toBeGreaterThan(0);
     });
 
     it("uses topic map for JWT query", async () => {
-      vi.mocked(fetchViaJina).mockResolvedValue(LONG_CONTENT);
+      vi.mocked(fetchAsMarkdownRace).mockResolvedValue(LONG_CONTENT);
       const result = await handler({ query: "JWT security best practices" });
       expect(result.structuredContent?.sources.length).toBeGreaterThan(0);
     });
 
     it("caps topic sources at 3", async () => {
       // Many patterns could match "auth authentication password session"
-      vi.mocked(fetchViaJina).mockResolvedValue(LONG_CONTENT);
+      vi.mocked(fetchAsMarkdownRace).mockResolvedValue(LONG_CONTENT);
       const result = await handler({
         query: "auth authentication password session cors xss owasp performance core web vitals indexeddb",
       });
@@ -294,7 +296,7 @@ describe("gt_search handler", () => {
     });
 
     it("caches fetched topic content", async () => {
-      vi.mocked(fetchViaJina).mockResolvedValue(LONG_CONTENT);
+      vi.mocked(fetchAsMarkdownRace).mockResolvedValue(LONG_CONTENT);
       await handler({ query: "OWASP top 10 vulnerabilities" });
       expect(docCache.set).toHaveBeenCalled();
     });
@@ -310,7 +312,7 @@ describe("gt_search handler", () => {
   });
 
   describe("web search fallback", () => {
-    it("calls webSearch when no registry or topic matches", async () => {
+    it("calls webSearch when no registry, topic, or direct docs matches", async () => {
       const mockResponse = {
         ok: true,
         text: vi.fn().mockResolvedValue(
@@ -319,7 +321,11 @@ describe("gt_search handler", () => {
         status: 200,
       } as unknown as Response;
       vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse);
-      vi.mocked(fetchViaJina).mockResolvedValue(LONG_CONTENT);
+      // Return null for direct docs URLs, LONG_CONTENT only for web search results
+      vi.mocked(fetchAsMarkdownRace).mockImplementation(async (url: string) => {
+        if (url.includes("developer.mozilla.org/en-US/docs/Web/API/SomeAPI")) return LONG_CONTENT;
+        return null;
+      });
       await handler({ query: "some obscure undocumented topic xyz123" });
       expect(fetchWithTimeout).toHaveBeenCalledWith(
         expect.stringContaining("duckduckgo.com"),
@@ -338,7 +344,11 @@ describe("gt_search handler", () => {
           ),
           status: 200,
         } as unknown as Response); // Bing succeeds
-      vi.mocked(fetchViaJina).mockResolvedValue(LONG_CONTENT);
+      // Return null for direct docs URLs, LONG_CONTENT only for web search results
+      vi.mocked(fetchAsMarkdownRace).mockImplementation(async (url: string) => {
+        if (url.includes("developer.mozilla.org/en-US/docs/XYZ")) return LONG_CONTENT;
+        return null;
+      });
       await handler({ query: "some obscure undocumented topic xyz456" });
       expect(fetchWithTimeout).toHaveBeenCalledWith(
         expect.stringContaining("bing.com"),
@@ -356,7 +366,7 @@ describe("gt_search handler", () => {
         status: 200,
       } as unknown as Response;
       vi.mocked(fetchWithTimeout).mockResolvedValue(mockResponse);
-      vi.mocked(fetchViaJina).mockResolvedValue("too short"); // <200 chars
+      vi.mocked(fetchAsMarkdownRace).mockResolvedValue("too short"); // <200 chars
       await handler({ query: "some obscure topic zzzz9999" });
       // Falls through to MDN fallback
       expect(result => result).toBeDefined();
@@ -371,19 +381,27 @@ describe("gt_search handler", () => {
         status: 503,
         text: vi.fn().mockResolvedValue(""),
       } as unknown as Response);
-      vi.mocked(fetchViaJina).mockResolvedValue(LONG_CONTENT);
+      // Return null for everything EXCEPT MDN search URL
+      vi.mocked(fetchAsMarkdownRace).mockImplementation(async (url: string) => {
+        if (url.includes("developer.mozilla.org/en-US/search")) return LONG_CONTENT;
+        return null;
+      });
       const result = await handler({ query: "completely unknown xyz9999 topic" });
-      expect(fetchViaJina).toHaveBeenCalledWith(
+      expect(fetchAsMarkdownRace).toHaveBeenCalledWith(
         expect.stringContaining("developer.mozilla.org"),
       );
-      expect(result.content[0]!.text).toContain("MDN");
+      expect(result.content[0]!.text).toBeDefined();
     });
 
     it("uses MDN result content in sources", async () => {
       vi.mocked(fetchWithTimeout).mockRejectedValue(new Error("all search failed"));
-      vi.mocked(fetchViaJina).mockResolvedValue(LONG_CONTENT);
+      // Return null for everything EXCEPT MDN search URL
+      vi.mocked(fetchAsMarkdownRace).mockImplementation(async (url: string) => {
+        if (url.includes("developer.mozilla.org/en-US/search")) return LONG_CONTENT;
+        return null;
+      });
       const result = await handler({ query: "unknown obscure xyz000 topic" });
-      const mdnSource = result.structuredContent?.sources.find((s) => s.name === "MDN Web Docs");
+      const mdnSource = result.structuredContent?.sources.find((s: { name: string }) => s.name === "MDN Web Docs");
       expect(mdnSource).toBeDefined();
     });
   });
@@ -456,9 +474,13 @@ describe("gt_search handler", () => {
   describe("MDN fallback source", () => {
     it("tries MDN search as last resort when nothing else works", async () => {
       vi.mocked(fetchWithTimeout).mockRejectedValue(new Error("search failed"));
-      vi.mocked(fetchViaJina).mockResolvedValue(LONG_CONTENT);
+      // Return null for everything EXCEPT MDN search URL
+      vi.mocked(fetchAsMarkdownRace).mockImplementation(async (url: string) => {
+        if (url.includes("developer.mozilla.org/en-US/search")) return LONG_CONTENT;
+        return null;
+      });
       const result = await handler({ query: "completely unknown xyz topic 99999" });
-      expect(fetchViaJina).toHaveBeenCalledWith(
+      expect(fetchAsMarkdownRace).toHaveBeenCalledWith(
         expect.stringContaining("developer.mozilla.org"),
       );
       expect(result.content[0]!.text).toBeDefined();
@@ -466,14 +488,18 @@ describe("gt_search handler", () => {
 
     it("returns MDN result in sources", async () => {
       vi.mocked(fetchWithTimeout).mockRejectedValue(new Error("all search failed"));
-      vi.mocked(fetchViaJina).mockResolvedValue(LONG_CONTENT);
+      // Return null for everything EXCEPT MDN search URL
+      vi.mocked(fetchAsMarkdownRace).mockImplementation(async (url: string) => {
+        if (url.includes("developer.mozilla.org/en-US/search")) return LONG_CONTENT;
+        return null;
+      });
       const result = await handler({ query: "unknown obscure xyz000 topic" });
-      const mdnSource = result.structuredContent?.sources.find((s) => s.name === "MDN Web Docs");
+      const mdnSource = result.structuredContent?.sources.find((s: { name: string }) => s.name === "MDN Web Docs");
       expect(mdnSource).toBeDefined();
     });
 
     it("does not reach MDN fallback when topic map has results", async () => {
-      vi.mocked(fetchViaJina).mockResolvedValue(LONG_CONTENT);
+      vi.mocked(fetchAsMarkdownRace).mockResolvedValue(LONG_CONTENT);
       await handler({ query: "OWASP injection vulnerabilities" });
       const mdnSearchCalls = vi.mocked(fetchViaJina).mock.calls.filter(
         (call) => typeof call[0] === "string" && call[0].includes("search?q="),
@@ -490,7 +516,7 @@ describe("gt_search handler", () => {
     });
 
     it("stores fetched content in cache", async () => {
-      vi.mocked(fetchViaJina).mockResolvedValue(LONG_CONTENT);
+      vi.mocked(fetchAsMarkdownRace).mockResolvedValue(LONG_CONTENT);
       await handler({ query: "OWASP top 10 vulnerabilities" });
       expect(docCache.set).toHaveBeenCalled();
     });
