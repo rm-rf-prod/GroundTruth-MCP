@@ -4,6 +4,7 @@ import { registerExamplesTool } from "./examples.js";
 
 vi.mock("../services/fetcher.js", () => ({
   fetchWithTimeout: vi.fn(),
+  githubAuthHeaders: vi.fn(() => ({})),
 }));
 
 vi.mock("../services/cache.js", () => ({
@@ -27,7 +28,7 @@ vi.mock("../utils/sanitize.js", () => ({
   sanitizeContent: vi.fn((text: string) => text),
 }));
 
-import { fetchWithTimeout } from "../services/fetcher.js";
+import { fetchWithTimeout, githubAuthHeaders } from "../services/fetcher.js";
 import { docCache, diskDocCache } from "../services/cache.js";
 import { isExtractionAttempt } from "../utils/guard.js";
 
@@ -179,17 +180,13 @@ describe("gt_examples handler", () => {
   });
 
   it("includes Authorization header when GT_GITHUB_TOKEN is set", async () => {
-    process.env.GT_GITHUB_TOKEN = "ghp_test123";
-    try {
-      mockFetchWithTimeout.mockResolvedValueOnce(
-        makeRes(JSON.stringify({ total_count: 0, items: [] }), 200),
-      );
-      await handler({ library: "react", maxResults: 5 });
-      const headers = mockFetchWithTimeout.mock.calls[0]![2] as Record<string, string>;
-      expect(headers).toMatchObject({ Authorization: "Bearer ghp_test123" });
-    } finally {
-      delete process.env.GT_GITHUB_TOKEN;
-    }
+    vi.mocked(githubAuthHeaders).mockReturnValueOnce({ Authorization: "Bearer ghp_test123" });
+    mockFetchWithTimeout.mockResolvedValueOnce(
+      makeRes(JSON.stringify({ total_count: 0, items: [] }), 200),
+    );
+    await handler({ library: "react", maxResults: 5 });
+    const headers = mockFetchWithTimeout.mock.calls[0]![2] as Record<string, string>;
+    expect(headers).toMatchObject({ Authorization: "Bearer ghp_test123" });
   });
 
   it("includes language filter in search query", async () => {
