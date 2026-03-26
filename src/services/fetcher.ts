@@ -752,13 +752,22 @@ export async function fetchDevDocs(slug: string, topic?: string): Promise<string
 
   for (const url of urls) {
     const content = await fetchViaJina(url);
-    if (content && content.length >= 200) {
+    if (content && content.length >= 200 && !isErrorPage(content)) {
       docCache.set(cacheKey, content);
       void diskDocCache.set(cacheKey, content);
       return content;
     }
   }
   return null;
+}
+
+/** Detect 404/error pages returned as content (common with Jina on non-existent pages) */
+export function isErrorPage(content: string): boolean {
+  const sample = content.slice(0, 1500).toLowerCase();
+  return (
+    (/page\s*not\s*found|404\s*not\s*found|oops!.*doesn.t\s*exist/i.test(sample) && content.length < 3000) ||
+    (/^#\s*(404|page not found|not found)/im.test(sample))
+  );
 }
 
 /** Fetch and parse sitemap.xml to discover all doc page URLs */
