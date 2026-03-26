@@ -1,5 +1,11 @@
 # Changelog
 
+## [3.3.0] — 2026-03-26
+
+- fix: word-boundary matching for short patterns + new topic entries
+
+---
+
 ## [3.2.0] — 2026-03-26
 
 - fix: detect Gatsby HTML blobs + add React/Next.js topic patterns
