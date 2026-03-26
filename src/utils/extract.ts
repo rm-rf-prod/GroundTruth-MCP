@@ -141,6 +141,51 @@ function parseSections(content: string): Section[] {
     }
   }
   if (current) sections.push(current);
+
+  // If content has no markdown headings (common with Jina output), create
+  // synthetic sections from paragraph blocks to enable BM25 scoring
+  if (sections.length <= 1 && content.length > 2000) {
+    const paragraphs = content.split(/\n{2,}/);
+    if (paragraphs.length > 3) {
+      const syntheticSections: Section[] = [];
+      let chunk: string[] = [];
+      let chunkLen = 0;
+
+      for (const para of paragraphs) {
+        chunk.push(para);
+        chunkLen += para.length;
+
+        if (chunkLen > 800 || chunk.length >= 4) {
+          const text = chunk.join("\n\n");
+          const firstLine = (chunk[0] ?? "").slice(0, 80).replace(/[#*_`]/g, "").trim();
+          syntheticSections.push({
+            heading: firstLine || "(section)",
+            content: text,
+            level: 2,
+            score: 0,
+          });
+          chunk = [];
+          chunkLen = 0;
+        }
+      }
+
+      if (chunk.length > 0) {
+        const text = chunk.join("\n\n");
+        const firstLine = (chunk[0] ?? "").slice(0, 80).replace(/[#*_`]/g, "").trim();
+        syntheticSections.push({
+          heading: firstLine || "(section)",
+          content: text,
+          level: 2,
+          score: 0,
+        });
+      }
+
+      if (syntheticSections.length > 2) {
+        return syntheticSections;
+      }
+    }
+  }
+
   return sections;
 }
 
