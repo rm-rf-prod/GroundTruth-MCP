@@ -90,7 +90,7 @@ export async function fetchWithTimeout(
       const res = await fetch(currentUrl, {
         signal: controller.signal,
         redirect: "manual",
-        headers: { "User-Agent": USER_AGENT, Accept: "text/plain,text/html,*/*", ...extraHeaders },
+        headers: { "User-Agent": USER_AGENT, Accept: "text/plain,text/html,*/*", "Accept-Language": "en-US,en;q=0.9", ...extraHeaders },
       });
       if (res.status >= 300 && res.status < 400) {
         const location = res.headers.get("location");
@@ -240,7 +240,7 @@ export async function fetchAsMarkdown(url: string): Promise<string | null> {
     if (directHtml) {
       // Check if it's already markdown/plain text (llms.txt, README)
       const tagDensity = (directHtml.match(/<[a-z]/gi) ?? []).length / Math.max(directHtml.length, 1);
-      if (tagDensity < 0.005 && directHtml.length > 100) {
+      if (tagDensity < 0.005 && directHtml.length > 100 && !isHtmlBlob(directHtml)) {
         docCache.set(cacheKey, directHtml);
         void diskDocCache.set(cacheKey, directHtml);
         return directHtml;
@@ -248,7 +248,7 @@ export async function fetchAsMarkdown(url: string): Promise<string | null> {
 
       // Extract markdown from HTML
       const markdown = convertHtmlToMarkdown(directHtml);
-      if (markdown.length >= 200) {
+      if (markdown.length >= 200 && !isHtmlBlob(markdown)) {
         docCache.set(cacheKey, markdown);
         void diskDocCache.set(cacheKey, markdown);
         return markdown;
@@ -301,9 +301,15 @@ export async function fetchAsMarkdownRace(url: string): Promise<string | null> {
           const html = await tryFetch(url, 0);
           if (!html) throw new Error("no content");
           const tagDensity = (html.match(/<[a-z]/gi) ?? []).length / Math.max(html.length, 1);
-          if (tagDensity < 0.005 && html.length > 100) return html;
+          if (tagDensity < 0.005 && html.length > 100) {
+            if (isHtmlBlob(html)) throw new Error("html blob");
+            return html;
+          }
           const md = convertHtmlToMarkdown(html);
-          if (md.length >= 200) return md;
+          if (md.length >= 200) {
+            if (isHtmlBlob(md)) throw new Error("html blob after extraction");
+            return md;
+          }
           throw new Error("extraction too short");
         })(),
         // Path 2: Jina Reader (handles JS-rendered sites)
@@ -328,6 +334,25 @@ export async function fetchAsMarkdownRace(url: string): Promise<string | null> {
   } finally {
     inFlightRequests.delete(cacheKey);
   }
+}
+
+/**
+ * Detect if extracted content is actually an unprocessed HTML blob.
+ * JS-rendered sites return HTML shells with no real content — these should be rejected.
+ */
+export function isHtmlBlob(content: string): boolean {
+  if (content.length < 200) return false;
+  const sample = content.slice(0, 3000);
+  const htmlSignals = [
+    /<!DOCTYPE\s+html/i.test(sample),
+    /<meta\s+charSet=/i.test(sample),
+    /<link\s+rel="preload"/i.test(sample),
+    /class="[^"]{50,}"/i.test(sample),
+    /\bdata:text\/javascript;base64,/.test(sample),
+    /\b_next\/static\//.test(sample),
+    /<script[\s>]/i.test(sample),
+  ];
+  return htmlSignals.filter(Boolean).length >= 3;
 }
 
 /**
