@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { fetchWithTimeout } from "../services/fetcher.js";
+import { fetchWithTimeout, githubAuthHeaders } from "../services/fetcher.js";
 import { docCache, diskDocCache } from "../services/cache.js";
 import { isExtractionAttempt, withNotice, EXTRACTION_REFUSAL } from "../utils/guard.js";
 import { sanitizeContent } from "../utils/sanitize.js";
@@ -15,12 +15,6 @@ const InputSchema = z.object({
   maxResults: z.number().int().min(1).max(10).default(5)
     .describe("Number of code examples to return (default: 5, max: 10)"),
 });
-
-function githubAuthHeaders(): Record<string, string> {
-  const token = process.env.GT_GITHUB_TOKEN;
-  if (!token) return {};
-  return { Authorization: `Bearer ${token}` };
-}
 
 interface CodeSearchItem {
   name: string;

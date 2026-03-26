@@ -7,6 +7,7 @@ import { sanitizeContent } from "../utils/sanitize.js";
 import { computeQualityScore } from "../utils/quality.js";
 import { isExtractionAttempt, withNotice, EXTRACTION_REFUSAL } from "../utils/guard.js";
 import { DEFAULT_TOKEN_LIMIT, MAX_TOKEN_LIMIT } from "../constants.js";
+import { resolveDynamic } from "../services/resolve.js";
 
 const InputSchema = z.object({
   libraryId: z
@@ -76,13 +77,30 @@ Call gt_resolve_library first to get the libraryId.`,
       }
 
       const entry = lookupById(libraryId) ?? lookupByAlias(libraryId);
-      if (!entry) {
-        return {
-          content: [{
-            type: "text",
-            text: `Library "${libraryId}" not found. Call gt_resolve_library first.`,
-          }],
-        };
+      let docsUrl: string;
+      let githubUrl: string | undefined;
+      let displayName: string;
+      let resolvedId: string;
+
+      if (entry) {
+        docsUrl = entry.docsUrl;
+        githubUrl = entry.githubUrl;
+        displayName = entry.name;
+        resolvedId = entry.id;
+      } else {
+        const resolved = await resolveDynamic(libraryId);
+        if (!resolved) {
+          return {
+            content: [{
+              type: "text",
+              text: `Could not resolve "${libraryId}". Try gt_resolve_library first to find the correct ID.`,
+            }],
+          };
+        }
+        docsUrl = resolved.docsUrl;
+        githubUrl = resolved.githubUrl;
+        displayName = resolved.displayName;
+        resolvedId = libraryId;
       }
 
       const sections: Array<{ source: string; content: string }> = [];
@@ -94,10 +112,10 @@ Call gt_resolve_library first to get the libraryId.`,
         toVersion ? `v${toVersion.replace(/^v/, "")}` : "",
       ].filter(Boolean).join(" ");
 
-      if (entry.githubUrl) {
+      if (githubUrl) {
         const migrationDocs = await Promise.allSettled(
           MIGRATION_PATHS.map(async (path) => {
-            const result = await fetchGitHubContent(entry.githubUrl!, path);
+            const result = await fetchGitHubContent(githubUrl, path);
             if (result && result.content.length > 200) {
               return { source: `GitHub: ${path}`, content: result.content };
             }
@@ -112,7 +130,7 @@ Call gt_resolve_library first to get the libraryId.`,
           }
         }
 
-        const releases = await fetchGitHubReleases(entry.githubUrl);
+        const releases = await fetchGitHubReleases(githubUrl);
         if (releases && releases.length > 200) {
           sections.push({ source: "GitHub Releases", content: releases });
         }
@@ -120,7 +138,7 @@ Call gt_resolve_library first to get the libraryId.`,
 
       if (sections.length === 0) {
         try {
-          const origin = new URL(entry.docsUrl).origin;
+          const origin = new URL(docsUrl).origin;
           for (const suffix of MIGRATION_URL_SUFFIXES) {
             const url = `${origin}${suffix}`;
             const content = await fetchAsMarkdownRace(url);
@@ -136,7 +154,7 @@ Call gt_resolve_library first to get the libraryId.`,
         return {
           content: [{
             type: "text",
-            text: `No migration guides found for "${entry.name}". Try gt_changelog for release notes, or gt_get_docs with topic "migration".`,
+            text: `No migration guides found for "${displayName}". Try gt_changelog for release notes, or gt_get_docs with topic "migration".`,
           }],
         };
       }
@@ -150,7 +168,7 @@ Call gt_resolve_library first to get the libraryId.`,
       const qualityScore = computeQualityScore(text, topic, "github-readme");
 
       const header = [
-        `# ${entry.name} — Migration Guide`,
+        `# ${displayName} — Migration Guide`,
         fromVersion || toVersion
           ? `> ${fromVersion ? `From: v${fromVersion.replace(/^v/, "")}` : ""}${toVersion ? ` To: v${toVersion.replace(/^v/, "")}` : ""}`
           : "",
@@ -164,8 +182,8 @@ Call gt_resolve_library first to get the libraryId.`,
       return {
         content: [{ type: "text", text: withNotice(header + text) }],
         structuredContent: {
-          libraryId: entry.id,
-          displayName: entry.name,
+          libraryId: resolvedId,
+          displayName,
           fromVersion,
           toVersion,
           sources: sections.map((s) => s.source),

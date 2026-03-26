@@ -2,7 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { fuzzySearch, lookupById } from "../sources/registry.js";
 import { fetchDocs, fetchWithTimeout, fetchViaJina, fetchDevDocs, fetchAsMarkdownRace } from "../services/fetcher.js";
-import { extractRelevantContent } from "../utils/extract.js";
+import { extractRelevantContent, normalizeQueryYear } from "../utils/extract.js";
 import { sanitizeContent } from "../utils/sanitize.js";
 import { docCache } from "../services/cache.js";
 import { DEFAULT_TOKEN_LIMIT, MAX_TOKEN_LIMIT } from "../constants.js";
@@ -732,20 +732,6 @@ async function fetchTopicContent(url: string, query: string, tokens: number): Pr
   return text;
 }
 
-// Replace stale calendar years in queries with the current year.
-// Matches 4-digit years 2020–last year that appear as standalone tokens
-// (not part of ES2022, OAuth2.0, WCAG 2.1, v18.3, etc.).
-function normalizeQueryYear(query: string): string {
-  const currentYear = new Date().getFullYear();
-  const staleYearPattern = new RegExp(
-    `(?<![./\\w])(20[12][0-9])(?![./\\w])`,
-    "g",
-  );
-  return query.replace(staleYearPattern, (match) => {
-    const year = parseInt(match, 10);
-    return year < currentYear ? String(currentYear) : match;
-  });
-}
 
 const AUTHORITATIVE_DOMAINS =
   "developer.mozilla.org|web.dev|owasp.org|cheatsheetseries.owasp.org|w3.org|webkit.org|whatwg.org|tc39.es|v8.dev|nodejs.org|docs.github.com|webaim.org|www.typescriptlang.org|vitest.dev|playwright.dev|jestjs.io|docs.astro.build|svelte.dev|vuejs.org|reactnative.dev|react.dev|nextjs.org|tailwindcss.com|orm.drizzle.team|supabase.com|vercel.com|docs.nestjs.com|fastapi.tiangolo.com|docs.python.org|doc.rust-lang.org|go.dev|kotlinlang.org|docs.flutter.dev|angular.dev|tanstack.com|hono.dev|elysiajs.com|zod.dev|prisma.io|stripe.com|clerk.com|authjs.dev|docs.expo.dev|firebase.google.com|ai.google.dev|platform.openai.com|docs.anthropic.com|sdk.vercel.ai|docs.deno.com|bun.sh|docs.sentry.io|turbo.build|biomejs.dev|docs.docker.com|kubernetes.io|docs.github.com|vite.dev|redis.io|www.postgresql.org|www.mongodb.com|developer.chrome.com|schema.org|developers.google.com|css-tricks.com|smashingmagazine.com|www.w3schools.com|learn.microsoft.com|docs.aws.amazon.com|cloud.google.com|docs.cloudflare.com|graphql.org|grpc.io|opentelemetry.io|www.elastic.co|helm.sh|prometheus.io|grafana.com|llmstxt.org|docs.pydantic.dev|docs.rs|crates.io|pkg.go.dev|hex.pm|hexdocs.pm|pub.dev|pypi.org|rubygems.org|packagist.org|nuget.org|mvnrepository.com|expressjs.com|fastify.dev|elixir-lang.org|www.rust-lang.org|kotlinlang.org|www.scala-lang.org|typst.app|daisyui.com|ui.shadcn.com|headlessui.com|mantine.dev|ant.design|mui.com|chakra-ui.com|www.radix-ui.com|ariakit.org";

@@ -3,6 +3,7 @@ import type { FetchResult } from "../types.js";
 import { z } from "zod";
 import { lookupById, lookupByAlias } from "../sources/registry.js";
 import { fetchDocs, fetchGitHubContent, fetchViaJina, fetchAsMarkdownRace } from "../services/fetcher.js";
+import { probeLlmsTxt } from "../services/resolve.js";
 import { deepFetchForTopic, splitTopics } from "../services/deep-fetch.js";
 import { extractRelevantContent } from "../utils/extract.js";
 import { isExtractionAttempt, withNotice, EXTRACTION_REFUSAL, assertPublicUrl } from "../utils/guard.js";
@@ -88,6 +89,13 @@ IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library 
         llmsFullTxtUrl = entry.llmsFullTxtUrl;
         githubUrl = entry.githubUrl;
         displayName = entry.name;
+
+        // Lazy llms.txt discovery for registry entries missing the URL
+        if (!llmsTxtUrl && !llmsFullTxtUrl) {
+          const probed = await probeLlmsTxt(docsUrl);
+          if (probed.llmsTxtUrl) llmsTxtUrl = probed.llmsTxtUrl;
+          if (probed.llmsFullTxtUrl) llmsFullTxtUrl = probed.llmsFullTxtUrl;
+        }
       } else if (libraryId.startsWith("http")) {
         // Direct URL provided — validate it is not an internal/private target
         try {
