@@ -342,15 +342,21 @@ export async function fetchAsMarkdownRace(url: string): Promise<string | null> {
  */
 export function isHtmlBlob(content: string): boolean {
   if (content.length < 200) return false;
-  const sample = content.slice(0, 3000);
+  const sample = content.slice(0, 5000);
   const htmlSignals = [
     /<!DOCTYPE\s+html/i.test(sample),
-    /<meta\s+charSet=/i.test(sample),
-    /<link\s+rel="preload"/i.test(sample),
+    /<meta\s[^>]*charSet=/i.test(sample),
+    /<link\s[^>]*rel="preload"/i.test(sample),
     /class="[^"]{50,}"/i.test(sample),
     /\bdata:text\/javascript;base64,/.test(sample),
     /\b_next\/static\//.test(sample),
     /<script[\s>]/i.test(sample),
+    // Gatsby / static-site generator signals
+    /id="___gatsby"/i.test(sample),
+    /data-react-helmet="true"/i.test(sample),
+    // Generic SPA shell signals
+    /<link\s[^>]*rel="apple-touch-icon"/i.test(sample) && (sample.match(/apple-touch-icon/gi) ?? []).length >= 3,
+    /<div\s+id="(root|app|__next)"[^>]*>\s*<\/div>/i.test(sample),
   ];
   return htmlSignals.filter(Boolean).length >= 3;
 }
