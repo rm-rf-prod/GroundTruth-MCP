@@ -1,5 +1,42 @@
 # Changelog
 
+## [3.0.4] — 2026-03-26
+
+### Reliability overhaul — eliminate Jina Reader single point of failure
+
+Every tool previously depended on Jina Reader as the sole content extraction path. When Jina was rate-limited (429), slow, or down, all tools failed. This release adds a parallel HTML-to-Markdown extraction path so content fetching works even without Jina.
+
+### New
+
+- **`src/utils/html-to-md.ts`** — lightweight HTML-to-Markdown converter (no external deps). Extracts `<main>`/`<article>` content areas, strips nav/footer/sidebar/scripts, converts headings, code blocks with language detection, links, lists, tables, bold/italic, blockquotes, definition lists. Decodes HTML entities, collapses whitespace.
+- **`fetchAsMarkdown(url)`** — tries direct HTML fetch + extraction first (fast, no Jina dependency), falls back to Jina Reader for JS-rendered pages.
+- **`fetchAsMarkdownRace(url)`** — races both paths via `Promise.any()`, first good result wins. Includes cache layer and in-flight deduplication.
+
+### Changed
+
+- **`fetchDocs` fallback chain** — now has 3 independent paths: llms.txt discovery, direct HTML extraction, Jina Reader (was only llms.txt + Jina).
+- **All 10 tools** updated to use `fetchAsMarkdownRace` instead of `fetchViaJina` for content fetching: `gt_get_docs`, `gt_best_practices`, `gt_search`, `gt_audit`, `gt_changelog`, `gt_compare`, `gt_compat`, `gt_migration`, `gt_auto_scan`, `gt_resolve_library`.
+- **`raceUrls()` in best-practices** — uses `fetchAsMarkdownRace` instead of only Jina, so curated BP URL fetching works when Jina is down.
+- **`fetchTopicContent()` in search** — uses `fetchAsMarkdownRace` for all topic URL fetching.
+- **`deepFetchForTopic()` pipeline** — all page fetching uses `fetchAsMarkdownRace`.
+- **`DEEP_FETCH_RELEVANCE_THRESHOLD`** lowered from 0.5 to 0.3 — triggers deeper fetching more often when initial content is off-topic.
+- **Synthetic section generation** in `extract.ts` — content without markdown headings (common with direct HTML extraction) gets split into paragraph-based sections for BM25 scoring.
+
+### Dependencies
+
+- `eslint` bumped from 9.39.4 to 10.1.0
+- `actions/checkout` bumped from 4.2.2 to 6.0.2
+- `actions/upload-artifact` bumped from 4.6.2 to 7.0.0
+- `actions/setup-node` bumped from 4.4.0 to 6.3.0
+
+### Stats
+
+- 770 tests across 26 files (up from 758 across 25)
+- 12 new tests for HTML-to-Markdown converter
+- All existing tests updated for new fetch path
+
+---
+
 ## [3.0.3] — 2026-03-22
 
 - fix: correct test count badge to 758
