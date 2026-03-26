@@ -68,7 +68,7 @@ const USER_AGENT =
 const inFlightRequests = new Map<string, Promise<string | null>>();
 
 /** Build Authorization header for GitHub API if GT_GITHUB_TOKEN is set */
-function githubAuthHeaders(): Record<string, string> {
+export function githubAuthHeaders(): Record<string, string> {
   const token = process.env.GT_GITHUB_TOKEN;
   if (!token) return {};
   return { Authorization: `Bearer ${token}` };
@@ -513,7 +513,7 @@ export async function fetchGitHubContent(
 
   for (const branch of ["main", "master"]) {
     const rawUrl = `https://raw.githubusercontent.com/${repoPath}/${branch}/${path}`;
-    const content = await tryFetch(rawUrl);
+    const content = await tryFetch(rawUrl, 1, githubAuthHeaders());
     if (content) {
       docCache.set(cacheKey, content);
       void diskDocCache.set(cacheKey, content);

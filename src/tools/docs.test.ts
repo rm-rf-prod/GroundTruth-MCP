@@ -43,6 +43,10 @@ vi.mock("../utils/quality.js", () => ({
   computeQualityScore: vi.fn(() => 0.8),
 }));
 
+vi.mock("../services/resolve.js", () => ({
+  probeLlmsTxt: vi.fn(async () => ({})),
+}));
+
 // ── Imports after mocks ─────────────────────────────────────────────────────
 
 import { lookupById, lookupByAlias } from "../sources/registry.js";

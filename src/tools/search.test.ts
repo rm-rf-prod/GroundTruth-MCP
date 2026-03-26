@@ -24,6 +24,13 @@ vi.mock("../utils/extract.js", () => ({
     text: content,
     truncated: false,
   })),
+  normalizeQueryYear: vi.fn((query: string) => {
+    const currentYear = new Date().getFullYear();
+    return query.replace(/(?<![./\w])(20[12][0-9])(?![./\w])/g, (match: string) => {
+      const year = parseInt(match, 10);
+      return year < currentYear ? String(currentYear) : match;
+    });
+  }),
 }));
 
 vi.mock("../utils/sanitize.js", () => ({

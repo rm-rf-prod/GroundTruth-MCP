@@ -1,7 +1,8 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { lookupById, lookupByAlias } from "../sources/registry.js";
-import { fetchDocs, fetchGitHubContent, fetchViaJina, fetchGitHubExamples, fetchAsMarkdownRace } from "../services/fetcher.js";
+import { fetchDocs, fetchGitHubContent, fetchViaJina, fetchGitHubExamples, fetchAsMarkdownRace, fetchSitemapUrls } from "../services/fetcher.js";
+import { resolveDynamic, probeLlmsTxt } from "../services/resolve.js";
 import { deepFetchForTopic } from "../services/deep-fetch.js";
 import { extractRelevantContent } from "../utils/extract.js";
 import { isExtractionAttempt, withNotice, EXTRACTION_REFUSAL } from "../utils/guard.js";
@@ -14,7 +15,7 @@ const InputSchema = z.object({
     .string()
     .min(1)
     .max(300)
-    .describe("Library ID (from gt_resolve_library) or library name like 'nextjs', 'react'"),
+    .describe("Library ID (from gt_resolve_library), npm:package, pypi:package, or library name like 'nextjs', 'react'"),
   topic: z
     .string()
     .max(300)
@@ -1251,6 +1252,28 @@ async function fetchBestPracticesContent(
     }
   }
 
+  // 2c. Sitemap-based discovery — look for best-practices/guide URLs in sitemap
+  const sitemapUrls = await fetchSitemapUrls(docsUrl);
+  if (sitemapUrls.length > 0) {
+    const bpPatterns = /best.?practice|guide|pattern|getting.?started|performance|security|testing|deployment/i;
+    const topicSlug = topic ? topic.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "") : "";
+    const bpUrls = sitemapUrls
+      .filter((u) => bpPatterns.test(u) || (topicSlug && u.toLowerCase().includes(topicSlug)))
+      .slice(0, 5);
+    if (bpUrls.length > 0) {
+      const hit = await raceUrls(bpUrls);
+      if (hit) {
+        const safe = sanitizeContent(hit.content);
+        const { text: extracted, truncated } = extractRelevantContent(
+          safe,
+          topic || "best practices patterns guide",
+          tokens,
+        );
+        return { text: extracted, sourceUrl: hit.url, truncated };
+      }
+    }
+  }
+
   // 3. Fall back to main docs with topic = "best practices"
   try {
     let result = await fetchDocs(docsUrl, llmsTxtUrl, llmsFullTxtUrl, topic || undefined);
@@ -1312,37 +1335,69 @@ IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library 
         return { content: [{ type: "text", text: EXTRACTION_REFUSAL }] };
       }
 
-      // Resolve library — accept both IDs and aliases
+      // Resolve library — accept registry IDs, aliases, and dynamic IDs
       const entry = lookupById(libraryId) ?? lookupByAlias(libraryId);
 
-      if (!entry) {
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Library "${libraryId}" not found in registry. Call gt_resolve_library first to get a valid ID, then pass it here.`,
-            },
-          ],
-        };
+      let docsUrl: string;
+      let llmsTxtUrl: string | undefined;
+      let llmsFullTxtUrl: string | undefined;
+      let githubUrl: string | undefined;
+      let displayName: string;
+      let bestPracticesPaths: string[] | undefined;
+      let resolvedId: string;
+
+      if (entry) {
+        docsUrl = entry.docsUrl;
+        llmsTxtUrl = entry.llmsTxtUrl;
+        llmsFullTxtUrl = entry.llmsFullTxtUrl;
+        githubUrl = entry.githubUrl;
+        displayName = entry.name;
+        bestPracticesPaths = entry.bestPracticesPaths;
+        resolvedId = entry.id;
+
+        // Lazy llms.txt discovery for registry entries missing the URL
+        if (!llmsTxtUrl && !llmsFullTxtUrl) {
+          const probed = await probeLlmsTxt(docsUrl);
+          if (probed.llmsTxtUrl) llmsTxtUrl = probed.llmsTxtUrl;
+          if (probed.llmsFullTxtUrl) llmsFullTxtUrl = probed.llmsFullTxtUrl;
+        }
+      } else {
+        const resolved = await resolveDynamic(libraryId);
+        if (!resolved) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: `Could not resolve "${libraryId}". Try gt_resolve_library first to find the correct ID.`,
+              },
+            ],
+          };
+        }
+        docsUrl = resolved.docsUrl;
+        llmsTxtUrl = resolved.llmsTxtUrl;
+        llmsFullTxtUrl = resolved.llmsFullTxtUrl;
+        githubUrl = resolved.githubUrl;
+        displayName = resolved.displayName;
+        resolvedId = libraryId;
       }
 
       const effectiveTopic = version ? `${topic ? `${topic} ` : ""}v${version.replace(/^v/, "")}`.trim() : topic;
 
       const { text, sourceUrl, truncated } = await fetchBestPracticesContent(
-        entry.id,
-        entry.docsUrl,
-        entry.llmsTxtUrl,
-        entry.llmsFullTxtUrl,
-        entry.githubUrl,
+        resolvedId,
+        docsUrl,
+        llmsTxtUrl,
+        llmsFullTxtUrl,
+        githubUrl,
         effectiveTopic,
         tokens,
-        entry.bestPracticesPaths,
+        bestPracticesPaths,
       );
 
       const qualityScore = computeQualityScore(text, effectiveTopic, "jina");
 
       const header = [
-        `# ${entry.name} — Best Practices`,
+        `# ${displayName} — Best Practices`,
         effectiveTopic ? `> Topic: ${effectiveTopic}` : "",
         `> Source: ${sourceUrl}`,
         truncated ? "> Note: Response truncated. Use a more specific topic or increase tokens." : "",
@@ -1357,8 +1412,8 @@ IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library 
       return {
         content: [{ type: "text", text: withNotice(header + text) }],
         structuredContent: {
-          libraryId: entry.id,
-          displayName: entry.name,
+          libraryId: resolvedId,
+          displayName,
           topic: effectiveTopic,
           sourceUrl,
           truncated,
