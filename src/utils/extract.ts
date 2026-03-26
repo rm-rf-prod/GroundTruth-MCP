@@ -266,3 +266,20 @@ export function extractRelevantContent(
   const finalText = resultText.slice(0, charLimit);
   return { text: finalText, truncated: content.length > charLimit };
 }
+
+/**
+ * Replace stale calendar years in queries with the current year.
+ * Matches 4-digit years 2020-last year that appear as standalone tokens
+ * (not part of ES2022, OAuth2.0, WCAG 2.1, v18.3, etc.).
+ */
+export function normalizeQueryYear(query: string): string {
+  const currentYear = new Date().getFullYear();
+  const staleYearPattern = new RegExp(
+    `(?<![./\\w])(20[12][0-9])(?![./\\w])`,
+    "g",
+  );
+  return query.replace(staleYearPattern, (match) => {
+    const year = parseInt(match, 10);
+    return year < currentYear ? String(currentYear) : match;
+  });
+}

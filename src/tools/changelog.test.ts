@@ -37,6 +37,10 @@ vi.mock("../services/cache.js", () => ({
   docCache: { get: vi.fn(() => undefined), set: vi.fn() },
 }));
 
+vi.mock("../services/resolve.js", () => ({
+  resolveDynamic: vi.fn(async () => null),
+}));
+
 // ── Imports after mocks ──────────────────────────────────────────────────────
 
 import { lookupById, lookupByAlias } from "../sources/registry.js";
@@ -44,6 +48,7 @@ import { fetchGitHubReleases, fetchGitHubContent, fetchViaJina, fetchAsMarkdownR
 import { isExtractionAttempt, withNotice } from "../utils/guard.js";
 import { docCache } from "../services/cache.js";
 import { extractRelevantContent } from "../utils/extract.js";
+import { resolveDynamic } from "../services/resolve.js";
 
 // ── Handler capture ──────────────────────────────────────────────────────────
 
@@ -88,6 +93,7 @@ beforeEach(() => {
   vi.mocked(isExtractionAttempt).mockReset().mockReturnValue(false);
   vi.mocked(docCache.get).mockReset().mockReturnValue(undefined);
   vi.mocked(docCache.set).mockReset();
+  vi.mocked(resolveDynamic).mockReset().mockResolvedValue(null);
   vi.mocked(extractRelevantContent).mockImplementation((content, _topic, _tokens) => ({
     text: content,
     truncated: false,
@@ -214,6 +220,32 @@ describe("gt_changelog handler", () => {
       vi.mocked(fetchAsMarkdownRace).mockResolvedValue(null);
       const result = await handler({ libraryId: "vercel/next.js" });
       expect(result.content[0]!.text).toContain("No changelog found");
+    });
+  });
+
+  describe("dynamic resolution fallback", () => {
+    it("returns error when registry lookup fails and resolveDynamic returns null", async () => {
+      vi.mocked(lookupById).mockReturnValue(undefined);
+      vi.mocked(lookupByAlias).mockReturnValue(undefined);
+      vi.mocked(resolveDynamic).mockResolvedValue(null);
+      const result = await handler({ libraryId: "npm:unknown-pkg" });
+      expect(result.content[0]!.text).toContain(`Could not resolve "npm:unknown-pkg"`);
+      expect(fetchGitHubReleases).not.toHaveBeenCalled();
+    });
+
+    it("uses resolveDynamic result when registry lookup fails", async () => {
+      vi.mocked(lookupById).mockReturnValue(undefined);
+      vi.mocked(lookupByAlias).mockReturnValue(undefined);
+      vi.mocked(resolveDynamic).mockResolvedValue({
+        docsUrl: "https://some-lib.dev",
+        displayName: "some-lib",
+        githubUrl: "https://github.com/owner/some-lib",
+      });
+      vi.mocked(fetchGitHubReleases).mockResolvedValue(RELEASES_CONTENT);
+      const result = await handler({ libraryId: "npm:some-lib" });
+      expect(resolveDynamic).toHaveBeenCalledWith("npm:some-lib");
+      expect(fetchGitHubReleases).toHaveBeenCalledWith("https://github.com/owner/some-lib");
+      expect(result.content[0]!.text).toContain("some-lib");
     });
   });
 

@@ -7,6 +7,7 @@ import { sanitizeContent } from "../utils/sanitize.js";
 import { isExtractionAttempt, withNotice, EXTRACTION_REFUSAL } from "../utils/guard.js";
 import { docCache } from "../services/cache.js";
 import { DEFAULT_TOKEN_LIMIT, MAX_TOKEN_LIMIT } from "../constants.js";
+import { resolveDynamic } from "../services/resolve.js";
 
 const InputSchema = z.object({
   libraryId: z
@@ -60,9 +61,28 @@ export function registerChangelogTool(server: McpServer): void {
       }
 
       const entry = lookupById(libraryId) ?? lookupByAlias(libraryId);
-      const displayName = entry?.name ?? libraryId;
-      const githubUrl = entry?.githubUrl;
-      const docsUrl = entry?.docsUrl ?? `https://${libraryId}`;
+      let displayName: string;
+      let githubUrl: string | undefined;
+      let docsUrl: string;
+
+      if (entry) {
+        displayName = entry.name;
+        githubUrl = entry.githubUrl;
+        docsUrl = entry.docsUrl;
+      } else {
+        const resolved = await resolveDynamic(libraryId);
+        if (!resolved) {
+          return {
+            content: [{
+              type: "text",
+              text: `Could not resolve "${libraryId}". Try gt_resolve_library first.`,
+            }],
+          };
+        }
+        displayName = resolved.displayName;
+        githubUrl = resolved.githubUrl;
+        docsUrl = resolved.docsUrl;
+      }
 
       let raw: string | null = null;
       let sourceUrl = "";

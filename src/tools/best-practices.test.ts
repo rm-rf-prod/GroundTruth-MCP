@@ -15,10 +15,16 @@ vi.mock("../services/fetcher.js", () => ({
   fetchAsMarkdownRace: vi.fn(),
   fetchGitHubContent: vi.fn(),
   fetchGitHubExamples: vi.fn(),
+  fetchSitemapUrls: vi.fn(async () => []),
 }));
 
 vi.mock("../services/deep-fetch.js", () => ({
   deepFetchForTopic: vi.fn(async (result: unknown) => result),
+}));
+
+vi.mock("../services/resolve.js", () => ({
+  resolveDynamic: vi.fn(async () => null),
+  probeLlmsTxt: vi.fn(async () => ({})),
 }));
 
 vi.mock("../utils/extract.js", () => ({
@@ -48,6 +54,7 @@ import { lookupById, lookupByAlias } from "../sources/registry.js";
 import { fetchDocs, fetchViaJina, fetchAsMarkdownRace, fetchGitHubContent, fetchGitHubExamples } from "../services/fetcher.js";
 import { deepFetchForTopic } from "../services/deep-fetch.js";
 import { isExtractionAttempt } from "../utils/guard.js";
+import { resolveDynamic } from "../services/resolve.js";
 
 // ── Handler capture ─────────────────────────────────────────────────────────
 
@@ -96,6 +103,7 @@ beforeEach(() => {
   vi.mocked(fetchGitHubExamples).mockReset();
   vi.mocked(isExtractionAttempt).mockReset().mockReturnValue(false);
   vi.mocked(deepFetchForTopic).mockReset().mockImplementation(async (result) => result);
+  vi.mocked(resolveDynamic).mockReset().mockResolvedValue(null);
 });
 
 // ── Tests ───────────────────────────────────────────────────────────────────
@@ -128,17 +136,27 @@ describe("gt_best_practices handler", () => {
   });
 
   describe("library not found", () => {
-    it("returns 'not found' message when library missing from registry", async () => {
+    it("returns error message when registry and dynamic resolution both fail", async () => {
       vi.mocked(lookupById).mockReturnValue(null);
       vi.mocked(lookupByAlias).mockReturnValue(null);
+      vi.mocked(resolveDynamic).mockResolvedValue(null);
       const result = await handler({ libraryId: "unknown-lib-xyz" });
-      expect(result.content[0]!.text).toContain("not found in registry");
+      expect(result.content[0]!.text).toContain("Could not resolve");
       expect(result.content[0]!.text).toContain("unknown-lib-xyz");
     });
 
-    it("does not call fetch when library not found", async () => {
+    it("tries resolveDynamic when library not in registry", async () => {
       vi.mocked(lookupById).mockReturnValue(null);
       vi.mocked(lookupByAlias).mockReturnValue(null);
+      vi.mocked(resolveDynamic).mockResolvedValue(null);
+      await handler({ libraryId: "missing-lib" });
+      expect(resolveDynamic).toHaveBeenCalledWith("missing-lib");
+    });
+
+    it("does not call fetch when both registry and dynamic resolution fail", async () => {
+      vi.mocked(lookupById).mockReturnValue(null);
+      vi.mocked(lookupByAlias).mockReturnValue(null);
+      vi.mocked(resolveDynamic).mockResolvedValue(null);
       await handler({ libraryId: "missing-lib" });
       expect(fetchViaJina).not.toHaveBeenCalled();
       expect(fetchDocs).not.toHaveBeenCalled();
@@ -150,6 +168,31 @@ describe("gt_best_practices handler", () => {
       vi.mocked(fetchViaJina).mockResolvedValue(BP_CONTENT);
       await handler({ libraryId: "nextjs" });
       expect(lookupByAlias).toHaveBeenCalledWith("nextjs");
+    });
+  });
+
+  describe("dynamic resolution fallback", () => {
+    it("uses resolveDynamic when library not in registry and returns best practices", async () => {
+      vi.mocked(lookupById).mockReturnValue(null);
+      vi.mocked(lookupByAlias).mockReturnValue(null);
+      vi.mocked(resolveDynamic).mockResolvedValue({
+        docsUrl: "https://fastify.dev/docs",
+        displayName: "fastify",
+        githubUrl: "https://github.com/fastify/fastify",
+      });
+      vi.mocked(fetchAsMarkdownRace).mockResolvedValue(BP_CONTENT);
+      const result = await handler({ libraryId: "npm:fastify" });
+      expect(resolveDynamic).toHaveBeenCalledWith("npm:fastify");
+      expect(result.content[0]!.text).toContain("fastify");
+      expect(result.structuredContent?.displayName).toBe("fastify");
+    });
+
+    it("registry entry takes priority over dynamic resolution", async () => {
+      vi.mocked(lookupById).mockReturnValue(makeEntry());
+      vi.mocked(fetchAsMarkdownRace).mockResolvedValue(BP_CONTENT);
+      const result = await handler({ libraryId: "vercel/next.js" });
+      expect(resolveDynamic).not.toHaveBeenCalled();
+      expect(result.structuredContent?.displayName).toBe("Next.js");
     });
   });
 
