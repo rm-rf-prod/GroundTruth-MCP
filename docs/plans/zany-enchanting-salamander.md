@@ -2,7 +2,7 @@
 
 ## Context
 
-The GT MCP server (v3.0.7) has a critical gap: `gt_best_practices` hard-fails for any library not in the 422-entry registry, returning "Library not found." Meanwhile, `gt_get_docs` gracefully handles dynamic IDs (`npm:express`, `pypi:flask`, raw URLs) through a fallback chain. The same issue exists in `gt_migration` and `gt_changelog`. The goal is to make every tool return useful, current results for ANY library -- whether it's in the registry or not.
+The GT MCP server (v3.1.0) has a critical gap: `gt_best_practices` hard-fails for any library not in the 422-entry registry, returning "Library not found." Meanwhile, `gt_get_docs` gracefully handles dynamic IDs (`npm:express`, `pypi:flask`, raw URLs) through a fallback chain. The same issue exists in `gt_migration` and `gt_changelog`. The goal is to make every tool return useful, current results for ANY library -- whether it's in the registry or not.
 
 Research confirms the approach: hybrid resolution (static registry + dynamic fallback) is the industry standard for MCP documentation tools. GroundTruth already has all the pieces -- they just need to be wired together.
 
