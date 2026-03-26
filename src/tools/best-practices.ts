@@ -1,7 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { lookupById, lookupByAlias } from "../sources/registry.js";
-import { fetchDocs, fetchGitHubContent, fetchViaJina, fetchGitHubExamples } from "../services/fetcher.js";
+import { fetchDocs, fetchGitHubContent, fetchViaJina, fetchGitHubExamples, fetchAsMarkdownRace } from "../services/fetcher.js";
 import { deepFetchForTopic } from "../services/deep-fetch.js";
 import { extractRelevantContent } from "../utils/extract.js";
 import { isExtractionAttempt, withNotice, EXTRACTION_REFUSAL } from "../utils/guard.js";
@@ -1108,22 +1108,51 @@ const GENERIC_BP_SUFFIXES = [
   "/best-practices",
 ];
 
-/** Race multiple URLs in parallel — return first that has content */
+/** Fetch multiple URLs in parallel — return the one with the best quality content.
+ *  Uses fetchAsMarkdownRace (direct HTML extraction + Jina) for each URL,
+ *  so we're not solely dependent on Jina Reader.
+ */
 async function raceUrls(urls: string[]): Promise<{ content: string; url: string } | null> {
   if (urls.length === 0) return null;
 
-  // Try with Promise.any — first successful fetch wins
-  try {
-    return await Promise.any(
-      urls.map(async (url) => {
-        const raw = await fetchViaJina(url);
-        if (raw && raw.length > 300) return { content: raw, url };
-        throw new Error("no content");
-      }),
-    );
-  } catch {
-    return null;
+  const results = await Promise.allSettled(
+    urls.map(async (url) => {
+      const raw = await fetchAsMarkdownRace(url);
+      if (raw && raw.length > 200) return { content: raw, url };
+      throw new Error("no content");
+    }),
+  );
+
+  const hits: Array<{ content: string; url: string }> = [];
+  for (const result of results) {
+    if (result.status === "fulfilled") {
+      hits.push(result.value);
+    }
   }
+
+  if (hits.length === 0) return null;
+  if (hits.length === 1) return hits[0]!;
+
+  // Pick the result with the best content quality (headings, code blocks, length)
+  return hits.reduce((best, current) => {
+    const bestScore = scoreContentQuality(best.content);
+    const currentScore = scoreContentQuality(current.content);
+    return currentScore > bestScore ? current : best;
+  });
+}
+
+function scoreContentQuality(content: string): number {
+  const headings = (content.match(/^#{1,4}\s+.+$/gm) ?? []).length;
+  const codeBlocks = (content.match(/```/g) ?? []).length / 2;
+  const len = content.length;
+  let score = 0;
+  score += Math.min(headings, 10) * 3;
+  score += Math.min(codeBlocks, 5) * 5;
+  if (len > 500) score += 5;
+  if (len > 1000) score += 5;
+  if (len > 3000) score += 5;
+  if (len > 10000) score += 3;
+  return score;
 }
 
 async function fetchBestPracticesContent(

@@ -1,7 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { lookupById, lookupByAlias } from "../sources/registry.js";
-import { fetchGitHubReleases, fetchGitHubContent, fetchViaJina } from "../services/fetcher.js";
+import { fetchGitHubReleases, fetchGitHubContent, fetchViaJina, fetchAsMarkdownRace } from "../services/fetcher.js";
 import { extractRelevantContent } from "../utils/extract.js";
 import { sanitizeContent } from "../utils/sanitize.js";
 import { isExtractionAttempt, withNotice, EXTRACTION_REFUSAL } from "../utils/guard.js";
@@ -84,7 +84,7 @@ export function registerChangelogTool(server: McpServer): void {
 
       // 3. Fallback: docsUrl/changelog via Jina
       if (!raw) {
-        raw = await fetchViaJina(`${docsUrl}/changelog`);
+        raw = await fetchAsMarkdownRace(`${docsUrl}/changelog`);
         sourceUrl = `${docsUrl}/changelog`;
       }
 

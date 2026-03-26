@@ -7,6 +7,7 @@ import { extractDomain, isCircuitOpen, recordSuccess, recordFailure } from "./ci
 import type { FetchResult } from "../types.js";
 import { docCache, diskDocCache } from "./cache.js";
 import { assertPublicUrl } from "../utils/guard.js";
+import { convertHtmlToMarkdown } from "../utils/html-to-md.js";
 
 function isBlockedIP(address: string): boolean {
   if (isIPv4(address)) {
@@ -46,7 +47,9 @@ setGlobalDispatcher(new Agent({
             return callback(new Error(`SSRF blocked: ${hostname} -> ${entry.address}`), "", entry.family as 4 | 6);
           }
         }
-        callback(null, entries[0]!.address, entries[0]!.family as 4 | 6);
+        const first = entries[0];
+        if (!first) return callback(new Error(`DNS lookup returned no addresses for ${hostname}`), "", 4);
+        callback(null, first.address, first.family as 4 | 6);
       });
     },
   },
@@ -121,7 +124,7 @@ async function tryFetch(url: string, retries = 1, extraHeaders?: Record<string, 
         return null;
       }
       const text = await res.text();
-      if (text.length > 100) {
+      if (text.length > 50) {
         recordSuccess(domain);
         return text;
       }
@@ -186,7 +189,7 @@ export async function fetchViaJina(url: string): Promise<string | null> {
           return null;
         }
         const text = await res.text();
-        if (text.length < 200) return null;
+        if (text.length < 100) return null;
         recordSuccess(jinaDomain);
         docCache.set(cacheKey, text);
         void diskDocCache.set(cacheKey, text);
@@ -197,6 +200,123 @@ export async function fetchViaJina(url: string): Promise<string | null> {
       }
     }
     return null;
+  })();
+
+  inFlightRequests.set(cacheKey, fetchPromise);
+  try {
+    return await fetchPromise;
+  } finally {
+    inFlightRequests.delete(cacheKey);
+  }
+}
+
+/**
+ * Fetch a URL as markdown, trying direct HTML extraction first (fast, no Jina dependency),
+ * then falling back to Jina Reader for JS-rendered pages.
+ * This is the core reliability improvement — provides two independent paths to content.
+ */
+export async function fetchAsMarkdown(url: string): Promise<string | null> {
+  const cacheKey = `md:${url}`;
+
+  const memCached = docCache.get(cacheKey);
+  if (memCached) return memCached;
+
+  const diskCached = await diskDocCache.get(cacheKey);
+  if (diskCached) {
+    docCache.set(cacheKey, diskCached);
+    return diskCached;
+  }
+
+  // Deduplicate concurrent requests
+  const inFlight = inFlightRequests.get(cacheKey);
+  if (inFlight) return inFlight;
+
+  const fetchPromise = (async (): Promise<string | null> => {
+    // Path 1: Direct fetch + HTML-to-Markdown extraction (fast, no Jina)
+    const directHtml = await tryFetch(url, 1);
+    if (directHtml) {
+      // Check if it's already markdown/plain text (llms.txt, README)
+      const tagDensity = (directHtml.match(/<[a-z]/gi) ?? []).length / Math.max(directHtml.length, 1);
+      if (tagDensity < 0.005 && directHtml.length > 100) {
+        docCache.set(cacheKey, directHtml);
+        void diskDocCache.set(cacheKey, directHtml);
+        return directHtml;
+      }
+
+      // Extract markdown from HTML
+      const markdown = convertHtmlToMarkdown(directHtml);
+      if (markdown.length >= 200) {
+        docCache.set(cacheKey, markdown);
+        void diskDocCache.set(cacheKey, markdown);
+        return markdown;
+      }
+    }
+
+    // Path 2: Jina Reader (handles JS-rendered pages, but rate-limited)
+    const jinaResult = await fetchViaJina(url);
+    if (jinaResult && jinaResult.length >= 100) {
+      docCache.set(cacheKey, jinaResult);
+      void diskDocCache.set(cacheKey, jinaResult);
+      return jinaResult;
+    }
+
+    return null;
+  })();
+
+  inFlightRequests.set(cacheKey, fetchPromise);
+  try {
+    return await fetchPromise;
+  } finally {
+    inFlightRequests.delete(cacheKey);
+  }
+}
+
+/**
+ * Race direct HTML extraction against Jina Reader — first good result wins.
+ * Use this when you need fast, reliable content and the URL might or might not need JS rendering.
+ */
+export async function fetchAsMarkdownRace(url: string): Promise<string | null> {
+  const cacheKey = `md:${url}`;
+
+  const memCached = docCache.get(cacheKey);
+  if (memCached) return memCached;
+
+  const diskCached = await diskDocCache.get(cacheKey);
+  if (diskCached) {
+    docCache.set(cacheKey, diskCached);
+    return diskCached;
+  }
+
+  const inFlight = inFlightRequests.get(cacheKey);
+  if (inFlight) return inFlight;
+
+  const fetchPromise = (async (): Promise<string | null> => {
+    try {
+      const result = await Promise.any([
+        // Path 1: Direct fetch + HTML extraction (usually faster)
+        (async () => {
+          const html = await tryFetch(url, 0);
+          if (!html) throw new Error("no content");
+          const tagDensity = (html.match(/<[a-z]/gi) ?? []).length / Math.max(html.length, 1);
+          if (tagDensity < 0.005 && html.length > 100) return html;
+          const md = convertHtmlToMarkdown(html);
+          if (md.length >= 200) return md;
+          throw new Error("extraction too short");
+        })(),
+        // Path 2: Jina Reader (handles JS-rendered sites)
+        (async () => {
+          const md = await fetchViaJina(url);
+          if (md && md.length >= 100) return md;
+          throw new Error("jina failed");
+        })(),
+      ]);
+
+      docCache.set(cacheKey, result);
+      void diskDocCache.set(cacheKey, result);
+      return result;
+    } catch {
+      return null;
+    }
   })();
 
   inFlightRequests.set(cacheKey, fetchPromise);
@@ -310,34 +430,59 @@ export async function fetchDocs(
     }
   }
 
-  // 2. Race auto-discover + Jina + direct in parallel (first good result wins)
+  // 2. Race auto-discover + direct HTML extraction + Jina — first good result wins
   const autoDiscoverUrls: string[] = [];
   try {
     const origin = new URL(docsUrl).origin;
-    autoDiscoverUrls.push(`${origin}/llms.txt`, `${origin}/llms-full.txt`, `${origin}/docs/llms.txt`);
+    autoDiscoverUrls.push(
+      `${origin}/llms.txt`,
+      `${origin}/llms-full.txt`,
+      `${origin}/docs/llms.txt`,
+      `${origin}/docs/llms-full.txt`,
+    );
   } catch { /* invalid URL */ }
 
-  const candidates: Array<Promise<FetchResult | null>> = [];
+  const candidates: Array<Promise<FetchResult>> = [];
   for (const adUrl of autoDiscoverUrls) {
     candidates.push(
-      tryFetch(adUrl).then((c) => c ? { content: c, url: adUrl, sourceType: "llms-txt" as const } : null),
+      tryFetch(adUrl).then((c) => {
+        if (c) return { content: c, url: adUrl, sourceType: "llms-txt" as const };
+        throw new Error("no content");
+      }),
     );
   }
+  // Direct HTML fetch + extraction (fast, no Jina dependency)
   candidates.push(
-    fetchViaJina(docsUrl).then((c) => c ? { content: c, url: docsUrl, sourceType: "jina" as const } : null),
+    (async () => {
+      const html = await tryFetch(docsUrl, 0);
+      if (!html) throw new Error("no content");
+      const tagDensity = (html.match(/<[a-z]/gi) ?? []).length / Math.max(html.length, 1);
+      // Already plain text / markdown
+      if (tagDensity < 0.005 && html.length > 100) {
+        return { content: html, url: docsUrl, sourceType: "direct" as const };
+      }
+      const md = convertHtmlToMarkdown(html);
+      if (md.length >= 200) {
+        return { content: md, url: docsUrl, sourceType: "direct" as const };
+      }
+      throw new Error("extraction too short");
+    })(),
   );
+  // Jina Reader (handles JS-rendered sites)
   candidates.push(
-    tryFetch(docsUrl).then((c) => c ? { content: c, url: docsUrl, sourceType: "direct" as const } : null),
+    fetchViaJina(docsUrl).then((c) => {
+      if (c) return { content: c, url: docsUrl, sourceType: "jina" as const };
+      throw new Error("no content");
+    }),
   );
 
-  const settled = await Promise.allSettled(candidates);
-  for (const result of settled) {
-    if (result.status === "fulfilled" && result.value) {
-      const hit = result.value;
-      docCache.set(cacheKey, hit.content);
-      void diskDocCache.set(cacheKey, hit.content);
-      return stamp(hit);
-    }
+  try {
+    const hit = await Promise.any(candidates);
+    docCache.set(cacheKey, hit.content);
+    void diskDocCache.set(cacheKey, hit.content);
+    return stamp(hit);
+  } catch {
+    // All candidates failed — fall through to error
   }
 
   throw new Error(`Failed to fetch documentation from ${docsUrl}`);
