@@ -12,6 +12,7 @@ import {
   hashContent,
   isIndexContent,
   rankIndexLinks,
+  isBlockedIP,
 } from "./fetcher.js";
 import { resetAllCircuits } from "./circuit-breaker.js";
 
@@ -754,5 +755,52 @@ describe("fetchDocs contentHash — additional paths", () => {
     expect(result.contentHash).toMatch(/^[a-f0-9]{16}$/);
     expect(result.fetchedAt).toBeDefined();
     expect(result.sourceType).toBe("direct");
+  });
+});
+
+// ── isBlockedIP (SSRF protection) ────────────────────────────────────────────
+
+describe("isBlockedIP", () => {
+  it.each([
+    { ip: "127.0.0.1", expected: true },
+    { ip: "127.0.0.2", expected: true },
+    { ip: "10.0.0.1", expected: true },
+    { ip: "172.16.0.1", expected: true },
+    { ip: "172.31.255.255", expected: true },
+    { ip: "192.168.1.1", expected: true },
+    { ip: "169.254.0.1", expected: true },
+    { ip: "0.0.0.0", expected: true },
+    { ip: "224.0.0.1", expected: true },
+    { ip: "::1", expected: true },
+    { ip: "::", expected: true },
+    { ip: "fc00::1", expected: true },
+    { ip: "fd00::1", expected: true },
+    { ip: "fe80::1", expected: true },
+    { ip: "ff02::1", expected: true },
+    { ip: "::ffff:127.0.0.1", expected: true },
+  ])("blocks private IP $ip", ({ ip, expected }) => {
+    expect(isBlockedIP(ip)).toBe(expected);
+  });
+
+  it.each([
+    { ip: "8.8.8.8", expected: false },
+    { ip: "104.26.11.242", expected: false },
+    { ip: "172.67.70.54", expected: false },
+    { ip: "216.230.84.129", expected: false },
+    { ip: "185.199.109.133", expected: false },
+    { ip: "76.76.21.123", expected: false },
+  ])("allows public IP $ip", ({ ip, expected }) => {
+    expect(isBlockedIP(ip)).toBe(expected);
+  });
+
+  it.each([
+    { ip: "2606:4700:20::681a:af2", expected: false },
+    { ip: "2606:50c0:8000::154", expected: false },
+  ])("allows public IPv6 $ip", ({ ip, expected }) => {
+    expect(isBlockedIP(ip)).toBe(expected);
+  });
+
+  it("blocks non-IP strings", () => {
+    expect(isBlockedIP("not-an-ip")).toBe(true);
   });
 });
