@@ -13,6 +13,7 @@ import {
   isIndexContent,
   rankIndexLinks,
   isBlockedIP,
+  isHtmlBlob,
 } from "./fetcher.js";
 import { resetAllCircuits } from "./circuit-breaker.js";
 
@@ -802,5 +803,43 @@ describe("isBlockedIP", () => {
 
   it("blocks non-IP strings", () => {
     expect(isBlockedIP("not-an-ip")).toBe(true);
+  });
+});
+
+// ── isHtmlBlob (HTML blob detection) ─────────────────────────────────────────
+
+describe("isHtmlBlob", () => {
+  it("detects JS-rendered HTML shells", () => {
+    const jsShell = `<!DOCTYPE html><html lang="en"><head><meta charSet="utf-8"/>
+      <link rel="preload" href="/_next/static/media/font.woff2" as="font"/>
+      <link rel="preload" href="/_next/static/chunks/abc123.js" as="script"/>
+      <script>window.__NEXT_DATA__={}</script></head><body>` + "x".repeat(500);
+    expect(isHtmlBlob(jsShell)).toBe(true);
+  });
+
+  it("detects base64-embedded scripts", () => {
+    const blob = `<!DOCTYPE html><html><head><meta charSet="utf-8"/>
+      <link rel="preload" href="data:text/javascript;base64,abc123" as="script"/>
+      <link rel="preload" href="/_next/static/chunks/xyz.js" as="script"/>` + "x".repeat(500);
+    expect(isHtmlBlob(blob)).toBe(true);
+  });
+
+  it("passes clean markdown content", () => {
+    const md = "# Getting Started\n\nThis is a guide.\n\n```js\nconst x = 1;\n```\n\n## Next Steps\n\n" + "text ".repeat(100);
+    expect(isHtmlBlob(md)).toBe(false);
+  });
+
+  it("passes plain text content", () => {
+    const txt = "This is plain documentation text.\n".repeat(20);
+    expect(isHtmlBlob(txt)).toBe(false);
+  });
+
+  it("passes content with minimal HTML (e.g. extracted markdown with a few tags)", () => {
+    const extracted = "# Title\n\nSome text with a [link](https://example.com).\n\n" + "paragraph ".repeat(50);
+    expect(isHtmlBlob(extracted)).toBe(false);
+  });
+
+  it("returns false for short content", () => {
+    expect(isHtmlBlob("short")).toBe(false);
   });
 });

@@ -806,6 +806,24 @@ function extractUrlsFromHtml(html: string): string[] {
  * For any query, we construct URLs on well-known documentation sites using the query as a slug.
  * This ensures we never return "no results" for a topic that has documentation somewhere.
  */
+/** Keywords that signal a query maps to a known docs URL path (not a generic phrase) */
+const DIRECT_URL_KEYWORDS = new Set([
+  "css", "html", "http", "api", "dom", "svg", "wasm", "webgl", "webrtc", "websocket",
+  "fetch", "worker", "storage", "canvas", "audio", "video", "media", "font", "form",
+  "grid", "flex", "animation", "transition", "transform", "selector", "pseudo", "layer",
+  "container", "nesting", "has", "popover", "dialog", "details", "summary",
+  "header", "cors", "csp", "hsts", "cookie", "cache", "redirect", "status",
+  "xss", "csrf", "sqli", "ssrf", "injection", "authentication", "authorization", "session",
+  "schema", "json-ld", "structured-data", "breadcrumb", "faq", "article", "product",
+  "localbusiness", "organization", "howto", "sitelinks", "searchaction",
+  "intersection", "resize", "mutation", "observer", "indexeddb", "crypto",
+  "service-worker", "push", "notification", "geolocation", "clipboard", "drag",
+  "view-transition", "scroll-driven", "speculation", "prerender", "prefetch",
+  "lcp", "inp", "cls", "fid", "ttfb", "performance", "vitals", "lazy-loading",
+  "accessibility", "aria", "role", "tabindex", "focus", "landmark",
+  "sitemap", "robots", "canonical", "hreflang", "noindex", "crawl",
+]);
+
 function buildDirectDocsUrls(query: string): Array<{ url: string; name: string }> {
   const slug = query
     .toLowerCase()
@@ -816,13 +834,12 @@ function buildDirectDocsUrls(query: string): Array<{ url: string; name: string }
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "");
 
-  const searchSlug = query
-    .toLowerCase()
-    .replace(/\b(?:best practices|latest|how to|2[0-9]{3})\b/g, "")
-    .trim()
-    .replace(/\s+/g, "+");
-
   if (!slug || slug.length < 2) return [];
+
+  // Only construct direct URLs when the slug contains a recognized technical term
+  const slugWords = slug.split("-");
+  const hasKnownTerm = slugWords.some((w) => DIRECT_URL_KEYWORDS.has(w));
+  if (!hasKnownTerm) return [];
 
   const candidates: Array<{ url: string; name: string }> = [];
 

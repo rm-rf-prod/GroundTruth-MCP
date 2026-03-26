@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { registerSearchTool } from "./search.js";
+import { registerSearchTool, findTopicUrls } from "./search.js";
 
 // ── Dependency mocks ────────────────────────────────────────────────────────
 
@@ -527,5 +527,41 @@ describe("gt_search handler", () => {
       await handler({ query: "OWASP top 10 vulnerabilities" });
       expect(docCache.set).toHaveBeenCalled();
     });
+  });
+});
+
+// ── findTopicUrls + buildDirectDocsUrls keyword gate ─────────────────────────
+
+describe("findTopicUrls", () => {
+  it("matches WCAG / accessibility queries", () => {
+    const matches = findTopicUrls("WCAG 2.2 accessibility");
+    expect(matches.length).toBeGreaterThan(0);
+    expect(matches[0]!.name).toContain("Accessibility");
+  });
+
+  it("matches OWASP security queries", () => {
+    const matches = findTopicUrls("OWASP Top 10 security");
+    expect(matches.length).toBeGreaterThan(0);
+    expect(matches[0]!.name).toContain("OWASP");
+  });
+
+  it("matches Core Web Vitals queries", () => {
+    const matches = findTopicUrls("Core Web Vitals INP optimization");
+    expect(matches.length).toBeGreaterThan(0);
+  });
+
+  it("matches sitemap queries", () => {
+    const matches = findTopicUrls("sitemap XML best practices");
+    expect(matches.length).toBeGreaterThan(0);
+  });
+
+  it("matches CSP queries", () => {
+    const matches = findTopicUrls("content security policy CSP");
+    expect(matches.length).toBeGreaterThan(0);
+  });
+
+  it("returns empty for unrelated queries", () => {
+    const matches = findTopicUrls("how to cook pasta");
+    expect(matches).toHaveLength(0);
   });
 });
