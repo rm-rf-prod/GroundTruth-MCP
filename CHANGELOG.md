@@ -1,5 +1,17 @@
 # Changelog
 
+## [3.0.5] — 2026-03-26
+
+- chore: bump to 3.0.4, update changelog with reliability overhaul
+- fix: synthetic section generation for headingless content and minor type fixes
+- fix: eliminate Jina Reader single point of failure with HTML-to-Markdown fallback
+- chore(deps): bump actions/setup-node from 4.4.0 to 6.3.0
+- chore(deps-dev): bump eslint from 9.39.4 to 10.1.0
+- chore(deps): bump actions/checkout from 4.2.2 to 6.0.2
+- chore(deps): bump actions/upload-artifact from 4.6.2 to 7.0.0
+
+---
+
 ## [3.0.4] — 2026-03-26
 
 ### Reliability overhaul — eliminate Jina Reader single point of failure
