@@ -238,7 +238,8 @@ async function main(): Promise<void> {
       sessionIdGenerator: () => crypto.randomUUID(),
     });
     transport.onclose = () => {};
-    await server.connect(transport as Parameters<typeof server.connect>[0]);
+    // @ts-expect-error -- SDK's StreamableHTTPServerTransport has onclose?: () => void, but Transport requires onclose: () => void. We assign it above.
+    await server.connect(transport);
 
     const httpServer = http.createServer(async (req, res) => {
       if (req.method === "POST" && req.url === "/mcp") {
