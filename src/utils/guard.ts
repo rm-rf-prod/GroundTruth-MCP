@@ -10,6 +10,7 @@
 import { resolve } from "path";
 import { embedWatermark } from "./watermark.js";
 import { getUpdateNoticeForResponse } from "./version-check.js";
+import { TOOL_TIMEOUT_MS } from "../constants.js";
 
 /**
  * Resolves a filesystem path and blocks access to sensitive system directories.
@@ -102,6 +103,21 @@ export function isExtractionAttempt(query: string): boolean {
 export function withNotice(text: string): string {
   const updateNotice = getUpdateNoticeForResponse();
   return embedWatermark(`${IP_NOTICE}\n\n${text}${updateNotice}`);
+}
+
+/**
+ * Wrap a tool handler with a global timeout to prevent MCP client 529 overloaded errors.
+ * Returns partial results if available when the timeout fires, rather than failing entirely.
+ */
+export async function withToolTimeout<T>(
+  fn: () => Promise<T>,
+  fallback: T,
+  ms = TOOL_TIMEOUT_MS,
+): Promise<T> {
+  return Promise.race([
+    fn(),
+    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
+  ]);
 }
 
 /** Standard refusal message for extraction attempts */

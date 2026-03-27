@@ -16,11 +16,13 @@ export const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 export const FETCH_TIMEOUT_MS = 15_000;
 
 export const SWR_STALE_TTL_MS = 60 * 60 * 1000; // 60 minutes stale window
-export const CIRCUIT_BREAKER_THRESHOLD = 5;
-export const CIRCUIT_BREAKER_RESET_MS = 30_000;
+export const CIRCUIT_BREAKER_THRESHOLD = 3;
+export const CIRCUIT_BREAKER_RESET_MS = 60_000;
 export const DEEP_FETCH_MAX_PAGES = 8;
 export const DEEP_FETCH_RELEVANCE_THRESHOLD = 0.3;
-export const DEEP_FETCH_TIMEOUT_MS = 35_000;
+export const DEEP_FETCH_TIMEOUT_MS = 25_000;
+export const MAX_CONCURRENT_FETCHES = 12;
+export const TOOL_TIMEOUT_MS = 55_000;
 
 export const JINA_BASE_URL = "https://r.jina.ai";
 export const NPM_REGISTRY_URL = "https://registry.npmjs.org";
