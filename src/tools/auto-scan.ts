@@ -5,7 +5,7 @@ import { join } from "path";
 import { lookupByAlias, lookupById, fuzzySearch } from "../sources/registry.js";
 import { fetchDocs, fetchViaJina, fetchAsMarkdownRace, isIndexContent, rankIndexLinks } from "../services/fetcher.js";
 import { extractRelevantContent } from "../utils/extract.js";
-import { isExtractionAttempt, withNotice, EXTRACTION_REFUSAL, safeguardPath } from "../utils/guard.js";
+import { isExtractionAttempt, withNotice, withToolTimeout, EXTRACTION_REFUSAL, safeguardPath } from "../utils/guard.js";
 import { sanitizeContent } from "../utils/sanitize.js";
 import { DEFAULT_TOKEN_LIMIT } from "../constants.js";
 import type { LibraryEntry } from "../types.js";
@@ -431,49 +431,53 @@ Reads: package.json, requirements.txt, pyproject.toml, Cargo.toml, go.mod, pom.x
       const versions = await detectAllVersions(resolvedPath, allDepNames);
 
       // Fetch best practices in parallel (with concurrency limit)
-      const rawConcurrency = parseInt(process.env.GT_CONCURRENCY ?? "6", 10);
-      const CONCURRENCY = Number.isFinite(rawConcurrency) && rawConcurrency > 0 ? Math.min(rawConcurrency, 20) : 6;
+      const rawConcurrency = parseInt(process.env.GT_CONCURRENCY ?? "4", 10);
+      const CONCURRENCY = Number.isFinite(rawConcurrency) && rawConcurrency > 0 ? Math.min(rawConcurrency, 12) : 4;
       const results: Array<{ name: string; content: string; url: string }> = [];
 
-      for (let i = 0; i < topMatched.length; i += CONCURRENCY) {
-        const batch = topMatched.slice(i, i + CONCURRENCY);
-        const batchResults = await Promise.allSettled(
-          batch.map(async ({ dep, entry }) => {
-            try {
-              const version = versions.get(dep);
-              const enrichedTopic = version
-                ? `${topic} v${version} best practices patterns guide`
-                : `${topic} best practices patterns guide`;
-              let fetchResult = await fetchDocs(
-                entry.docsUrl,
-                entry.llmsTxtUrl,
-                entry.llmsFullTxtUrl,
-                enrichedTopic,
-              );
-              if (isIndexContent(fetchResult.content)) {
-                const deepLinks = rankIndexLinks(fetchResult.content, enrichedTopic);
-                for (const deepUrl of deepLinks) {
-                  const deepContent = await fetchAsMarkdownRace(deepUrl);
-                  if (deepContent && deepContent.length > 300) {
-                    fetchResult = { content: deepContent, url: deepUrl, sourceType: "jina" };
-                    break;
+      const fetchAllLibs = async (): Promise<void> => {
+        for (let i = 0; i < topMatched.length; i += CONCURRENCY) {
+          const batch = topMatched.slice(i, i + CONCURRENCY);
+          const batchResults = await Promise.allSettled(
+            batch.map(async ({ dep, entry }) => {
+              try {
+                const version = versions.get(dep);
+                const enrichedTopic = version
+                  ? `${topic} v${version} best practices patterns guide`
+                  : `${topic} best practices patterns guide`;
+                let fetchResult = await fetchDocs(
+                  entry.docsUrl,
+                  entry.llmsTxtUrl,
+                  entry.llmsFullTxtUrl,
+                  enrichedTopic,
+                );
+                if (isIndexContent(fetchResult.content)) {
+                  const deepLinks = rankIndexLinks(fetchResult.content, enrichedTopic);
+                  for (const deepUrl of deepLinks.slice(0, 3)) {
+                    const deepContent = await fetchAsMarkdownRace(deepUrl);
+                    if (deepContent && deepContent.length > 300) {
+                      fetchResult = { content: deepContent, url: deepUrl, sourceType: "jina" };
+                      break;
+                    }
                   }
                 }
+                const safe = sanitizeContent(fetchResult.content);
+                const { text } = extractRelevantContent(safe, enrichedTopic, tokensPerLib);
+                return { name: entry.name, content: text, url: fetchResult.url };
+              } catch {
+                return { name: entry.name, content: `Could not fetch docs for ${entry.name}.`, url: entry.docsUrl };
               }
-              const safe = sanitizeContent(fetchResult.content);
-              const { text } = extractRelevantContent(safe, enrichedTopic, tokensPerLib);
-              return { name: entry.name, content: text, url: fetchResult.url };
-            } catch {
-              return { name: entry.name, content: `Could not fetch docs for ${entry.name}.`, url: entry.docsUrl };
+            }),
+          );
+          for (const r of batchResults) {
+            if (r.status === "fulfilled") {
+              results.push(r.value);
             }
-          }),
-        );
-        for (const r of batchResults) {
-          if (r.status === "fulfilled") {
-            results.push(r.value);
           }
         }
-      }
+      };
+
+      await withToolTimeout(fetchAllLibs, undefined);
 
       // Build output
       const filesList = sources.map((s) => `- ${s.file} (${s.dependencies.length} deps)`).join("\n");

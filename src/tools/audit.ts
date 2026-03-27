@@ -3,7 +3,7 @@ import { z } from "zod";
 import { readdir, readFile, stat } from "fs/promises";
 import { join, extname, relative } from "path";
 import { lookupById } from "../sources/registry.js";
-import { safeguardPath } from "../utils/guard.js";
+import { safeguardPath, withToolTimeout } from "../utils/guard.js";
 import { fetchDocs, fetchGitHubExamples, fetchGitHubReleases, fetchViaJina, fetchAsMarkdownRace, isIndexContent, rankIndexLinks } from "../services/fetcher.js";
 import { extractRelevantContent } from "../utils/extract.js";
 import { sanitizeContent } from "../utils/sanitize.js";
@@ -1744,12 +1744,15 @@ If doc fetches fail with empty results, the user likely needs to set GT_GITHUB_T
       const topIssues = Array.from(grouped.entries()).slice(0, 6);
       const bpMap = new Map<string, string>();
 
-      await Promise.allSettled(
-        topIssues.map(async ([title, issues]) => {
-          const query = issues[0]?.docsQuery ?? title;
-          const bp = await fetchBestPractice(query, Math.floor(tokens / topIssues.length));
-          bpMap.set(title, bp);
-        }),
+      await withToolTimeout(
+        () => Promise.allSettled(
+          topIssues.map(async ([title, issues]) => {
+            const query = issues[0]?.docsQuery ?? title;
+            const bp = await fetchBestPractice(query, Math.floor(tokens / topIssues.length));
+            bpMap.set(title, bp);
+          }),
+        ),
+        [],
       );
 
       const BADGE: Record<string, string> = {

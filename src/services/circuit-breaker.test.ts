@@ -35,7 +35,7 @@ describe("circuit breaker states", () => {
   });
 
   it("stays closed below threshold", () => {
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 2; i++) {
       recordFailure("example.com");
     }
     expect(getCircuitState("example.com")).toBe("closed");
@@ -43,7 +43,7 @@ describe("circuit breaker states", () => {
   });
 
   it("opens after reaching failure threshold", () => {
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 3; i++) {
       recordFailure("example.com");
     }
     expect(getCircuitState("example.com")).toBe("open");
@@ -51,22 +51,22 @@ describe("circuit breaker states", () => {
   });
 
   it("transitions to half-open after reset timeout", () => {
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 3; i++) {
       recordFailure("example.com");
     }
     expect(isCircuitOpen("example.com")).toBe(true);
 
-    vi.advanceTimersByTime(30_000);
+    vi.advanceTimersByTime(60_000);
 
     expect(isCircuitOpen("example.com")).toBe(false);
     expect(getCircuitState("example.com")).toBe("half-open");
   });
 
   it("closes on success after half-open", () => {
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 3; i++) {
       recordFailure("example.com");
     }
-    vi.advanceTimersByTime(30_000);
+    vi.advanceTimersByTime(60_000);
     isCircuitOpen("example.com");
 
     recordSuccess("example.com");
@@ -75,24 +75,24 @@ describe("circuit breaker states", () => {
   });
 
   it("re-opens on failure during half-open", () => {
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 3; i++) {
       recordFailure("example.com");
     }
-    vi.advanceTimersByTime(30_000);
+    vi.advanceTimersByTime(60_000);
     isCircuitOpen("example.com");
 
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 3; i++) {
       recordFailure("example.com");
     }
     expect(getCircuitState("example.com")).toBe("open");
   });
 
   it("resets failure count on success", () => {
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 2; i++) {
       recordFailure("example.com");
     }
     recordSuccess("example.com");
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 2; i++) {
       recordFailure("example.com");
     }
     expect(getCircuitState("example.com")).toBe("closed");
@@ -101,7 +101,7 @@ describe("circuit breaker states", () => {
 
 describe("per-domain isolation", () => {
   it("tracks domains independently", () => {
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 3; i++) {
       recordFailure("failing.com");
     }
     expect(isCircuitOpen("failing.com")).toBe(true);
@@ -111,7 +111,7 @@ describe("per-domain isolation", () => {
 
 describe("resetCircuit", () => {
   it("resets a specific domain", () => {
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 3; i++) {
       recordFailure("example.com");
     }
     expect(isCircuitOpen("example.com")).toBe(true);
@@ -122,7 +122,7 @@ describe("resetCircuit", () => {
 
 describe("resetAllCircuits", () => {
   it("resets all domains", () => {
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 3; i++) {
       recordFailure("a.com");
       recordFailure("b.com");
     }
