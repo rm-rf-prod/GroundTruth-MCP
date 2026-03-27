@@ -642,6 +642,194 @@ const TOPIC_URL_MAP: Array<{ patterns: string[]; urls: string[]; name: string }>
     name: "Page Experience / Mobile",
   },
 
+  // Google Search Central (advanced)
+  {
+    patterns: ["google search console", "gsc", "search console api", "url inspection"],
+    urls: [
+      "https://developers.google.com/search/docs/monitor-debug/search-console-about",
+      "https://developers.google.com/webmaster-tools/v1/api_reference_index",
+    ],
+    name: "Google Search Console",
+  },
+  {
+    patterns: ["google indexing api", "indexing api", "request indexing", "submit url google"],
+    urls: [
+      "https://developers.google.com/search/apis/indexing-api/v3/quickstart",
+    ],
+    name: "Google Indexing API",
+  },
+  {
+    patterns: ["google search api", "custom search api", "programmable search"],
+    urls: [
+      "https://developers.google.com/custom-search/v1/overview",
+    ],
+    name: "Google Custom Search API",
+  },
+  {
+    patterns: ["google pagespeed", "pagespeed insights", "pagespeed api", "lighthouse api"],
+    urls: [
+      "https://developers.google.com/speed/docs/insights/v5/get-started",
+    ],
+    name: "Google PageSpeed Insights API",
+  },
+  {
+    patterns: ["google spam policies", "google search essentials", "google webmaster guidelines", "search quality"],
+    urls: [
+      "https://developers.google.com/search/docs/essentials",
+      "https://developers.google.com/search/docs/essentials/spam-policies",
+    ],
+    name: "Google Search Essentials / Spam Policies",
+  },
+  {
+    patterns: ["google discover", "discover feed", "google news", "news publisher"],
+    urls: [
+      "https://developers.google.com/search/docs/appearance/google-discover",
+      "https://developers.google.com/search/docs/appearance/publication-overview",
+    ],
+    name: "Google Discover / News",
+  },
+  {
+    patterns: ["rich results", "rich snippets", "search appearance", "google search features"],
+    urls: [
+      "https://developers.google.com/search/docs/appearance/visual-elements-gallery",
+      "https://developers.google.com/search/docs/appearance/structured-data/search-gallery",
+    ],
+    name: "Google Rich Results / Search Appearance",
+  },
+  {
+    patterns: ["google merchant center", "google shopping", "product feed", "shopping structured data"],
+    urls: [
+      "https://developers.google.com/shopping-content/guides/quickstart",
+      "https://support.google.com/merchants/answer/7052112",
+    ],
+    name: "Google Merchant Center / Shopping",
+  },
+  {
+    patterns: ["google analytics 4", "ga4 setup", "ga4 events", "ga4 api", "gtag"],
+    urls: [
+      "https://developers.google.com/analytics/devguides/collection/ga4",
+      "https://developers.google.com/analytics/devguides/reporting/data/v1",
+    ],
+    name: "Google Analytics 4 (GA4)",
+  },
+  {
+    patterns: ["google tag manager", "gtm setup", "gtm container", "tag manager api"],
+    urls: [
+      "https://developers.google.com/tag-platform/tag-manager/web",
+      "https://developers.google.com/tag-platform/tag-manager/api/v2",
+    ],
+    name: "Google Tag Manager (GTM)",
+  },
+  {
+    patterns: ["google ads api", "google ads conversion", "google ads tracking", "gclid"],
+    urls: [
+      "https://developers.google.com/google-ads/api/docs/start",
+      "https://developers.google.com/google-ads/api/docs/conversions/overview",
+    ],
+    name: "Google Ads API",
+  },
+  {
+    patterns: ["google maps api", "google maps javascript", "maps embed", "places api", "geocoding api"],
+    urls: [
+      "https://developers.google.com/maps/documentation/javascript/overview",
+      "https://developers.google.com/maps/documentation/places/web-service/overview",
+    ],
+    name: "Google Maps Platform",
+  },
+  {
+    patterns: ["google fonts api", "google fonts css", "font loading google"],
+    urls: [
+      "https://developers.google.com/fonts/docs/getting_started",
+      "https://developers.google.com/fonts/docs/css2",
+    ],
+    name: "Google Fonts API",
+  },
+  {
+    patterns: ["google recaptcha", "recaptcha v3", "recaptcha enterprise", "bot protection google"],
+    urls: [
+      "https://developers.google.com/recaptcha/docs/v3",
+      "https://cloud.google.com/recaptcha/docs/overview",
+    ],
+    name: "Google reCAPTCHA",
+  },
+  {
+    patterns: ["google sign-in", "google identity", "google oauth", "google one tap", "sign in with google"],
+    urls: [
+      "https://developers.google.com/identity/gsi/web/guides/overview",
+      "https://developers.google.com/identity/protocols/oauth2",
+    ],
+    name: "Google Identity / Sign-In",
+  },
+  {
+    patterns: ["google cloud run", "cloud run deploy", "cloud run container"],
+    urls: [
+      "https://cloud.google.com/run/docs/overview/what-is-cloud-run",
+      "https://cloud.google.com/run/docs/quickstarts",
+    ],
+    name: "Google Cloud Run",
+  },
+  {
+    patterns: ["google cloud storage", "gcs bucket", "cloud storage api"],
+    urls: [
+      "https://cloud.google.com/storage/docs/introduction",
+      "https://cloud.google.com/storage/docs/best-practices",
+    ],
+    name: "Google Cloud Storage",
+  },
+  {
+    patterns: ["google cloud functions", "cloud functions deploy", "gcf"],
+    urls: [
+      "https://cloud.google.com/functions/docs/concepts/overview",
+    ],
+    name: "Google Cloud Functions",
+  },
+  {
+    patterns: ["bigquery", "google bigquery", "bigquery sql", "bigquery api"],
+    urls: [
+      "https://cloud.google.com/bigquery/docs/introduction",
+      "https://cloud.google.com/bigquery/docs/best-practices-performance-overview",
+    ],
+    name: "Google BigQuery",
+  },
+  {
+    patterns: ["google ai studio", "gemini api", "gemini model", "google generative ai"],
+    urls: [
+      "https://ai.google.dev/gemini-api/docs",
+      "https://ai.google.dev/gemini-api/docs/get-started/tutorial",
+    ],
+    name: "Google Gemini API / AI Studio",
+  },
+  {
+    patterns: ["vertex ai", "google vertex", "vertex model garden"],
+    urls: [
+      "https://cloud.google.com/vertex-ai/docs/start/introduction-unified-platform",
+    ],
+    name: "Google Vertex AI",
+  },
+  {
+    patterns: ["firebase hosting", "firebase deploy", "firebase auth", "firebase firestore", "firebase realtime"],
+    urls: [
+      "https://firebase.google.com/docs/web/setup",
+      "https://firebase.google.com/docs/hosting",
+    ],
+    name: "Firebase",
+  },
+  {
+    patterns: ["google consent mode", "consent mode v2", "google privacy", "google consent"],
+    urls: [
+      "https://developers.google.com/tag-platform/security/guides/consent",
+    ],
+    name: "Google Consent Mode",
+  },
+  {
+    patterns: ["google web vitals", "chrome user experience report", "crux", "crux api"],
+    urls: [
+      "https://developers.google.com/web/tools/chrome-user-experience-report",
+      "https://developer.chrome.com/docs/crux",
+    ],
+    name: "Chrome UX Report (CrUX)",
+  },
+
   // Chrome Platform / Browser APIs
   {
     patterns: ["speculation rules", "prefetch", "prerender", "instant navigation", "speculative loading"],
