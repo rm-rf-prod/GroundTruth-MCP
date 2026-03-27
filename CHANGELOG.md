@@ -1,5 +1,11 @@
 # Changelog
 
+## [3.4.0] — 2026-03-27
+
+- fix: 404 page detection, indexing pattern, docs llms.txt fallback, new topics
+
+---
+
 ## [3.3.0] — 2026-03-26
 
 - fix: word-boundary matching for short patterns + new topic entries
