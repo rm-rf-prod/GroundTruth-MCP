@@ -32,6 +32,7 @@ vi.mock("../utils/sanitize.js", () => ({
 vi.mock("../utils/guard.js", () => ({
   isExtractionAttempt: vi.fn(() => false),
   withNotice: vi.fn((text: string) => `NOTICE\n\n${text}`),
+  withToolTimeout: vi.fn(async (fn: () => Promise<unknown>, _fallback: unknown) => fn()),
   EXTRACTION_REFUSAL: "EXTRACTION_REFUSED",
   safeguardPath: vi.fn((p: string) => p),
 }));
