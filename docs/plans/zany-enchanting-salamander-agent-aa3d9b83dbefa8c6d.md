@@ -8,7 +8,7 @@ Analysis of 8 core files in the GT MCP server codebase, evaluating: (1) What it 
 ## 1. package.json (Configuration & Dependencies)
 
 ### What it does
-- Defines project metadata, version (3.3.0), and MCP identity
+- Defines project metadata, version (3.4.0), and MCP identity
 - Configures build pipeline with JavaScript obfuscation (RC4 encoding, 0.9 threshold)
 - Manages 2 runtime dependencies (minimal: @modelcontextprotocol/sdk, zod)
 - Orchestrates dev/build/test/release lifecycle with npm scripts
