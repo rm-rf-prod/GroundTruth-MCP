@@ -642,6 +642,202 @@ const TOPIC_URL_MAP: Array<{ patterns: string[]; urls: string[]; name: string }>
     name: "Page Experience / Mobile",
   },
 
+  // Website Building & Launch
+  {
+    patterns: ["website launch checklist", "go live checklist", "pre-launch checklist", "website launch"],
+    urls: [
+      "https://web.dev/articles/vitals",
+      "https://developers.google.com/search/docs/fundamentals/seo-starter-guide",
+    ],
+    name: "Website Launch Checklist",
+  },
+  {
+    patterns: ["website migration", "site migration", "url migration", "domain migration", "redirect mapping"],
+    urls: [
+      "https://developers.google.com/search/docs/crawling-indexing/site-move-with-url-changes",
+      "https://developers.google.com/search/docs/crawling-indexing/301-redirects",
+    ],
+    name: "Website Migration / Redirects",
+  },
+  {
+    patterns: ["responsive design", "media queries", "responsive layout", "mobile responsive", "breakpoints"],
+    urls: [
+      "https://developer.mozilla.org/en-US/docs/Learn/CSS/CSS_layout/Responsive_Design",
+      "https://web.dev/articles/responsive-web-design-basics",
+    ],
+    name: "Responsive Design",
+  },
+  {
+    patterns: ["dark mode", "dark theme", "color scheme", "prefers-color-scheme", "theme toggle"],
+    urls: [
+      "https://web.dev/articles/prefers-color-scheme",
+      "https://developer.mozilla.org/en-US/docs/Web/CSS/@media/prefers-color-scheme",
+    ],
+    name: "Dark Mode / Color Scheme",
+  },
+  {
+    patterns: ["custom error page", "404 page", "error page design", "not found page"],
+    urls: [
+      "https://developers.google.com/search/docs/crawling-indexing/http-network-errors",
+      "https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/404",
+    ],
+    name: "Custom Error Pages (404/500)",
+  },
+  {
+    patterns: ["url structure", "url design", "clean urls", "url best practices", "slug"],
+    urls: [
+      "https://developers.google.com/search/docs/crawling-indexing/url-structure",
+    ],
+    name: "URL Structure Best Practices",
+  },
+  {
+    patterns: ["pagination seo", "paginated content", "rel next prev", "infinite scroll seo"],
+    urls: [
+      "https://developers.google.com/search/docs/specialty/ecommerce/pagination-and-incremental-page-loading",
+    ],
+    name: "Pagination SEO",
+  },
+  {
+    patterns: ["image seo", "image alt text", "image search", "image optimization seo", "image filename"],
+    urls: [
+      "https://developers.google.com/search/docs/appearance/google-images",
+      "https://web.dev/learn/images",
+    ],
+    name: "Image SEO",
+  },
+  {
+    patterns: ["video seo", "video structured data", "video schema", "video sitemap", "videoobject"],
+    urls: [
+      "https://developers.google.com/search/docs/appearance/video",
+      "https://developers.google.com/search/docs/appearance/structured-data/video",
+    ],
+    name: "Video SEO",
+  },
+  {
+    patterns: ["local seo", "google business profile", "google my business", "local search", "local pack"],
+    urls: [
+      "https://developers.google.com/search/docs/appearance/structured-data/local-business",
+      "https://support.google.com/business/answer/7091",
+    ],
+    name: "Local SEO / Google Business Profile",
+  },
+  {
+    patterns: ["technical seo", "technical seo checklist", "technical seo audit", "seo audit"],
+    urls: [
+      "https://developers.google.com/search/docs/fundamentals/seo-starter-guide",
+      "https://developers.google.com/search/docs/crawling-indexing/overview",
+    ],
+    name: "Technical SEO Checklist",
+  },
+  {
+    patterns: ["on-page seo", "on page seo", "title tag", "meta description", "header tags seo"],
+    urls: [
+      "https://developers.google.com/search/docs/appearance/title-link",
+      "https://developers.google.com/search/docs/appearance/snippet",
+    ],
+    name: "On-Page SEO (Title/Meta/Headers)",
+  },
+  // DNS & SSL
+  {
+    patterns: ["dns records", "dns configuration", "cname record", "a record", "mx record", "txt record"],
+    urls: [
+      "https://developer.mozilla.org/en-US/docs/Glossary/DNS",
+      "https://developers.cloudflare.com/dns/manage-dns-records/how-to/create-dns-records/",
+    ],
+    name: "DNS Records & Configuration",
+  },
+  {
+    patterns: ["ssl certificate", "https setup", "tls certificate", "let's encrypt", "ssl installation"],
+    urls: [
+      "https://developer.mozilla.org/en-US/docs/Web/Security/Transport_Layer_Security",
+      "https://web.dev/articles/why-https-matters",
+    ],
+    name: "SSL/TLS Certificate Setup",
+  },
+  // CDN & Hosting
+  {
+    patterns: ["cdn", "content delivery network", "edge caching", "cloudflare cdn", "cdn best practices"],
+    urls: [
+      "https://web.dev/articles/content-delivery-networks",
+      "https://developer.mozilla.org/en-US/docs/Glossary/CDN",
+    ],
+    name: "CDN / Content Delivery Network",
+  },
+  // Privacy & Legal
+  {
+    patterns: ["cookie consent", "cookie banner", "gdpr cookies", "cookie policy", "consent management"],
+    urls: [
+      "https://developers.google.com/tag-platform/security/guides/consent",
+      "https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies",
+    ],
+    name: "Cookie Consent / GDPR",
+  },
+  {
+    patterns: ["gdpr", "dsgvo", "data protection", "privacy policy", "datenschutz"],
+    urls: [
+      "https://developer.mozilla.org/en-US/docs/Web/Privacy",
+    ],
+    name: "GDPR / Data Protection",
+  },
+  {
+    patterns: ["impressum", "imprint", "legal notice", "german website legal"],
+    urls: [
+      "https://developers.google.com/search/docs/fundamentals/seo-starter-guide",
+    ],
+    name: "Impressum / Legal Notice",
+  },
+  // Caching Strategies
+  {
+    patterns: ["browser caching", "caching strategy", "cache-first", "stale-while-revalidate", "network-first"],
+    urls: [
+      "https://web.dev/articles/service-worker-caching-and-http-caching",
+      "https://developer.mozilla.org/en-US/docs/Web/API/Cache",
+    ],
+    name: "Caching Strategies",
+  },
+  // Internationalization
+  {
+    patterns: ["internationalization", "i18n", "localization", "l10n", "translation", "multi-language website"],
+    urls: [
+      "https://developer.mozilla.org/en-US/docs/Glossary/Internationalization",
+      "https://web.dev/articles/i18n",
+    ],
+    name: "Internationalization (i18n)",
+  },
+  // Web Components
+  {
+    patterns: ["web components", "custom elements", "shadow dom", "html templates", "lit element"],
+    urls: [
+      "https://developer.mozilla.org/en-US/docs/Web/API/Web_Components",
+    ],
+    name: "Web Components",
+  },
+  // API Best Practices
+  {
+    patterns: ["api design", "api best practices", "api versioning", "api documentation", "api rate limiting"],
+    urls: [
+      "https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods",
+      "https://swagger.io/docs/specification/v3_0/about/",
+    ],
+    name: "API Design Best Practices",
+  },
+  // Error Handling
+  {
+    patterns: ["error handling", "error boundary", "try catch", "error monitoring", "error tracking"],
+    urls: [
+      "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/try...catch",
+    ],
+    name: "Error Handling Best Practices",
+  },
+  // Logging
+  {
+    patterns: ["logging best practices", "structured logging", "log levels", "server logging"],
+    urls: [
+      "https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html",
+    ],
+    name: "Logging Best Practices",
+  },
+
   // Google Search Central (advanced)
   {
     patterns: ["google search console", "gsc", "search console api", "url inspection"],
