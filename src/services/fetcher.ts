@@ -2,12 +2,56 @@ import { createHash } from "crypto";
 import dns from "dns";
 import { isIPv4, isIPv6 } from "net";
 import { Agent, setGlobalDispatcher } from "undici";
-import { FETCH_TIMEOUT_MS, JINA_BASE_URL, SERVER_VERSION } from "../constants.js";
+import { FETCH_TIMEOUT_MS, JINA_BASE_URL, SERVER_VERSION, MAX_CONCURRENT_FETCHES } from "../constants.js";
 import { extractDomain, isCircuitOpen, recordSuccess, recordFailure } from "./circuit-breaker.js";
 import type { FetchResult } from "../types.js";
 import { docCache, diskDocCache } from "./cache.js";
 import { assertPublicUrl } from "../utils/guard.js";
 import { convertHtmlToMarkdown } from "../utils/html-to-md.js";
+
+/**
+ * Global fetch semaphore — caps total concurrent outbound HTTP requests.
+ * Prevents request storms from tools like gt_auto_scan (20 libs x 6 fetches each)
+ * that cause upstream 429s and MCP client 529 overloaded errors.
+ */
+class FetchSemaphore {
+  private active = 0;
+  private readonly queue: Array<() => void> = [];
+  private readonly max: number;
+
+  constructor(max: number) {
+    this.max = max;
+  }
+
+  async acquire(): Promise<void> {
+    if (this.active < this.max) {
+      this.active++;
+      return;
+    }
+    return new Promise<void>((resolve) => {
+      this.queue.push(() => {
+        this.active++;
+        resolve();
+      });
+    });
+  }
+
+  release(): void {
+    this.active--;
+    const next = this.queue.shift();
+    if (next) next();
+  }
+
+  get pending(): number {
+    return this.queue.length;
+  }
+
+  get running(): number {
+    return this.active;
+  }
+}
+
+export const fetchSemaphore = new FetchSemaphore(MAX_CONCURRENT_FETCHES);
 
 export function isBlockedIP(address: string): boolean {
   if (isIPv4(address)) {
@@ -82,6 +126,7 @@ export async function fetchWithTimeout(
   ms = FETCH_TIMEOUT_MS,
   extraHeaders?: Record<string, string>,
 ): Promise<Response> {
+  await fetchSemaphore.acquire();
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), ms);
   try {
@@ -104,6 +149,7 @@ export async function fetchWithTimeout(
     throw new Error(`Too many redirects for ${url}`);
   } finally {
     clearTimeout(id);
+    fetchSemaphore.release();
   }
 }
 
