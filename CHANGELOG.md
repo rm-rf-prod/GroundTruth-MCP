@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.5.0] — 2026-03-27
+
+- feat: add 24 website/SEO/web-dev topic entries for full coverage
+- feat: add 24 Google ecosystem topic URL map entries
+- fix: prevent 529 overloaded errors with concurrency limits and tool timeouts
+
+---
+
 ## [3.4.0] — 2026-03-27
 
 - fix: 404 page detection, indexing pattern, docs llms.txt fallback, new topics
