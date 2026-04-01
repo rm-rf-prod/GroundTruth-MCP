@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   isExtractionAttempt,
   withNotice,
@@ -6,6 +6,7 @@ import {
   IP_NOTICE,
   safeguardPath,
   assertPublicUrl,
+  withToolTimeout,
 } from "./guard.js";
 
 // ── safeguardPath ──────────────────────────────────────────────────────────────
@@ -234,5 +235,49 @@ describe("EXTRACTION_REFUSAL", () => {
 
   it("instructs user to provide a specific library name", () => {
     expect(EXTRACTION_REFUSAL.toLowerCase()).toContain("library");
+  });
+});
+
+// ── withToolTimeout ────────────────────────────────────────────────────────────
+
+describe("withToolTimeout", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("returns the result of fn() when it resolves before the timeout", async () => {
+    const fn = async () => {
+      await new Promise<void>((res) => setTimeout(res, 100));
+      return "success";
+    };
+    const promise = withToolTimeout(fn, "fallback", 5000);
+    await vi.runAllTimersAsync();
+    expect(await promise).toBe("success");
+  });
+
+  it("returns the fallback when fn() takes longer than the timeout", async () => {
+    const fn = async () => {
+      await new Promise<void>((res) => setTimeout(res, 10_000));
+      return "too slow";
+    };
+    const promise = withToolTimeout(fn, "fallback", 500);
+    await vi.runAllTimersAsync();
+    expect(await promise).toBe("fallback");
+  });
+
+  it("propagates errors thrown by fn() without returning the fallback", async () => {
+    const fn = async (): Promise<string> => {
+      await new Promise<void>((res) => setTimeout(res, 50));
+      throw new Error("fn error");
+    };
+    // The timeout (5000ms) must not fire before fn() rejects at 50ms.
+    // Advance only past the fn delay so the timeout never resolves.
+    const promise = withToolTimeout(fn, "fallback", 5000);
+    vi.advanceTimersByTime(60); // fn fires and throws; timeout not reached
+    await expect(promise).rejects.toThrow("fn error");
   });
 });
