@@ -1360,7 +1360,7 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     name: "OpenAPI Specification",
     aliases: ["openapi", "swagger", "openapi 3.1", "rest api spec"],
     description: "OpenAPI 3.1 — API description format for REST APIs",
-    docsUrl: "https://spec.openapis.org/oas/v3.5.0",
+    docsUrl: "https://spec.openapis.org/oas/v4.0.0",
     language: ["yaml", "json"],
     tags: ["api", "rest", "spec"],
     bestPracticesPaths: ["/docs/specification/v3_0/about/", "/docs/specification/v3_0/basic-structure/", "/docs/specification/v3_0/paths-and-operations/"],
