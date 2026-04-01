@@ -1,6 +1,6 @@
 import type { FetchResult } from "../types.js";
 import { tokenize } from "../utils/extract.js";
-import { fetchViaJina, fetchAsMarkdownRace, isIndexContent, rankIndexLinks, fetchSitemapUrls } from "./fetcher.js";
+import { fetchAsMarkdownRace, isIndexContent, rankIndexLinks, fetchSitemapUrls } from "./fetcher.js";
 import {
   DEEP_FETCH_MAX_PAGES,
   DEEP_FETCH_RELEVANCE_THRESHOLD,
