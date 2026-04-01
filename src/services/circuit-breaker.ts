@@ -11,9 +11,21 @@ interface BreakerEntry {
 
 const breakers = new Map<string, BreakerEntry>();
 
+const MAX_BREAKERS = 500;
+
 function getEntry(domain: string): BreakerEntry {
   let entry = breakers.get(domain);
   if (!entry) {
+    if (breakers.size >= MAX_BREAKERS) {
+      // Evict the entry with the oldest last-activity timestamp
+      let oldestKey = "";
+      let oldestTime = Infinity;
+      for (const [key, e] of breakers) {
+        const lastActivity = Math.max(e.lastFailure, e.lastSuccess);
+        if (lastActivity < oldestTime) { oldestTime = lastActivity; oldestKey = key; }
+      }
+      if (oldestKey) breakers.delete(oldestKey);
+    }
     entry = { state: "closed", failures: 0, lastFailure: 0, lastSuccess: 0 };
     breakers.set(domain, entry);
   }
