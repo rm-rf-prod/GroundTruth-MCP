@@ -114,10 +114,15 @@ export async function withToolTimeout<T>(
   fallback: T,
   ms = TOOL_TIMEOUT_MS,
 ): Promise<T> {
-  return Promise.race([
-    fn(),
-    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
-  ]);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeoutPromise = new Promise<T>((resolve) => {
+    timer = setTimeout(() => resolve(fallback), ms);
+  });
+  try {
+    return await Promise.race([fn(), timeoutPromise]);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 /** Standard refusal message for extraction attempts */
