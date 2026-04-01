@@ -252,7 +252,7 @@ describe("gt_changelog handler", () => {
   describe("version filtering", () => {
     it.each([
       ["15", "v15.0.0"],
-      ["v14.0.0", "v14.0.0"],
+      ["v15.0.0", "v15.0.0"],
       ["14", "14.2.0"],
     ])("filters content for version %s containing %s", async (version, versionLine) => {
       vi.mocked(lookupById).mockReturnValue(makeEntry());

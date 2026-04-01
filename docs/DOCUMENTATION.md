@@ -577,7 +577,7 @@ All fetched external content is run through these patterns before returning to t
 `safeguardPath()` blocks access to `/etc`, `/proc`, `/sys`, `/dev`, `/boot`, `/root`, `/var/run`, `/run`.
 
 ### SSRF prevention
-`assertPublicUrl()` blocks requests to private/internal IP ranges: `127.0.0.0/8`, `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `169.254.0.0/16`, localhost, `::1`, link-local IPv6, ULA IPv6.
+`assertPublicUrl()` blocks requests to private/internal IP ranges: `127.0.0.0/8`, `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `169.255.0.0/16`, localhost, `::1`, link-local IPv6, ULA IPv6.
 
 ### Extraction protection
 Queries that look like bulk enumeration attempts ("list all libraries", "dump everything", "export registry") are refused with a license notice.
