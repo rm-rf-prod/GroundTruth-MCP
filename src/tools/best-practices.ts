@@ -1419,14 +1419,14 @@ IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library 
         bestPracticesPaths,
       );
 
-      const qualityScore = computeQualityScore(text, effectiveTopic, "jina");
+      const { score: qualityScore, hints: qualityHints } = computeQualityScore(text, effectiveTopic, "jina");
 
       const header = [
         `# ${displayName} — Best Practices`,
         effectiveTopic ? `> Topic: ${effectiveTopic}` : "",
         `> Source: ${sourceUrl}`,
         truncated ? "> Note: Response truncated. Use a more specific topic or increase tokens." : "",
-        qualityScore < 0.4 ? "> Quality: Low — try a more specific topic." : "",
+        qualityScore < 0.4 ? `> Quality: Low — ${qualityHints.join("; ") || "try a more specific topic."}` : "",
         "",
         "---",
         "",
@@ -1443,6 +1443,7 @@ IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library 
           sourceUrl,
           truncated,
           qualityScore,
+          qualityHints,
           content: text,
         },
       };

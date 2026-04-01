@@ -4,7 +4,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { SERVER_NAME, SERVER_VERSION } from "./constants.js";
 import { getInstallId } from "./utils/watermark.js";
 import { checkForUpdate, formatUpdateNotice, setPendingUpdate } from "./utils/version-check.js";
-import { diskDocCache } from "./services/cache.js";
+import { diskDocCache, docCache } from "./services/cache.js";
 import { z } from "zod";
 import { registerResolveTool } from "./tools/resolve.js";
 import { registerDocsTool } from "./tools/docs.js";
@@ -25,6 +25,9 @@ import { extractRelevantContent } from "./utils/extract.js";
 import { sanitizeContent } from "./utils/sanitize.js";
 import { withNotice } from "./utils/guard.js";
 import { DEFAULT_TOKEN_LIMIT } from "./constants.js";
+import { log } from "./utils/logger.js";
+import { formatPrometheus, getUptimeSeconds } from "./services/metrics.js";
+import { getCircuitSummary } from "./services/circuit-breaker.js";
 
 const server = new McpServer(
   { name: SERVER_NAME, version: SERVER_VERSION },
@@ -265,7 +268,19 @@ async function main(): Promise<void> {
         await transport.handleRequest(req, res);
       } else if (req.method === "GET" && req.url === "/health") {
         res.writeHead(200, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ status: "ok" }));
+        res.end(JSON.stringify({
+          status: "ok",
+          uptime: getUptimeSeconds(),
+          version: SERVER_VERSION,
+          cache: {
+            memoryEntries: docCache.size(),
+            diskInitialized: true,
+          },
+          circuitBreakers: getCircuitSummary(),
+        }));
+      } else if (req.method === "GET" && req.url === "/metrics") {
+        res.writeHead(200, { "Content-Type": "text/plain; version=0.0.4; charset=utf-8" });
+        res.end(formatPrometheus());
       } else {
         res.writeHead(404);
         res.end();
@@ -274,17 +289,17 @@ async function main(): Promise<void> {
 
     const port = parseInt(httpPort, 10);
     if (!Number.isFinite(port) || port < 1 || port > 65535) {
-      console.error(`Invalid GT_HTTP_PORT: "${httpPort}" — must be 1–65535`);
+      log({ level: "error", msg: `Invalid GT_HTTP_PORT: "${httpPort}" -- must be 1-65535` });
       process.exit(1);
     }
     activeHttpServer = httpServer;
     httpServer.listen(port, () => {
-      console.error(`${SERVER_NAME} v${SERVER_VERSION} running via HTTP on port ${httpPort} [${getInstallId()}]`);
+      log({ level: "info", msg: `${SERVER_NAME} v${SERVER_VERSION} running via HTTP on port ${httpPort} [${getInstallId()}]` });
     });
   } else {
     const transport = new StdioServerTransport();
     await server.connect(transport);
-    console.error(`${SERVER_NAME} v${SERVER_VERSION} running via stdio [${getInstallId()}]`);
+    log({ level: "info", msg: `${SERVER_NAME} v${SERVER_VERSION} running via stdio [${getInstallId()}]` });
   }
 
   // Non-blocking cache prune — removes expired entries and caps at 1000 files
@@ -295,7 +310,7 @@ async function main(): Promise<void> {
     if (latestVersion) {
       setPendingUpdate(latestVersion);
       const notice = formatUpdateNotice(latestVersion);
-      console.error(notice);
+      log({ level: "warn", msg: notice });
       server.server.sendLoggingMessage({ level: "warning", data: notice }).catch(() => {});
     }
   }).catch(() => {});
@@ -305,11 +320,11 @@ process.on("SIGTERM", gracefulShutdown);
 process.on("SIGINT", gracefulShutdown);
 
 process.on("unhandledRejection", (reason: unknown) => {
-  console.error("[unhandledRejection]", reason);
+  log({ level: "error", msg: "unhandledRejection", error: String(reason) });
   process.exit(1);
 });
 
 main().catch((err: unknown) => {
-  console.error("Fatal error:", err);
+  log({ level: "error", msg: "Fatal error", error: String(err) });
   process.exit(1);
 });

@@ -8,6 +8,7 @@
  */
 
 import { resolve } from "path";
+import { randomBytes } from "crypto";
 import { embedWatermark } from "./watermark.js";
 import { getUpdateNoticeForResponse } from "./version-check.js";
 import { TOOL_TIMEOUT_MS } from "../constants.js";
@@ -70,6 +71,10 @@ export function assertPublicUrl(url: string): void {
   if (isPrivate) {
     throw new Error(`Private/internal URL not allowed: ${h}`);
   }
+}
+
+export function generateRequestId(): string {
+  return randomBytes(4).toString("hex");
 }
 
 export const IP_NOTICE =
