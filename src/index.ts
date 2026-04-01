@@ -253,7 +253,12 @@ async function main(): Promise<void> {
       }
     });
 
-    httpServer.listen(Number(httpPort), () => {
+    const port = parseInt(httpPort, 10);
+    if (!Number.isFinite(port) || port < 1 || port > 65535) {
+      console.error(`Invalid GT_HTTP_PORT: "${httpPort}" — must be 1–65535`);
+      process.exit(1);
+    }
+    httpServer.listen(port, () => {
       console.error(`${SERVER_NAME} v${SERVER_VERSION} running via HTTP on port ${httpPort} [${getInstallId()}]`);
     });
   } else {
