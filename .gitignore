@@ -12,6 +12,10 @@ coverage/
 docs/private/
 *.ts.pub
 
+# Plan artifacts and checkpoints
+docs/plans/
+docs/CHECKPOINT.json
+
 # Internal docs — publishing guide, handoffs, TODOs, analysis files
 docs/PUBLISHING.md
 docs/HANDOFF-*.md
