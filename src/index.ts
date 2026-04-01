@@ -242,6 +242,17 @@ async function main(): Promise<void> {
     await server.connect(transport);
 
     const httpServer = http.createServer(async (req, res) => {
+      res.setHeader("X-Content-Type-Options", "nosniff");
+      res.setHeader("X-Frame-Options", "DENY");
+      res.setHeader("Referrer-Policy", "no-referrer");
+
+      const authToken = process.env.GT_AUTH_TOKEN;
+      if (authToken && req.headers.authorization !== `Bearer ${authToken}`) {
+        res.writeHead(401, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "Unauthorized" }));
+        return;
+      }
+
       if (req.method === "POST" && req.url === "/mcp") {
         await transport.handleRequest(req, res);
       } else if (req.method === "GET" && req.url === "/health") {
