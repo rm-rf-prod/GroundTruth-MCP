@@ -6,12 +6,12 @@
     "url": "https://github.com/rm-rf-prod/GroundTruth-MCP",
     "source": "github"
   },
-  "version": "4.0.0",
+  "version": "5.0.0",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "@groundtruth-mcp/gt-mcp",
-      "version": "4.0.0",
+      "version": "5.0.0",
       "transport": {
         "type": "stdio"
       },

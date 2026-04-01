@@ -1,5 +1,11 @@
 # Changelog
 
+## [5.0.0] — 2026-04-01
+
+- See diff for changes.
+
+---
+
 ## [4.0.0] — 2026-04-01
 
 - test: add coverage for audit fixes (MAX_BREAKERS eviction, llmsProbeCache, withToolTimeout, GT_CACHE_DIR validation)
