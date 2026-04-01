@@ -1,5 +1,5 @@
 import { fetchNpmPackage, fetchPypiPackage, fetchWithTimeout, fetchAsMarkdownRace } from "./fetcher.js";
-import { resolveCache } from "./cache.js";
+import { resolveCache, llmsProbeCache } from "./cache.js";
 import type { LibraryMatch, NpmPackageInfo, PypiPackageInfo } from "../types.js";
 import { assertPublicUrl } from "../utils/guard.js";
 
@@ -40,8 +40,8 @@ export async function probeLlmsTxt(homepage: string): Promise<{ llmsTxtUrl?: str
   try { assertPublicUrl(homepage); } catch { return {}; }
 
   const cacheKey = `llms-probe:${new URL(homepage).origin}`;
-  const cached = resolveCache.get(cacheKey);
-  if (cached) return cached as { llmsTxtUrl?: string; llmsFullTxtUrl?: string };
+  const cached = llmsProbeCache.get(cacheKey);
+  if (cached) return cached;
 
   const result: { llmsTxtUrl?: string; llmsFullTxtUrl?: string } = {};
   const [fullResult, txtResult] = await Promise.allSettled([
@@ -55,7 +55,7 @@ export async function probeLlmsTxt(homepage: string): Promise<{ llmsTxtUrl?: str
     result.llmsTxtUrl = `${homepage}/llms.txt`;
   }
 
-  resolveCache.set(cacheKey, result as unknown as LibraryMatch);
+  llmsProbeCache.set(cacheKey, result);
   return result;
 }
 
