@@ -1,3 +1,5 @@
+import { config } from "./config.js";
+
 export const SERVER_NAME = "GroundTruth";
 export const SERVER_VERSION = "4.0.0";
 
@@ -15,19 +17,19 @@ if (_SYSTEM_DIRS.some((d) => _rawCacheDir === d || _rawCacheDir.startsWith(d + "
   throw new Error(`GT_CACHE_DIR must not point to a system directory: ${_rawCacheDir}`);
 }
 export const DISK_CACHE_DIR = _rawCacheDir;
-export const DEFAULT_TOKEN_LIMIT = 8000;
-export const MAX_TOKEN_LIMIT = 20000;
-export const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
-export const FETCH_TIMEOUT_MS = 15_000;
+export const DEFAULT_TOKEN_LIMIT = config.tokenLimit;
+export const MAX_TOKEN_LIMIT = config.maxTokenLimit;
+export const CACHE_TTL_MS = config.cacheTtlMs;
+export const FETCH_TIMEOUT_MS = config.fetchTimeoutMs;
 
-export const SWR_STALE_TTL_MS = 60 * 60 * 1000; // 60 minutes stale window
-export const CIRCUIT_BREAKER_THRESHOLD = 3;
-export const CIRCUIT_BREAKER_RESET_MS = 60_000;
-export const DEEP_FETCH_MAX_PAGES = 8;
-export const DEEP_FETCH_RELEVANCE_THRESHOLD = 0.3;
-export const DEEP_FETCH_TIMEOUT_MS = 25_000;
-export const MAX_CONCURRENT_FETCHES = 12;
-export const TOOL_TIMEOUT_MS = 55_000;
+export const SWR_STALE_TTL_MS = config.swrStaleTtlMs;
+export const CIRCUIT_BREAKER_THRESHOLD = config.circuitBreakerThreshold;
+export const CIRCUIT_BREAKER_RESET_MS = config.circuitBreakerResetMs;
+export const DEEP_FETCH_MAX_PAGES = config.deepFetchMaxPages;
+export const DEEP_FETCH_RELEVANCE_THRESHOLD = config.deepFetchRelevanceThreshold;
+export const DEEP_FETCH_TIMEOUT_MS = config.deepFetchTimeoutMs;
+export const MAX_CONCURRENT_FETCHES = config.maxConcurrentFetches;
+export const TOOL_TIMEOUT_MS = config.toolTimeoutMs;
 
 export const JINA_BASE_URL = "https://r.jina.ai";
 export const NPM_REGISTRY_URL = "https://registry.npmjs.org";

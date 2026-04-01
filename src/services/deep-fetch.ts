@@ -15,11 +15,32 @@ export function scoreTopicRelevance(content: string, topic: string): number {
     .replace(/\[[^\]]*\]\([^)]*\)/g, "")
     .replace(/https?:\/\/\S+/g, "")
     .toLowerCase();
+
   let found = 0;
   for (const token of topicTokens) {
     if (prose.includes(token)) found++;
   }
-  return found / topicTokens.length;
+  const tokenScore = found / topicTokens.length;
+
+  let phraseScore = 0;
+  if (topicTokens.length >= 2) {
+    const phrases: string[] = [];
+    for (let i = 0; i < topicTokens.length - 1; i++) {
+      phrases.push(`${topicTokens[i]} ${topicTokens[i + 1]}`);
+    }
+    const fullPhrase = topic.toLowerCase().replace(/[^a-z0-9\s]/g, " ").trim();
+    if (fullPhrase.length >= 5) phrases.push(fullPhrase);
+
+    let phraseFound = 0;
+    for (const phrase of phrases) {
+      if (prose.includes(phrase)) phraseFound++;
+    }
+    phraseScore = phrases.length > 0 ? phraseFound / phrases.length : 0;
+  }
+
+  return topicTokens.length >= 2
+    ? Math.min(tokenScore * 0.4 + phraseScore * 0.6, 1)
+    : tokenScore;
 }
 
 export function extractInternalLinks(
@@ -121,6 +142,21 @@ export function buildTopicUrls(
     "/concepts/{slug}",
     "/examples/{slug}",
     "/cookbook/{slug}",
+    // Docusaurus
+    "/docs/category/{slug}",
+    "/blog/{slug}",
+    // GitBook
+    "/fundamentals/{slug}",
+    // ReadTheDocs
+    "/en/latest/{slug}",
+    "/en/stable/{slug}",
+    // VitePress
+    "/{slug}.html",
+    // Mintlify
+    "/api-reference/{slug}",
+    "/quickstart/{slug}",
+    // Nextra / Fumadocs
+    "/docs/{slug}",
   ];
 
   const allPatterns = [
@@ -190,11 +226,30 @@ async function fetchMultiplePages(
   return pages;
 }
 
+function simpleHash(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
+  }
+  return hash;
+}
+
 function assemblePages(
   pages: Array<{ content: string; url: string }>,
 ): string {
+  const seenHashes = new Set<number>();
   return pages
-    .map((p) => `## Source: ${p.url}\n\n${p.content}`)
+    .map((p) => {
+      const paras = p.content.split(/\n{2,}/);
+      const unique = paras.filter((para) => {
+        if (para.length < 50) return true;
+        const hash = simpleHash(para.trim());
+        if (seenHashes.has(hash)) return false;
+        seenHashes.add(hash);
+        return true;
+      });
+      return `## Source: ${p.url}\n\n${unique.join("\n\n")}`;
+    })
     .join("\n\n---\n\n");
 }
 

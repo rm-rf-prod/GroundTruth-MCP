@@ -67,4 +67,28 @@ describe("sanitizeContent", () => {
     const result = sanitizeContent(content);
     expect(result).not.toContain("← Previous");
   });
+
+  it("strips sidebar 'See also' sections with links", () => {
+    const content = "Good content.\n## See also\n[Link A](https://a.com)\n[Link B](https://b.com)\n[Link C](https://c.com)\nMore content.";
+    const result = sanitizeContent(content);
+    expect(result).not.toContain("See also");
+  });
+
+  it("strips author bio sections", () => {
+    const content = "Good content.\n## About the Author\nJohn Doe is a software engineer with 10 years experience.";
+    const result = sanitizeContent(content);
+    expect(result).not.toContain("About the Author");
+  });
+
+  it("strips newsletter signup blocks", () => {
+    const content = "Good content.\n## Subscribe\nGet updates delivered to your inbox.";
+    const result = sanitizeContent(content);
+    expect(result).not.toContain("Subscribe");
+  });
+
+  it("strips changelog date headings without content", () => {
+    const content = "Good content.\n## v2.1.0 \u2014 2024-01-15\nMore content.";
+    const result = sanitizeContent(content);
+    expect(result).not.toMatch(/v2\.1\.0.*2024-01-15/);
+  });
 });

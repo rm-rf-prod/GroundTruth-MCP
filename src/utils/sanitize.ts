@@ -66,6 +66,18 @@ const NAV_FOOTER_PATTERNS: RegExp[] = [
 
   // Long nav link dumps — 5+ consecutive short markdown links on their own lines
   /(\[[\w\s/-]{1,40}\]\([^)]{0,100}\)\s*\n){5,}/g,
+
+  // Sidebar-like sections: heading followed by only links
+  /^#{2,4}\s*(Related|See [Aa]lso|Resources|Quick [Ll]inks|Useful [Ll]inks|More|Other|Popular)\s*\n(\[.+\]\(.+\)\s*\n?){2,}/gm,
+
+  // Author bio sections
+  /^#{2,4}\s*(About the [Aa]uthor|Written by|Author)\s*\n.{0,500}$/gm,
+
+  // Newsletter signup / CTA blocks
+  /^#{2,4}\s*(Subscribe|Newsletter|Stay [Uu]pdated|Join|Sign [Uu]p)\s*\n.{0,300}$/gm,
+
+  // Changelog-style dates without content
+  /^#{2,4}\s*v?\d+\.\d+[\.\d]*\s*[-\u2014]\s*\d{4}-\d{2}-\d{2}\s*$/gm,
 ];
 
 /**

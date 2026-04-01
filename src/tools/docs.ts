@@ -203,14 +203,14 @@ IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library 
 
       const safe = sanitizeContent(fetchResult.content);
       const { text, truncated } = extractRelevantContent(safe, topic, tokens);
-      const qualityScore = computeQualityScore(text, topic, fetchResult.sourceType);
+      const { score: qualityScore, hints: qualityHints } = computeQualityScore(text, topic, fetchResult.sourceType);
 
       const header = [
         `# ${displayName} Documentation`,
         `> Source: ${fetchResult.sourceType} — ${fetchResult.url}`,
         topic ? `> Topic: ${topic}` : "",
         truncated ? "> Note: Response truncated. Use a more specific topic or increase tokens." : "",
-        qualityScore < 0.4 ? "> Quality: Low — try a more specific topic or different library ID." : "",
+        qualityScore < 0.4 ? `> Quality: Low — ${qualityHints.join("; ") || "try a more specific topic or different library ID."}` : "",
         "",
         "---",
         "",
@@ -228,6 +228,7 @@ IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library 
           sourceType: fetchResult.sourceType,
           truncated,
           qualityScore,
+          qualityHints,
           content: text,
         },
       };

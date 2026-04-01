@@ -84,3 +84,23 @@ export function resetCircuit(domain: string): void {
 export function resetAllCircuits(): void {
   breakers.clear();
 }
+
+export function getCircuitSummary(): { open: number; halfOpen: number; closed: number } {
+  let open = 0;
+  let halfOpen = 0;
+  let closed = 0;
+  for (const entry of breakers.values()) {
+    if (entry.state === "open") {
+      if (Date.now() - entry.lastFailure >= CIRCUIT_BREAKER_RESET_MS) {
+        halfOpen++;
+      } else {
+        open++;
+      }
+    } else if (entry.state === "half-open") {
+      halfOpen++;
+    } else {
+      closed++;
+    }
+  }
+  return { open, halfOpen, closed };
+}

@@ -40,7 +40,7 @@ vi.mock("../utils/guard.js", () => ({
 }));
 
 vi.mock("../utils/quality.js", () => ({
-  computeQualityScore: vi.fn(() => 0.8),
+  computeQualityScore: vi.fn(() => ({ score: 0.8, hints: [] })),
 }));
 
 vi.mock("../services/resolve.js", () => ({

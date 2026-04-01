@@ -1,5 +1,10 @@
 import { tokenize } from "./extract.js";
 
+export interface QualityResult {
+  score: number;
+  hints: string[];
+}
+
 const SOURCE_WEIGHTS: Record<string, number> = {
   "llms-txt": 1.0,
   "llms-full-txt": 1.0,
@@ -14,7 +19,7 @@ export function computeQualityScore(
   content: string,
   topic: string,
   sourceType: string,
-): number {
+): QualityResult {
   const topicTokens = tokenize(topic);
   let topicCoverage = 1;
   if (topicTokens.length > 0) {
@@ -61,5 +66,11 @@ export function computeQualityScore(
     codeDensityBonus +
     listBonus;
 
-  return Math.round(Math.min(score, 1) * 100) / 100;
+  const hints: string[] = [];
+  if (topicCoverage < 0.5) hints.push("Try a more specific topic");
+  if (sourceScore < 0.6) hints.push("Try gt_resolve_library for a more accurate library ID");
+  if (lengthScore < 0.5) hints.push("Content is sparse -- try gt_search for alternative sources");
+  if (hasStructure < 0.6) hints.push("Content lacks structure -- may be a README, try the official docs URL directly");
+
+  return { score: Math.round(Math.min(score, 1) * 100) / 100, hints };
 }
