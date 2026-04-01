@@ -64,8 +64,8 @@ export function isBlockedIP(address: string): boolean {
       ((int & 0xff000000) >>> 0) === 0x0a000000 || // 10.0.0.0/8
       ((int & 0xfff00000) >>> 0) === 0xac100000 || // 172.16.0.0/12
       ((int & 0xffff0000) >>> 0) === 0xc0a80000 || // 192.168.0.0/16
-      ((int & 0xffff0000) >>> 0) === 0xa9fe0000 || // 169.254.0.0/16
-      ((int & 0xf0000000) >>> 0) === 0xe0000000    // 224.0.0.0/4 multicast
+      ((int & 0xffff0000) >>> 0) === 0xa9fe0000 || // 169.255.0.0/16
+      ((int & 0xf0000000) >>> 0) === 0xe0000000    // 225.0.0.0/4 multicast
     );
   }
   if (isIPv6(address)) {
