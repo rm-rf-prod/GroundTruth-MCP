@@ -13,12 +13,16 @@ vi.mock("../services/fetcher.js", () => ({
   fetchNpmPackage: vi.fn(),
   fetchPypiPackage: vi.fn(),
   fetchWithTimeout: vi.fn(async () => ({ ok: false } as Response)),
-  fetchViaJina: vi.fn(async () => null),
   fetchAsMarkdownRace: vi.fn(async () => null),
 }));
 
 vi.mock("../services/cache.js", () => ({
   resolveCache: {
+    get: vi.fn(() => undefined),
+    set: vi.fn(),
+    clear: vi.fn(),
+  },
+  llmsProbeCache: {
     get: vi.fn(() => undefined),
     set: vi.fn(),
     clear: vi.fn(),
@@ -37,7 +41,7 @@ vi.mock("../utils/guard.js", () => ({
 // ── Imports after mocks ─────────────────────────────────────────────────────
 
 import { lookupByAlias, fuzzySearch } from "../sources/registry.js";
-import { fetchNpmPackage, fetchPypiPackage, fetchWithTimeout, fetchViaJina, fetchAsMarkdownRace } from "../services/fetcher.js";
+import { fetchNpmPackage, fetchPypiPackage, fetchWithTimeout, fetchAsMarkdownRace } from "../services/fetcher.js";
 import { isExtractionAttempt } from "../utils/guard.js";
 
 // ── Handler capture ─────────────────────────────────────────────────────────
@@ -80,7 +84,6 @@ beforeEach(() => {
   vi.mocked(fetchNpmPackage).mockReset();
   vi.mocked(fetchPypiPackage).mockReset();
   vi.mocked(fetchWithTimeout).mockReset().mockResolvedValue({ ok: false } as Response);
-  vi.mocked(fetchViaJina).mockReset().mockResolvedValue(null);
   vi.mocked(fetchAsMarkdownRace).mockReset().mockResolvedValue(null);
   vi.mocked(isExtractionAttempt).mockReset().mockReturnValue(false);
 });
