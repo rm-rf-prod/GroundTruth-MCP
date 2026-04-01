@@ -19,7 +19,7 @@ import { registerExamplesTool } from "./tools/examples.js";
 import { registerMigrationTool } from "./tools/migration.js";
 import { registerBatchResolveTool } from "./tools/batch-resolve.js";
 import { ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { LIBRARY_REGISTRY } from "./sources/registry.js";
+import { LIBRARY_REGISTRY, lookupById } from "./sources/registry.js";
 import { fetchDocs } from "./services/fetcher.js";
 import { extractRelevantContent } from "./utils/extract.js";
 import { sanitizeContent } from "./utils/sanitize.js";
@@ -98,8 +98,8 @@ server.registerResource(
   new ResourceTemplate("gt://docs/{libraryId}", { list: undefined }),
   { description: "Fetch documentation for a library by its registry ID" },
   async (uri, { libraryId }) => {
-    const id = Array.isArray(libraryId) ? libraryId[0] ?? "" : libraryId;
-    const entry = LIBRARY_REGISTRY.find((e) => e.id === id);
+    const id = Array.isArray(libraryId) ? libraryId[0] ?? "" : libraryId ?? "";
+    const entry = lookupById(id);
     if (!entry) {
       return { contents: [{ uri: uri.href, mimeType: "text/plain", text: `Library not found: ${id}` }] };
     }
