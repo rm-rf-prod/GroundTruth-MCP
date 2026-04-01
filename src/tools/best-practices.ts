@@ -1,7 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { lookupById, lookupByAlias } from "../sources/registry.js";
-import { fetchDocs, fetchGitHubContent, fetchViaJina, fetchGitHubExamples, fetchAsMarkdownRace, fetchSitemapUrls } from "../services/fetcher.js";
+import { fetchDocs, fetchGitHubContent, fetchGitHubExamples, fetchAsMarkdownRace, fetchSitemapUrls } from "../services/fetcher.js";
 import { resolveDynamic, probeLlmsTxt } from "../services/resolve.js";
 import { deepFetchForTopic } from "../services/deep-fetch.js";
 import { extractRelevantContent } from "../utils/extract.js";

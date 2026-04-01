@@ -4,7 +4,7 @@ import { readdir, readFile, stat } from "fs/promises";
 import { join, extname, relative } from "path";
 import { lookupById } from "../sources/registry.js";
 import { safeguardPath, withToolTimeout } from "../utils/guard.js";
-import { fetchDocs, fetchGitHubExamples, fetchGitHubReleases, fetchViaJina, fetchAsMarkdownRace, isIndexContent, rankIndexLinks } from "../services/fetcher.js";
+import { fetchDocs, fetchGitHubExamples, fetchGitHubReleases, fetchAsMarkdownRace, isIndexContent, rankIndexLinks } from "../services/fetcher.js";
 import { extractRelevantContent } from "../utils/extract.js";
 import { sanitizeContent } from "../utils/sanitize.js";
 
@@ -732,7 +732,7 @@ export const AUDIT_PATTERNS: AuditPattern[] = [
       "Next.js 16 renamed middleware.ts to proxy.ts with a Node.js-only runtime. The old filename causes silent fallback to legacy behavior.",
     fix: "Rename middleware.ts to proxy.ts. Export a function named proxy instead of middleware.",
     docsQuery: "Next.js 16 proxy.ts middleware rename breaking change",
-    test: (line, content) =>
+    test: (line, _content) =>
       /export\s+(?:default\s+)?function\s+middleware\b/.test(line) ||
       /export\s+\{\s*middleware\s+as\s+default\s*\}/.test(line)
         ? line
