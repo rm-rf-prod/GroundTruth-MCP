@@ -7,9 +7,14 @@ export const REGISTRY_BADGE_SIZE = 422;
 export const CHARS_PER_TOKEN = 3.8;
 
 // Disk cache directory for persistent cross-invocation caching
-export const DISK_CACHE_DIR =
+const _rawCacheDir =
   process.env.GT_CACHE_DIR ??
   (process.env.HOME ? `${process.env.HOME}/.gt-mcp-cache` : "/tmp/.gt-mcp-cache");
+const _SYSTEM_DIRS = ["/etc", "/proc", "/sys", "/dev", "/boot", "/root", "/bin", "/sbin", "/usr", "/var/run", "/run"];
+if (_SYSTEM_DIRS.some((d) => _rawCacheDir === d || _rawCacheDir.startsWith(d + "/"))) {
+  throw new Error(`GT_CACHE_DIR must not point to a system directory: ${_rawCacheDir}`);
+}
+export const DISK_CACHE_DIR = _rawCacheDir;
 export const DEFAULT_TOKEN_LIMIT = 8000;
 export const MAX_TOKEN_LIMIT = 20000;
 export const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
