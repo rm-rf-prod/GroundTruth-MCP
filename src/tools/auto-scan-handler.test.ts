@@ -212,7 +212,7 @@ describe("gt_auto_scan handler", () => {
     });
 
     it("includes totalDependencies count", async () => {
-      await mockPackageJson({ react: "^18.0.0", next: "^14.0.0" });
+      await mockPackageJson({ react: "^18.0.0", next: "^15.0.0" });
       vi.mocked(fetchDocs).mockResolvedValue(makeFetchResult());
       const result = await handler({});
       expect(result.structuredContent?.totalDependencies).toBe(2);
@@ -271,7 +271,7 @@ describe("gt_auto_scan handler", () => {
     });
 
     it("does not throw when all fetchDocs calls fail", async () => {
-      await mockPackageJson({ react: "^18.0.0", next: "^14.0.0" });
+      await mockPackageJson({ react: "^18.0.0", next: "^15.0.0" });
       vi.mocked(fetchDocs).mockRejectedValue(new Error("network error"));
       await expect(handler({})).resolves.toBeDefined();
     });
@@ -370,7 +370,7 @@ describe("gt_auto_scan handler", () => {
     it("respects GT_CONCURRENCY=1 and still processes all matches", async () => {
       process.env.GT_CONCURRENCY = "1";
       try {
-        await mockPackageJson({ react: "^18.0.0", next: "^14.0.0" });
+        await mockPackageJson({ react: "^18.0.0", next: "^15.0.0" });
         vi.mocked(fetchDocs).mockResolvedValue(makeFetchResult());
         const result = await handler({});
         expect(result.structuredContent?.matched.length).toBeGreaterThanOrEqual(1);

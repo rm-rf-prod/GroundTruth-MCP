@@ -19,7 +19,7 @@ const InputSchema = z.object({
     .string()
     .max(50)
     .optional()
-    .describe("Filter to a specific version prefix, e.g. '15' or 'v14.0.0'"),
+    .describe("Filter to a specific version prefix, e.g. '15' or 'v15.0.0'"),
   tokens: z
     .number()
     .int()
