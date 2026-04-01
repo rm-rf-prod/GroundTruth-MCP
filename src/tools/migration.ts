@@ -165,7 +165,7 @@ Call gt_resolve_library first to get the libraryId.`,
 
       const safe = sanitizeContent(combined);
       const { text, truncated } = extractRelevantContent(safe, topic, tokens);
-      const qualityScore = computeQualityScore(text, topic, "github-readme");
+      const { score: qualityScore, hints: qualityHints } = computeQualityScore(text, topic, "github-readme");
 
       const header = [
         `# ${displayName} — Migration Guide`,
@@ -189,6 +189,7 @@ Call gt_resolve_library first to get the libraryId.`,
           sources: sections.map((s) => s.source),
           truncated,
           qualityScore,
+          qualityHints,
           content: text,
         },
       };

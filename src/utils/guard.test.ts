@@ -7,6 +7,7 @@ import {
   safeguardPath,
   assertPublicUrl,
   withToolTimeout,
+  generateRequestId,
 } from "./guard.js";
 
 // ── safeguardPath ──────────────────────────────────────────────────────────────
@@ -279,5 +280,17 @@ describe("withToolTimeout", () => {
     const promise = withToolTimeout(fn, "fallback", 5000);
     vi.advanceTimersByTime(60); // fn fires and throws; timeout not reached
     await expect(promise).rejects.toThrow("fn error");
+  });
+});
+
+describe("generateRequestId", () => {
+  it("returns an 8-character hex string", () => {
+    const id = generateRequestId();
+    expect(id).toMatch(/^[0-9a-f]{8}$/);
+  });
+
+  it("generates unique IDs", () => {
+    const ids = new Set(Array.from({ length: 100 }, () => generateRequestId()));
+    expect(ids.size).toBe(100);
   });
 });

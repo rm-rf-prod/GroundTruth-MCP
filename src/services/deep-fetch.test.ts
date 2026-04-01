@@ -36,14 +36,23 @@ describe("scoreTopicRelevance", () => {
     expect(scoreTopicRelevance("any content", "")).toBe(1);
   });
 
-  it("returns 1 when all topic tokens found", () => {
-    const content = "React navigation with stack navigator and drawer";
+  it("returns high score when all tokens and phrase found", () => {
+    const content = "React navigation stack guide for mobile apps";
     expect(scoreTopicRelevance(content, "navigation stack")).toBe(1);
   });
 
-  it("returns 0.5 when half of topic tokens found", () => {
+  it("returns partial score when tokens found but phrase missing", () => {
+    const content = "React navigation with stack navigator and drawer";
+    const score = scoreTopicRelevance(content, "navigation stack");
+    expect(score).toBeGreaterThan(0);
+    expect(score).toBeLessThan(1);
+  });
+
+  it("returns low score when half of topic tokens found", () => {
     const content = "React navigation setup guide";
-    expect(scoreTopicRelevance(content, "navigation performance")).toBe(0.5);
+    const score = scoreTopicRelevance(content, "navigation performance");
+    expect(score).toBeGreaterThan(0);
+    expect(score).toBeLessThan(0.5);
   });
 
   it("returns 0 when no topic tokens found", () => {
@@ -52,13 +61,33 @@ describe("scoreTopicRelevance", () => {
   });
 
   it("is case insensitive", () => {
-    const content = "NAVIGATION setup GUIDE";
+    const content = "NAVIGATION GUIDE for mobile apps";
     expect(scoreTopicRelevance(content, "navigation guide")).toBe(1);
   });
 
   it("ignores short stop words in topic", () => {
     const content = "Setting up authentication for the app";
     const score = scoreTopicRelevance(content, "the authentication");
+    expect(score).toBe(1);
+  });
+
+  it("scores higher with bigram phrase matches", () => {
+    const contentWithPhrase = "Learn about server actions and how to use them in your app";
+    const contentWithSeparateWords = "The server is fast. User actions are logged.";
+    const phraseScore = scoreTopicRelevance(contentWithPhrase, "server actions");
+    const separateScore = scoreTopicRelevance(contentWithSeparateWords, "server actions");
+    expect(phraseScore).toBeGreaterThan(separateScore);
+  });
+
+  it("uses full topic phrase matching for multi-word topics", () => {
+    const content = "A guide to react server components and how they work";
+    const score = scoreTopicRelevance(content, "react server components");
+    expect(score).toBeGreaterThan(0.5);
+  });
+
+  it("falls back to token-only scoring for single-word topics", () => {
+    const content = "Setting up authentication in your application";
+    const score = scoreTopicRelevance(content, "authentication");
     expect(score).toBe(1);
   });
 });
@@ -332,6 +361,36 @@ describe("deepFetchForTopic", () => {
     expect(result.content).toContain("Content of page A");
     expect(result.content).toContain("Content of page B");
     expect(result.content).toContain("## Source:");
+  });
+
+  it("deduplicates overlapping content from multiple pages", async () => {
+    const sharedParagraph = "This is a shared navigation paragraph that appears on every page of the documentation site and should only appear once in the assembled output.";
+    const indexResult: FetchResult = {
+      content: "- [A](https://docs.example.com/a)\n- [B](https://docs.example.com/b)\n- [C](https://c.com/c)\n- [D](https://d.com/d)\n- [E](https://e.com/e)",
+      url: "https://docs.example.com",
+      sourceType: "llms-txt",
+    };
+
+    mockIsIndexContent.mockReturnValue(true);
+    mockRankIndexLinks.mockReturnValue([
+      "https://docs.example.com/a",
+      "https://docs.example.com/b",
+    ]);
+
+    mockFetchAsMarkdownRace.mockImplementation(async (url: string) => {
+      if (url === "https://docs.example.com/a") return `Page A content\n\n${sharedParagraph}\n\n` + "x".repeat(300);
+      if (url === "https://docs.example.com/b") return `Page B content\n\n${sharedParagraph}\n\n` + "y".repeat(300);
+      return null;
+    });
+
+    const result = await deepFetchForTopic(
+      indexResult,
+      "serialization xyz",
+      "https://docs.example.com",
+    );
+
+    const occurrences = result.content.split(sharedParagraph).length - 1;
+    expect(occurrences).toBe(1);
   });
 
   it("uses custom urlPatterns", async () => {
