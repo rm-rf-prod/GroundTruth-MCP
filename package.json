@@ -26,7 +26,7 @@
     "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
-    "version": "node scripts/update-version.mjs && node scripts/update-changelog.mjs && npm run update-stats && git add -A",
+    "version": "node scripts/update-version.mjs && node scripts/update-changelog.mjs && npm run update-stats && git add src/constants.ts CHANGELOG.md README.md server.json package.json",
     "postversion": "git push && git push origin \"v$(node -p 'require(\"./package.json\").version')\" && node scripts/create-release.mjs",
     "release": "npm version minor && npm publish --access public && mcp-publisher publish",
     "release:patch": "npm version patch && npm publish --access public && mcp-publisher publish",
