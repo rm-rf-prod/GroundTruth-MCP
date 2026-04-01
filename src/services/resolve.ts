@@ -44,14 +44,16 @@ export async function probeLlmsTxt(homepage: string): Promise<{ llmsTxtUrl?: str
   if (cached) return cached as { llmsTxtUrl?: string; llmsFullTxtUrl?: string };
 
   const result: { llmsTxtUrl?: string; llmsFullTxtUrl?: string } = {};
-  try {
-    const fullRes = await fetchWithTimeout(`${homepage}/llms-full.txt`, 5000);
-    if (fullRes.ok) result.llmsFullTxtUrl = `${homepage}/llms-full.txt`;
-  } catch { /* timeout or network error */ }
-  try {
-    const res = await fetchWithTimeout(`${homepage}/llms.txt`, 5000);
-    if (res.ok) result.llmsTxtUrl = `${homepage}/llms.txt`;
-  } catch { /* timeout or network error */ }
+  const [fullResult, txtResult] = await Promise.allSettled([
+    fetchWithTimeout(`${homepage}/llms-full.txt`, 5000),
+    fetchWithTimeout(`${homepage}/llms.txt`, 5000),
+  ]);
+  if (fullResult.status === "fulfilled" && fullResult.value.ok) {
+    result.llmsFullTxtUrl = `${homepage}/llms-full.txt`;
+  }
+  if (txtResult.status === "fulfilled" && txtResult.value.ok) {
+    result.llmsTxtUrl = `${homepage}/llms.txt`;
+  }
 
   resolveCache.set(cacheKey, result as unknown as LibraryMatch);
   return result;
