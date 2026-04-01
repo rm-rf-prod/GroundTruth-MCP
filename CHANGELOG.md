@@ -1,5 +1,14 @@
 # Changelog
 
+## [5.0.1] — 2026-04-01
+
+- chore(deps): update @typescript-eslint/parser to 8.57.2
+- chore(deps-dev): bump @vitest/coverage-v8 from 4.1.0 to 4.1.1
+- chore(deps-dev): bump @typescript-eslint/eslint-plugin from 8.57.1 to 8.57.2
+- chore(deps-dev): bump javascript-obfuscator from 5.3.0 to 5.4.1
+
+---
+
 ## [5.0.0] — 2026-04-01
 
 - See diff for changes.
