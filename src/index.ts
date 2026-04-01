@@ -224,6 +224,14 @@ server.prompt(
   }),
 );
 
+let activeHttpServer: import("http").Server | undefined;
+
+function gracefulShutdown(): void {
+  server.close().catch(() => {});
+  if (activeHttpServer) activeHttpServer.close();
+  process.exit(0);
+}
+
 async function main(): Promise<void> {
   const httpPort = process.env.GT_HTTP_PORT;
 
@@ -269,6 +277,7 @@ async function main(): Promise<void> {
       console.error(`Invalid GT_HTTP_PORT: "${httpPort}" — must be 1–65535`);
       process.exit(1);
     }
+    activeHttpServer = httpServer;
     httpServer.listen(port, () => {
       console.error(`${SERVER_NAME} v${SERVER_VERSION} running via HTTP on port ${httpPort} [${getInstallId()}]`);
     });
@@ -291,6 +300,14 @@ async function main(): Promise<void> {
     }
   }).catch(() => {});
 }
+
+process.on("SIGTERM", gracefulShutdown);
+process.on("SIGINT", gracefulShutdown);
+
+process.on("unhandledRejection", (reason: unknown) => {
+  console.error("[unhandledRejection]", reason);
+  process.exit(1);
+});
 
 main().catch((err: unknown) => {
   console.error("Fatal error:", err);
