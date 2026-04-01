@@ -1,5 +1,27 @@
 # Changelog
 
+## [4.0.0] — 2026-04-01
+
+- test: add coverage for audit fixes (MAX_BREAKERS eviction, llmsProbeCache, withToolTimeout, GT_CACHE_DIR validation)
+- fix: update resolve.test.ts mocks for llmsProbeCache and remove stale fetchViaJina references
+- fix(audit): type-safety resolve.ts:58 - replace as unknown as LibraryMatch cast with typed llmsProbeCache
+- fix(audit): perf resolve.ts:47 - concurrent probeLlmsTxt with Promise.allSettled (halves worst-case latency)
+- fix(audit): security constants.ts:10 - block system directory paths for GT_CACHE_DIR to prevent cache write into /etc or /proc
+- fix(audit): resource-leak circuit-breaker.ts:12 - evict oldest entry when breakers Map exceeds 500 to bound memory growth
+- fix(audit): resource-leak guard.ts:117 - clear timeout in withToolTimeout to prevent 55s timer accumulation per tool call
+- fix(audit): reliability index.ts - add SIGTERM/SIGINT graceful shutdown + unhandledRejection handler
+- fix(audit): security index.ts:244 - add security headers + optional Bearer auth via GT_AUTH_TOKEN to HTTP transport
+- fix(audit): validation index.ts:256 - validate GT_HTTP_PORT is a finite integer 1-65535, fail fast on invalid
+- fix(audit): security index.ts:249 - remove server version from /health response to prevent version fingerprinting
+- fix(audit): perf index.ts:102 - replace LIBRARY_REGISTRY.find() linear scan with O(1) lookupById()
+- fix(audit): type-safety tsconfig.json - add noUnusedLocals, noUnusedParameters, types:[node]; remove dead fetchViaJina imports across 10 files
+- fix(audit): supply-chain package.json:29 - replace git add -A with explicit file list to prevent staging unintended files on version bump
+- fix(audit): supply-chain package.json - declare undici as explicit dependency (Node 24 built-in, not implicit)
+- fix(audit): supply-chain package.json - override path-to-regexp to >=8.4.0 to resolve ReDoS CVE
+- fix(audit): ci add security.yml -- dependency audit + typecheck + test on every PR
+
+---
+
 ## [3.5.0] — 2026-03-27
 
 - feat: add 24 website/SEO/web-dev topic entries for full coverage
