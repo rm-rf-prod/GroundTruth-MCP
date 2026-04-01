@@ -1,7 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { lookupById, lookupByAlias } from "../sources/registry.js";
-import { fetchGitHubContent, fetchGitHubReleases, fetchViaJina, fetchAsMarkdownRace } from "../services/fetcher.js";
+import { fetchGitHubContent, fetchGitHubReleases, fetchAsMarkdownRace } from "../services/fetcher.js";
 import { extractRelevantContent } from "../utils/extract.js";
 import { sanitizeContent } from "../utils/sanitize.js";
 import { computeQualityScore } from "../utils/quality.js";

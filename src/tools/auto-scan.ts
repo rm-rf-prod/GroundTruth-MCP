@@ -3,11 +3,10 @@ import { z } from "zod";
 import { readFile } from "fs/promises";
 import { join } from "path";
 import { lookupByAlias, lookupById, fuzzySearch } from "../sources/registry.js";
-import { fetchDocs, fetchViaJina, fetchAsMarkdownRace, isIndexContent, rankIndexLinks } from "../services/fetcher.js";
+import { fetchDocs, fetchAsMarkdownRace, isIndexContent, rankIndexLinks } from "../services/fetcher.js";
 import { extractRelevantContent } from "../utils/extract.js";
 import { isExtractionAttempt, withNotice, withToolTimeout, EXTRACTION_REFUSAL, safeguardPath } from "../utils/guard.js";
 import { sanitizeContent } from "../utils/sanitize.js";
-import { DEFAULT_TOKEN_LIMIT } from "../constants.js";
 import type { LibraryEntry } from "../types.js";
 import { detectAllVersions } from "../utils/lockfile.js";
 

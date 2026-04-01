@@ -16,7 +16,10 @@
     "exactOptionalPropertyTypes": true,
     "verbatimModuleSyntax": true,
     "moduleDetection": "force",
-    "erasableSyntaxOnly": true
+    "erasableSyntaxOnly": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "types": ["node"]
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "src/**/*.test.ts"]

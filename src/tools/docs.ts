@@ -2,7 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { FetchResult } from "../types.js";
 import { z } from "zod";
 import { lookupById, lookupByAlias } from "../sources/registry.js";
-import { fetchDocs, fetchGitHubContent, fetchViaJina, fetchAsMarkdownRace } from "../services/fetcher.js";
+import { fetchDocs, fetchGitHubContent, fetchAsMarkdownRace } from "../services/fetcher.js";
 import { probeLlmsTxt } from "../services/resolve.js";
 import { deepFetchForTopic, splitTopics } from "../services/deep-fetch.js";
 import { extractRelevantContent } from "../utils/extract.js";
