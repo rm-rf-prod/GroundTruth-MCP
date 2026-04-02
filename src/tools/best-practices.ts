@@ -1393,7 +1393,14 @@ IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library 
             content: [
               {
                 type: "text",
-                text: `Could not resolve "${libraryId}". Try gt_resolve_library first to find the correct ID.`,
+                text: [
+                  `Could not resolve "${libraryId}".`,
+                  "",
+                  "**What to try next:**",
+                  "- Run gt_resolve_library to find the correct library ID",
+                  "- Try gt_search with a freeform query (e.g. 'React performance best practices')",
+                  "- Use the npm/PyPI package name or a direct docs URL",
+                ].join("\n"),
               },
             ],
           };

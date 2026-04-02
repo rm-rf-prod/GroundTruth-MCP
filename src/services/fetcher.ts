@@ -2,7 +2,7 @@ import { createHash } from "crypto";
 import dns from "dns";
 import { isIPv4, isIPv6 } from "net";
 import { Agent, setGlobalDispatcher } from "undici";
-import { FETCH_TIMEOUT_MS, JINA_BASE_URL, SERVER_VERSION, MAX_CONCURRENT_FETCHES } from "../constants.js";
+import { FETCH_TIMEOUT_MS, JINA_BASE_URL, SERVER_VERSION, MAX_CONCURRENT_FETCHES, CACHE_TTLS } from "../constants.js";
 import { extractDomain, isCircuitOpen, recordSuccess, recordFailure } from "./circuit-breaker.js";
 import type { FetchResult } from "../types.js";
 import { docCache, diskDocCache } from "./cache.js";
@@ -64,8 +64,8 @@ export function isBlockedIP(address: string): boolean {
       ((int & 0xff000000) >>> 0) === 0x0a000000 || // 10.0.0.0/8
       ((int & 0xfff00000) >>> 0) === 0xac100000 || // 172.16.0.0/12
       ((int & 0xffff0000) >>> 0) === 0xc0a80000 || // 192.168.0.0/16
-      ((int & 0xffff0000) >>> 0) === 0xa9fe0000 || // 169.255.0.0/16
-      ((int & 0xf0000000) >>> 0) === 0xe0000000    // 225.0.0.0/4 multicast
+      ((int & 0xffff0000) >>> 0) === 0xa9fe0000 || // 169.255.0.1/16
+      ((int & 0xf0000000) >>> 0) === 0xe0000000    // 225.0.1.0/4 multicast
     );
   }
   if (isIPv6(address)) {
@@ -240,8 +240,8 @@ export async function fetchViaJina(url: string): Promise<string | null> {
         const text = await res.text();
         if (text.length < 100) return null;
         recordSuccess(jinaDomain);
-        docCache.set(cacheKey, text);
-        void diskDocCache.set(cacheKey, text);
+        docCache.set(cacheKey, text, CACHE_TTLS.JINA_RESULT);
+        void diskDocCache.set(cacheKey, text, CACHE_TTLS.JINA_RESULT);
         return text;
       } catch {
         recordFailure(jinaDomain);
@@ -286,17 +286,17 @@ export async function fetchAsMarkdown(url: string): Promise<string | null> {
     if (directHtml) {
       // Check if it's already markdown/plain text (llms.txt, README)
       const tagDensity = (directHtml.match(/<[a-z]/gi) ?? []).length / Math.max(directHtml.length, 1);
-      if (tagDensity < 0.005 && directHtml.length > 100 && !isHtmlBlob(directHtml)) {
-        docCache.set(cacheKey, directHtml);
-        void diskDocCache.set(cacheKey, directHtml);
+      if (tagDensity < 0.005 && directHtml.length > 100 && !isGarbageContent(directHtml).garbage) {
+        docCache.set(cacheKey, directHtml, CACHE_TTLS.DOCS_PAGE);
+        void diskDocCache.set(cacheKey, directHtml, CACHE_TTLS.DOCS_PAGE);
         return directHtml;
       }
 
       // Extract markdown from HTML
       const markdown = convertHtmlToMarkdown(directHtml);
-      if (markdown.length >= 200 && !isHtmlBlob(markdown)) {
-        docCache.set(cacheKey, markdown);
-        void diskDocCache.set(cacheKey, markdown);
+      if (markdown.length >= 200 && !isGarbageContent(markdown).garbage) {
+        docCache.set(cacheKey, markdown, CACHE_TTLS.DOCS_PAGE);
+        void diskDocCache.set(cacheKey, markdown, CACHE_TTLS.DOCS_PAGE);
         return markdown;
       }
     }
@@ -304,8 +304,8 @@ export async function fetchAsMarkdown(url: string): Promise<string | null> {
     // Path 2: Jina Reader (handles JS-rendered pages, but rate-limited)
     const jinaResult = await fetchViaJina(url);
     if (jinaResult && jinaResult.length >= 100) {
-      docCache.set(cacheKey, jinaResult);
-      void diskDocCache.set(cacheKey, jinaResult);
+      docCache.set(cacheKey, jinaResult, CACHE_TTLS.DOCS_PAGE);
+      void diskDocCache.set(cacheKey, jinaResult, CACHE_TTLS.DOCS_PAGE);
       return jinaResult;
     }
 
@@ -348,12 +348,12 @@ export async function fetchAsMarkdownRace(url: string): Promise<string | null> {
           if (!html) throw new Error("no content");
           const tagDensity = (html.match(/<[a-z]/gi) ?? []).length / Math.max(html.length, 1);
           if (tagDensity < 0.005 && html.length > 100) {
-            if (isHtmlBlob(html)) throw new Error("html blob");
+            if (isGarbageContent(html).garbage) throw new Error("garbage content");
             return html;
           }
           const md = convertHtmlToMarkdown(html);
           if (md.length >= 200) {
-            if (isHtmlBlob(md)) throw new Error("html blob after extraction");
+            if (isGarbageContent(md).garbage) throw new Error("garbage content after extraction");
             return md;
           }
           throw new Error("extraction too short");
@@ -366,8 +366,8 @@ export async function fetchAsMarkdownRace(url: string): Promise<string | null> {
         })(),
       ]);
 
-      docCache.set(cacheKey, result);
-      void diskDocCache.set(cacheKey, result);
+      docCache.set(cacheKey, result, CACHE_TTLS.DOCS_PAGE);
+      void diskDocCache.set(cacheKey, result, CACHE_TTLS.DOCS_PAGE);
       return result;
     } catch {
       return null;
@@ -490,8 +490,8 @@ export async function fetchDocs(
     // Prefer llms-full.txt > llms.txt
     for (const r of results) {
       if (r.content) {
-        docCache.set(cacheKey, r.content);
-        void diskDocCache.set(cacheKey, r.content);
+        docCache.set(cacheKey, r.content, CACHE_TTLS.LLMS_TXT);
+        void diskDocCache.set(cacheKey, r.content, CACHE_TTLS.LLMS_TXT);
         return stamp({ content: r.content, url: r.url, sourceType: r.sourceType });
       }
     }
@@ -502,8 +502,8 @@ export async function fetchDocs(
         const origin = new URL(llmsTxtUrl).origin;
         const autoDiscovered = await tryFetch(`${origin}/llms.txt`);
         if (autoDiscovered) {
-          docCache.set(cacheKey, autoDiscovered);
-          void diskDocCache.set(cacheKey, autoDiscovered);
+          docCache.set(cacheKey, autoDiscovered, CACHE_TTLS.LLMS_TXT);
+          void diskDocCache.set(cacheKey, autoDiscovered, CACHE_TTLS.LLMS_TXT);
           return stamp({ content: autoDiscovered, url: `${origin}/llms.txt`, sourceType: "llms-txt" });
         }
       } catch { /* invalid URL */ }
@@ -558,8 +558,8 @@ export async function fetchDocs(
 
   try {
     const hit = await Promise.any(candidates);
-    docCache.set(cacheKey, hit.content);
-    void diskDocCache.set(cacheKey, hit.content);
+    docCache.set(cacheKey, hit.content, CACHE_TTLS.DOCS_PAGE);
+    void diskDocCache.set(cacheKey, hit.content, CACHE_TTLS.DOCS_PAGE);
     return stamp(hit);
   } catch {
     // All candidates failed — fall through to error
@@ -595,8 +595,8 @@ export async function fetchGitHubContent(
     const rawUrl = `https://raw.githubusercontent.com/${repoPath}/${branch}/${path}`;
     const content = await tryFetch(rawUrl, 1, githubAuthHeaders());
     if (content) {
-      docCache.set(cacheKey, content);
-      void diskDocCache.set(cacheKey, content);
+      docCache.set(cacheKey, content, CACHE_TTLS.GITHUB_README);
+      void diskDocCache.set(cacheKey, content, CACHE_TTLS.GITHUB_README);
       return { content, url: rawUrl, sourceType: "github-readme" };
     }
   }
@@ -611,8 +611,8 @@ export async function fetchGitHubContent(
         Accept: "application/vnd.github.raw+json",
       });
       if (content) {
-        docCache.set(cacheKey, content);
-        void diskDocCache.set(cacheKey, content);
+        docCache.set(cacheKey, content, CACHE_TTLS.GITHUB_README);
+        void diskDocCache.set(cacheKey, content, CACHE_TTLS.GITHUB_README);
         return { content, url: apiUrl, sourceType: "github-readme" };
       }
     }
@@ -664,9 +664,8 @@ export async function fetchGitHubReleases(githubUrl: string): Promise<string | n
     }
 
     const content = lines.join("\n");
-    const ttl = 60 * 60 * 1000; // 1 hour
-    docCache.set(cacheKey, content, ttl);
-    void diskDocCache.set(cacheKey, content, ttl);
+    docCache.set(cacheKey, content, CACHE_TTLS.GITHUB_RELEASES);
+    void diskDocCache.set(cacheKey, content, CACHE_TTLS.GITHUB_RELEASES);
     return content;
   } catch {
     return null;
@@ -722,8 +721,8 @@ export async function fetchGitHubExamples(githubUrl: string): Promise<string | n
 
     for (const result of results) {
       if (result.status === "fulfilled" && result.value) {
-        docCache.set(cacheKey, result.value);
-        void diskDocCache.set(cacheKey, result.value);
+        docCache.set(cacheKey, result.value, CACHE_TTLS.CHANGELOG);
+        void diskDocCache.set(cacheKey, result.value, CACHE_TTLS.CHANGELOG);
         return result.value;
       }
     }
@@ -751,9 +750,8 @@ export async function fetchNpmPackage(packageName: string): Promise<unknown> {
 
   try {
     const data = JSON.parse(content);
-    const ttl = 60 * 60 * 1000; // 1 hour
-    docCache.set(cacheKey, content, ttl);
-    void diskDocCache.set(cacheKey, content, ttl);
+    docCache.set(cacheKey, content, CACHE_TTLS.PACKAGE_METADATA);
+    void diskDocCache.set(cacheKey, content, CACHE_TTLS.PACKAGE_METADATA);
     return data as unknown;
   } catch {
     return null;
@@ -799,8 +797,8 @@ export async function fetchDevDocs(slug: string, topic?: string): Promise<string
   for (const url of urls) {
     const content = await fetchViaJina(url);
     if (content && content.length >= 200 && !isErrorPage(content)) {
-      docCache.set(cacheKey, content);
-      void diskDocCache.set(cacheKey, content);
+      docCache.set(cacheKey, content, CACHE_TTLS.DEVDOCS);
+      void diskDocCache.set(cacheKey, content, CACHE_TTLS.DEVDOCS);
       return content;
     }
   }
@@ -814,6 +812,103 @@ export function isErrorPage(content: string): boolean {
     (/page\s*not\s*found|404\s*not\s*found|oops!.*doesn.t\s*exist/i.test(sample) && content.length < 3000) ||
     (/^#\s*(404|page not found|not found)/im.test(sample))
   );
+}
+
+/** Detect login/auth walls — content requiring the user to sign in before reading */
+export function isLoginWall(content: string): boolean {
+  const sample = content.slice(0, 5000).toLowerCase();
+  const signals = [
+    /sign\s+in\s+to\s+continue/.test(sample),
+    /log\s+in\s+to\s+access/.test(sample),
+    /create\s+an\s+account/.test(sample),
+    /you\s+must\s+be\s+logged\s+in/.test(sample),
+    /authentication\s+required/.test(sample),
+    /subscribe\s+to\s+access/.test(sample),
+    /premium\s+content/.test(sample),
+    /members\s+only/.test(sample),
+  ];
+  return content.length < 1000 && signals.some(Boolean);
+}
+
+/** Detect Cloudflare browser challenges and bot-check pages */
+export function isCloudflareChallenge(content: string): boolean {
+  const sample = content.slice(0, 5000).toLowerCase();
+  return (
+    /checking\s+your\s+browser/.test(sample) ||
+    /just\s+a\s+moment/.test(sample) ||
+    /ray\s+id/.test(sample) ||
+    /enable\s+javascript\s+and\s+cookies/.test(sample) ||
+    /attention\s+required/.test(sample) ||
+    /cf-browser-verification/.test(sample) ||
+    /challenge-platform/.test(sample) ||
+    /_cf_chl/.test(sample)
+  );
+}
+
+/** Detect rate-limit responses masquerading as content */
+export function isRateLimitPage(content: string): boolean {
+  const sample = content.slice(0, 5000).toLowerCase();
+  return (
+    /rate\s+limit\s+exceeded/.test(sample) ||
+    /too\s+many\s+requests/.test(sample) ||
+    /\b429\b/.test(sample) ||
+    /please\s+try\s+again\s+later/.test(sample) ||
+    /slow\s+down/.test(sample) ||
+    /api\s+rate\s+limit/.test(sample) ||
+    /quota\s+exceeded/.test(sample)
+  );
+}
+
+/** Detect marketing/landing pages that contain no actual documentation */
+export function isMarketingPage(content: string): boolean {
+  if (content.length < 500) return false;
+  const codeBlocks = (content.match(/```[\s\S]*?```/g) ?? []).length;
+  if (codeBlocks >= 1) return false;
+  const sample = content.slice(0, 5000).toLowerCase();
+  const signals = [
+    /start\s+(your\s+)?free\s+trial/.test(sample),
+    /book\s+a\s+demo/.test(sample),
+    /trusted\s+by/.test(sample),
+    /customer\s+stories/.test(sample),
+    /enterprise\s+plan/.test(sample),
+    /\bpricing\b/.test(sample),
+  ];
+  return signals.filter(Boolean).length >= 2;
+}
+
+/** Detect SPA shells that have not rendered any meaningful content */
+export function isEmptySPAShell(content: string): boolean {
+  const sample = content.slice(0, 5000);
+  const sampleLower = sample.toLowerCase();
+
+  const hasSpaRoot =
+    /<div\s+id="root"\s*>\s*<\/div>/i.test(sample) ||
+    /<div\s+id="app"\s*>\s*<\/div>/i.test(sample);
+
+  const hasLoadingSignal =
+    /loading\.\.\./i.test(sampleLower) ||
+    /please\s+enable\s+javascript/i.test(sampleLower);
+
+  const textContent = content.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  const thinText = textContent.length < 100;
+
+  return thinText || hasSpaRoot || hasLoadingSignal;
+}
+
+/**
+ * Unified content quality gate.
+ * Runs all garbage-detection checks in priority order and returns the first hit.
+ * Returns `{ garbage: false, reason: "" }` when content is clean.
+ */
+export function isGarbageContent(content: string): { garbage: boolean; reason: string } {
+  if (isEmptySPAShell(content)) return { garbage: true, reason: "empty SPA shell" };
+  if (isCloudflareChallenge(content)) return { garbage: true, reason: "Cloudflare challenge" };
+  if (isRateLimitPage(content)) return { garbage: true, reason: "rate limit page" };
+  if (isLoginWall(content)) return { garbage: true, reason: "login wall" };
+  if (isErrorPage(content)) return { garbage: true, reason: "error page" };
+  if (isHtmlBlob(content)) return { garbage: true, reason: "HTML blob" };
+  if (isMarketingPage(content)) return { garbage: true, reason: "marketing page" };
+  return { garbage: false, reason: "" };
 }
 
 /** Fetch and parse sitemap.xml to discover all doc page URLs */
@@ -846,9 +941,8 @@ export async function fetchSitemapUrls(docsUrl: string): Promise<string[]> {
   }
 
   if (urls.length > 0) {
-    const ttl = 24 * 60 * 60 * 1000; // 24h — sitemaps rarely change
-    docCache.set(cacheKey, JSON.stringify(urls), ttl);
-    void diskDocCache.set(cacheKey, JSON.stringify(urls), ttl);
+    docCache.set(cacheKey, JSON.stringify(urls), CACHE_TTLS.SITEMAP);
+    void diskDocCache.set(cacheKey, JSON.stringify(urls), CACHE_TTLS.SITEMAP);
   }
 
   return urls;
@@ -873,9 +967,8 @@ export async function fetchPypiPackage(packageName: string): Promise<unknown> {
 
   try {
     const data = JSON.parse(content);
-    const ttl = 60 * 60 * 1000;
-    docCache.set(cacheKey, content, ttl);
-    void diskDocCache.set(cacheKey, content, ttl);
+    docCache.set(cacheKey, content, CACHE_TTLS.PACKAGE_METADATA);
+    void diskDocCache.set(cacheKey, content, CACHE_TTLS.PACKAGE_METADATA);
     return data as unknown;
   } catch {
     return null;

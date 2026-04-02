@@ -71,7 +71,7 @@ registerChangelogTool(mockServer);
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-const RELEASES_CONTENT = "## Recent Releases\n\n### v15.0.0\nPublished: 2026-01-15\nBreaking changes.";
+const RELEASES_CONTENT = "## Recent Releases\n\n### v15.0.1\nPublished: 2026-01-15\nBreaking changes.";
 
 const makeEntry = (overrides: Record<string, unknown> = {}) => ({
   id: "vercel/next.js",
@@ -171,7 +171,7 @@ describe("gt_changelog handler", () => {
       vi.mocked(lookupById).mockReturnValue(makeEntry());
       vi.mocked(fetchGitHubReleases).mockResolvedValue(null);
       vi.mocked(fetchGitHubContent).mockResolvedValue({
-        content: "# Changelog\n## v15.0.0\nBig changes.",
+        content: "# Changelog\n## v15.0.1\nBig changes.",
         url: "https://raw.githubusercontent.com/vercel/next.js/main/CHANGELOG.md",
         sourceType: "github-readme",
       });
@@ -251,8 +251,8 @@ describe("gt_changelog handler", () => {
 
   describe("version filtering", () => {
     it.each([
-      ["15", "v15.0.0"],
-      ["v15.0.0", "v15.0.0"],
+      ["15", "v15.0.1"],
+      ["v15.0.1", "v15.0.1"],
       ["14", "14.2.0"],
     ])("filters content for version %s containing %s", async (version, versionLine) => {
       vi.mocked(lookupById).mockReturnValue(makeEntry());
