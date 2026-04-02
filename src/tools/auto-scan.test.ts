@@ -36,7 +36,7 @@ describe("detectDependencies", () => {
         {
           "package.json": JSON.stringify({
             dependencies: { react: "^18.0.0", "react-dom": "^18.0.0" },
-            devDependencies: { vitest: "^5.0.1" },
+            devDependencies: { vitest: "^5.1.0" },
           }),
         },
         async (dir) => {
@@ -54,7 +54,7 @@ describe("detectDependencies", () => {
       await withTempDir(
         {
           "package.json": JSON.stringify({
-            devDependencies: { typescript: "^5.0.1" },
+            devDependencies: { typescript: "^5.1.0" },
           }),
         },
         async (dir) => {
@@ -324,7 +324,7 @@ require (
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-web</artifactId>
-      <version>5.0.1</version>
+      <version>5.1.0</version>
     </dependency>
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
