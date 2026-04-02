@@ -342,24 +342,14 @@ describe("gt_search handler", () => {
       );
     });
 
-    it("falls back to Bing when DuckDuckGo fails", async () => {
+    it("falls back to DDG Lite when DDG HTML fails", async () => {
       vi.mocked(fetchWithTimeout)
-        .mockRejectedValueOnce(new Error("DDG down")) // DDG fails
-        .mockResolvedValueOnce({
-          ok: true,
-          text: vi.fn().mockResolvedValue(
-            `<a href="https://developer.mozilla.org/en-US/docs/XYZ">MDN</a>`,
-          ),
-          status: 200,
-        } as unknown as Response); // Bing succeeds
-      // Return null for direct docs URLs, LONG_CONTENT only for web search results
-      vi.mocked(fetchAsMarkdownRace).mockImplementation(async (url: string) => {
-        if (url.includes("developer.mozilla.org/en-US/docs/XYZ")) return LONG_CONTENT;
-        return null;
-      });
+        .mockRejectedValue(new Error("all fetch calls fail"));
+      vi.mocked(fetchAsMarkdownRace).mockResolvedValue(null);
       await handler({ query: "some obscure undocumented topic xyz456" });
+      // Verify DDG Lite was attempted after DDG HTML failed
       expect(fetchWithTimeout).toHaveBeenCalledWith(
-        expect.stringContaining("bing.com"),
+        expect.stringContaining("lite.duckduckgo.com"),
         expect.any(Number),
         expect.any(Object),
       );

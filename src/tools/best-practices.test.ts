@@ -358,25 +358,25 @@ describe("gt_best_practices handler", () => {
       const entry = makeEntry();
       vi.mocked(lookupById).mockReturnValue(entry);
       vi.mocked(fetchViaJina).mockResolvedValue(BP_CONTENT);
-      const result = await handler({ libraryId: "vercel/next.js", version: "15.0.0" });
-      expect(result.content[0]!.text).toContain("v15.0.0");
+      const result = await handler({ libraryId: "vercel/next.js", version: "15.0.1" });
+      expect(result.content[0]!.text).toContain("v15.0.1");
     });
 
     it("combines topic and version into effectiveTopic", async () => {
       const entry = makeEntry();
       vi.mocked(lookupById).mockReturnValue(entry);
       vi.mocked(fetchViaJina).mockResolvedValue(BP_CONTENT);
-      const result = await handler({ libraryId: "vercel/next.js", topic: "routing", version: "15.0.0" });
-      expect(result.content[0]!.text).toContain("routing v15.0.0");
+      const result = await handler({ libraryId: "vercel/next.js", topic: "routing", version: "15.0.1" });
+      expect(result.content[0]!.text).toContain("routing v15.0.1");
     });
 
     it("strips leading v from version in effectiveTopic to avoid vv prefix", async () => {
       const entry = makeEntry();
       vi.mocked(lookupById).mockReturnValue(entry);
       vi.mocked(fetchViaJina).mockResolvedValue(BP_CONTENT);
-      const result = await handler({ libraryId: "vercel/next.js", version: "v15.0.0" });
-      expect(result.content[0]!.text).toContain("v15.0.0");
-      expect(result.content[0]!.text).not.toContain("vv15.0.0");
+      const result = await handler({ libraryId: "vercel/next.js", version: "v15.0.1" });
+      expect(result.content[0]!.text).toContain("v15.0.1");
+      expect(result.content[0]!.text).not.toContain("vv15.0.1");
     });
 
     it("stores effectiveTopic in structuredContent topic field", async () => {

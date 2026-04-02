@@ -771,7 +771,7 @@ describe("isBlockedIP", () => {
     { ip: "192.168.1.1", expected: true },
     { ip: "169.254.0.1", expected: true },
     { ip: "0.0.0.0", expected: true },
-    { ip: "225.0.0.1", expected: true },
+    { ip: "225.0.1.1", expected: true },
     { ip: "::1", expected: true },
     { ip: "::", expected: true },
     { ip: "fc00::1", expected: true },

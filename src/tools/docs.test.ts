@@ -257,7 +257,7 @@ describe("gt_get_docs handler", () => {
       vi.mocked(fetchDocs).mockRejectedValue(new Error("fetch failed"));
       vi.mocked(fetchGitHubContent).mockResolvedValue(null);
       const result = await handler({ libraryId: "facebook/react" });
-      expect(result.content[0]!.text).toContain("Error");
+      expect(result.content[0]!.text).toContain("Could not fetch documentation");
       expect(result.content[0]!.text).toContain("React");
     });
 
@@ -266,7 +266,7 @@ describe("gt_get_docs handler", () => {
       vi.mocked(lookupById).mockReturnValue(entry);
       vi.mocked(fetchDocs).mockRejectedValue(new Error("fetch failed"));
       const result = await handler({ libraryId: "facebook/react" });
-      expect(result.content[0]!.text).toContain("Error");
+      expect(result.content[0]!.text).toContain("Could not fetch documentation");
       expect(fetchGitHubContent).not.toHaveBeenCalled();
     });
 

@@ -152,11 +152,30 @@ IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library 
           }
         }
         if (!fetchResult) {
+          const tried: string[] = [docsUrl];
+          if (llmsTxtUrl) tried.push(llmsTxtUrl);
+          if (llmsFullTxtUrl) tried.push(llmsFullTxtUrl);
+          if (githubUrl) tried.push(githubUrl);
+
+          const suggestions: string[] = [];
+          if (!entry) suggestions.push("- Run gt_resolve_library to verify the library ID is correct");
+          suggestions.push("- Try gt_search with your question as a freeform query");
+          if (!githubUrl) suggestions.push("- Provide a direct docs URL as the libraryId (e.g. 'https://docs.example.com')");
+          if (topic) suggestions.push("- Try without a topic filter to get the main docs page");
+
           return {
             content: [
               {
                 type: "text",
-                text: `Error: Could not fetch documentation for "${displayName}".\n\nTried:\n- ${docsUrl}\n${llmsTxtUrl ? `- ${llmsTxtUrl}\n` : ""}${githubUrl ? `- ${githubUrl}\n` : ""}\n\nCheck that the library ID is correct or try gt_resolve_library first.`,
+                text: [
+                  `Could not fetch documentation for "${displayName}".`,
+                  "",
+                  "**Sources attempted:**",
+                  ...tried.map((u) => `- ${u}`),
+                  "",
+                  "**What to try next:**",
+                  ...suggestions,
+                ].join("\n"),
               },
             ],
           };
@@ -165,7 +184,17 @@ IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library 
 
       if (!fetchResult) {
         return {
-          content: [{ type: "text", text: `No documentation found for "${displayName}".` }],
+          content: [{
+            type: "text",
+            text: [
+              `No documentation found for "${displayName}".`,
+              "",
+              "**What to try next:**",
+              "- Run gt_resolve_library to check if the library exists under a different name",
+              "- Try gt_search with a freeform query about what you need",
+              "- Provide a direct docs URL as the libraryId",
+            ].join("\n"),
+          }],
         };
       }
 

@@ -8,6 +8,8 @@ import {
   resolveFromPypi,
   resolveFromCrates,
   resolveFromGo,
+  searchNpm,
+  searchGitHub,
 } from "../services/resolve.js";
 
 const InputSchema = z.object({
@@ -27,7 +29,15 @@ const InputSchema = z.object({
 
 function formatResults(matches: LibraryMatch[]): string {
   if (matches.length === 0) {
-    return "No libraries found. Try a different name or check spelling.";
+    return [
+      "No libraries found matching that name.",
+      "",
+      "**What to try next:**",
+      "- Check spelling and try common aliases (e.g. 'nextjs' instead of 'next.js')",
+      "- Use gt_search for a freeform query (works for any topic, not just libraries)",
+      "- Provide a direct docs URL to gt_get_docs (e.g. 'https://docs.example.com')",
+      "- Try the npm/PyPI package name if this is a less-known library",
+    ].join("\n");
   }
 
   const lines: string[] = [
@@ -128,6 +138,15 @@ IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library 
           ]);
           if (cratesResult) matches.push(cratesResult);
           if (goResult) matches.push(goResult);
+        }
+
+        if (matches.length === 0) {
+          const [npmSearchResult, githubResult] = await Promise.all([
+            searchNpm(name),
+            searchGitHub(name),
+          ]);
+          if (npmSearchResult) matches.push(npmSearchResult);
+          if (githubResult && !matches.some((m) => m.id === githubResult.id)) matches.push(githubResult);
         }
       }
 

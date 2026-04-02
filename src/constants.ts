@@ -20,6 +20,21 @@ export const DISK_CACHE_DIR = _rawCacheDir;
 export const DEFAULT_TOKEN_LIMIT = config.tokenLimit;
 export const MAX_TOKEN_LIMIT = config.maxTokenLimit;
 export const CACHE_TTL_MS = config.cacheTtlMs;
+
+export const CACHE_TTLS = {
+  LLMS_TXT: 30 * 60 * 1000,
+  DOCS_PAGE: 60 * 60 * 1000,
+  GITHUB_README: 60 * 60 * 1000,
+  GITHUB_RELEASES: 60 * 60 * 1000,
+  PACKAGE_METADATA: 60 * 60 * 1000,
+  DEVDOCS: 24 * 60 * 60 * 1000,
+  SITEMAP: 24 * 60 * 60 * 1000,
+  CHANGELOG: 6 * 60 * 60 * 1000,
+  JINA_RESULT: 60 * 60 * 1000,
+  SEARCH_RESULT: 30 * 60 * 1000,
+  WEB_SEARCH: 15 * 60 * 1000,
+  RESOLVE: 2 * 60 * 60 * 1000,
+} as const;
 export const FETCH_TIMEOUT_MS = config.fetchTimeoutMs;
 
 export const SWR_STALE_TTL_MS = config.swrStaleTtlMs;
