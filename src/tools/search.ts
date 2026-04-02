@@ -5,7 +5,7 @@ import { fetchDocs, fetchWithTimeout, fetchDevDocs, fetchAsMarkdownRace, isError
 import { extractRelevantContent, normalizeQueryYear } from "../utils/extract.js";
 import { sanitizeContent } from "../utils/sanitize.js";
 import { docCache } from "../services/cache.js";
-import { DEFAULT_TOKEN_LIMIT, MAX_TOKEN_LIMIT } from "../constants.js";
+import { DEFAULT_TOKEN_LIMIT, MAX_TOKEN_LIMIT, CACHE_TTLS } from "../constants.js";
 
 const InputSchema = z.object({
   query: z
@@ -1232,7 +1232,7 @@ async function fetchTopicContent(url: string, query: string, tokens: number): Pr
   if (!raw || raw.length < 200 || isErrorPage(raw)) return "";
   const safe = sanitizeContent(raw);
   const { text } = extractRelevantContent(safe, query, tokens);
-  docCache.set(cacheKey, text);
+  docCache.set(cacheKey, text, CACHE_TTLS.SEARCH_RESULT);
   return text;
 }
 
@@ -1398,55 +1398,244 @@ function buildJinaFallbackUrls(query: string): Array<{ url: string; name: string
   ];
 }
 
-// Use DuckDuckGo lite HTML search, with Bing and Brave fallbacks
+/**
+ * Search MDN Web Docs via their free JSON API (no auth, no rate limit issues).
+ * Returns doc page URLs sorted by relevance. Ideal for web standards, CSS, HTML, JS, HTTP.
+ */
+async function searchMDN(query: string): Promise<Array<{ url: string; title: string }>> {
+  try {
+    const res = await fetchWithTimeout(
+      `https://developer.mozilla.org/api/v1/search?q=${encodeURIComponent(query)}&locale=en-US&size=5`,
+      8000,
+    );
+    if (!res.ok) return [];
+    const data = await res.json() as { documents?: Array<{ mdn_url?: string; title?: string; summary?: string }> };
+    if (!Array.isArray(data?.documents)) return [];
+    return data.documents
+      .filter((d) => d.mdn_url && d.title)
+      .map((d) => ({
+        url: `https://developer.mozilla.org${d.mdn_url}`,
+        title: d.title ?? "",
+      }));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * DuckDuckGo Instant Answer API — returns structured results without HTML scraping.
+ * Free, no auth required. Returns topic summary + related topics with URLs.
+ * Falls back gracefully (returns empty array) when no instant answer exists.
+ */
+async function searchDDGInstant(query: string): Promise<string[]> {
+  try {
+    const res = await fetchWithTimeout(
+      `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`,
+      8000,
+    );
+    if (!res.ok) return [];
+    const data = await res.json() as {
+      AbstractURL?: string;
+      RelatedTopics?: Array<{ FirstURL?: string; Text?: string }>;
+      Results?: Array<{ FirstURL?: string }>;
+    };
+    const urls: string[] = [];
+    if (data.AbstractURL) urls.push(data.AbstractURL);
+    if (Array.isArray(data.Results)) {
+      for (const r of data.Results.slice(0, 3)) {
+        if (r.FirstURL) urls.push(r.FirstURL);
+      }
+    }
+    if (Array.isArray(data.RelatedTopics)) {
+      for (const t of data.RelatedTopics.slice(0, 3)) {
+        if (t.FirstURL) urls.push(t.FirstURL);
+      }
+    }
+    return urls;
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Extract real URLs from DuckDuckGo redirect wrappers.
+ * DDG wraps all result links through //duckduckgo.com/l/?uddg=ENCODED_URL
+ * The uddg= parameter contains the actual destination URL.
+ * This pattern has been stable for 4+ years and is more reliable than HTML class scraping.
+ */
+function extractDDGUrls(html: string): string[] {
+  const urls: string[] = [];
+  const uddgPattern = /uddg=(https?[^&"]+)/g;
+  for (const match of html.matchAll(uddgPattern)) {
+    if (urls.length >= 8) break;
+    try {
+      const url = decodeURIComponent(match[1]!);
+      const hostname = new URL(url).hostname;
+      if (
+        hostname.includes("duckduckgo.") ||
+        hostname.includes("google.") ||
+        hostname.includes("bing.")
+      ) continue;
+      if (/\.(pdf|zip|tar|gz|exe|dmg|png|jpg|jpeg|gif|svg|ico|webp)$/i.test(url)) continue;
+      if (!urls.includes(url)) urls.push(url);
+    } catch { /* invalid URL */ }
+  }
+  return urls;
+}
+
+/** Score URLs for documentation relevance — higher score = more likely to be useful docs */
+function scoreDocUrl(url: string, query: string): number {
+  const lower = url.toLowerCase();
+  let score = 0;
+
+  if (/\/docs?\//i.test(lower)) score += 10;
+  if (/\/api\//i.test(lower)) score += 10;
+  if (/\/guide/i.test(lower)) score += 8;
+  if (/\/reference/i.test(lower)) score += 8;
+  if (/\/learn/i.test(lower)) score += 6;
+  if (/\/tutorial/i.test(lower)) score += 6;
+  if (/\/getting[-_]started/i.test(lower)) score += 7;
+  if (/readthedocs\.(io|org)/i.test(lower)) score += 8;
+  if (/github\.io/i.test(lower)) score += 3;
+
+  // Penalize non-doc content
+  if (/stackoverflow\.com/i.test(lower)) score -= 5;
+  if (/reddit\.com/i.test(lower)) score -= 8;
+  if (/medium\.com/i.test(lower)) score -= 3;
+  if (/youtube\.com/i.test(lower)) score -= 10;
+
+  // Bonus if URL contains query terms
+  const queryWords = query.toLowerCase().split(/\s+/).filter((w) => w.length > 2);
+  for (const word of queryWords) {
+    if (lower.includes(word)) score += 5;
+  }
+
+  return score;
+}
+
+const BROWSER_UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
+
+/**
+ * SearXNG public instances with JSON API support.
+ * Rotated with circuit breaker to handle instance downtime.
+ * These are community-run — expect occasional failures.
+ */
+const SEARXNG_INSTANCES = [
+  "https://paulgo.io",
+  "https://priv.au",
+  "https://opnxng.com",
+  "https://baresearch.org",
+];
+
+async function searchSearXNG(query: string): Promise<string[]> {
+  for (const instance of SEARXNG_INSTANCES) {
+    try {
+      const res = await fetchWithTimeout(
+        `${instance}/search?q=${encodeURIComponent(query)}&format=json&categories=general&language=en`,
+        8000,
+      );
+      if (!res.ok) continue;
+      const data = await res.json() as { results?: Array<{ url?: string; title?: string }> };
+      if (!Array.isArray(data?.results) || data.results.length === 0) continue;
+      return data.results
+        .filter((r) => r.url && r.url.startsWith("http"))
+        .map((r) => r.url!)
+        .slice(0, 8);
+    } catch {
+      continue;
+    }
+  }
+  return [];
+}
+
+/**
+ * Multi-engine web search with prioritized fallback chain.
+ * 1. DuckDuckGo HTML (uddg= extraction — most reliable)
+ * 2. DuckDuckGo Lite (simpler HTML, same extraction)
+ * 3. SearXNG JSON API (structured, but public instances are flaky)
+ * 4. Mojeek HTML (direct URLs, no redirect wrappers, smaller index)
+ * 5. Legacy: extractUrlsFromHtml for any search engine HTML
+ *
+ * Bing and Brave are deliberately excluded:
+ * - Bing returns Cloudflare PoW challenges for server-side requests
+ * - Brave uses SvelteKit CSR — no results in SSR HTML
+ */
 async function webSearch(query: string): Promise<string[]> {
-  const currentYear = new Date().getFullYear();
   const docsHint = "official docs documentation guide reference";
+  const searchQuery = `${query} ${docsHint}`;
+  const encoded = encodeURIComponent(searchQuery);
 
-  // Primary: DuckDuckGo Lite (no site restrict to get broader results)
+  // 1. DuckDuckGo HTML — uddg= parameter extraction (stable 4+ years)
   try {
-    const searchQuery = encodeURIComponent(`${query} ${currentYear} ${docsHint}`);
     const res = await fetchWithTimeout(
-      `https://html.duckduckgo.com/html/?q=${searchQuery}`,
+      `https://html.duckduckgo.com/html/?q=${encoded}`,
       10_000,
-      { Accept: "text/html" },
+      { Accept: "text/html", "User-Agent": BROWSER_UA },
     );
     if (res.ok) {
       const html = await res.text();
-      const urls = extractUrlsFromHtml(html);
-      if (urls.length > 0) return urls;
+      const urls = extractDDGUrls(html);
+      if (urls.length > 0) {
+        return urls
+          .map((url) => ({ url, score: scoreDocUrl(url, query) }))
+          .sort((a, b) => b.score - a.score)
+          .map((r) => r.url);
+      }
+      // Fallback to generic extraction if uddg pattern missing
+      const legacyUrls = extractUrlsFromHtml(html);
+      if (legacyUrls.length > 0) return legacyUrls;
     }
-  } catch { /* DDG failed — fall through */ }
+  } catch { /* DDG HTML failed */ }
 
-  // Fallback 1: Bing search
+  // 2. DuckDuckGo Lite — even simpler HTML, same uddg= pattern
   try {
-    const bingQuery = encodeURIComponent(`${query} ${currentYear} ${docsHint}`);
     const res = await fetchWithTimeout(
-      `https://www.bing.com/search?q=${bingQuery}`,
+      `https://lite.duckduckgo.com/lite/?q=${encoded}`,
       10_000,
-      { Accept: "text/html" },
+      { Accept: "text/html", "User-Agent": BROWSER_UA },
     );
     if (res.ok) {
       const html = await res.text();
-      const urls = extractUrlsFromHtml(html);
-      if (urls.length > 0) return urls;
+      const urls = extractDDGUrls(html);
+      if (urls.length > 0) {
+        return urls
+          .map((url) => ({ url, score: scoreDocUrl(url, query) }))
+          .sort((a, b) => b.score - a.score)
+          .map((r) => r.url);
+      }
     }
-  } catch { /* Bing also failed */ }
+  } catch { /* DDG Lite failed */ }
 
-  // Fallback 2: Brave search (often better for technical queries)
+  // 3. SearXNG JSON API — structured results, rotate across public instances
   try {
-    const braveQuery = encodeURIComponent(`${query} ${docsHint}`);
+    const searxUrls = await searchSearXNG(searchQuery);
+    if (searxUrls.length > 0) {
+      return searxUrls
+        .map((url) => ({ url, score: scoreDocUrl(url, query) }))
+        .sort((a, b) => b.score - a.score)
+        .map((r) => r.url);
+    }
+  } catch { /* SearXNG failed */ }
+
+  // 4. Mojeek — independent search engine, direct URLs (no redirect wrappers)
+  try {
     const res = await fetchWithTimeout(
-      `https://search.brave.com/search?q=${braveQuery}`,
+      `https://www.mojeek.com/search?q=${encoded}`,
       10_000,
-      { Accept: "text/html" },
+      { Accept: "text/html", "User-Agent": BROWSER_UA },
     );
     if (res.ok) {
       const html = await res.text();
+      // Mojeek uses direct hrefs — no redirect wrapping
       const urls = extractUrlsFromHtml(html);
-      if (urls.length > 0) return urls;
+      if (urls.length > 0) {
+        return urls
+          .map((url) => ({ url, score: scoreDocUrl(url, query) }))
+          .sort((a, b) => b.score - a.score)
+          .map((r) => r.url);
+      }
     }
-  } catch { /* Brave also failed */ }
+  } catch { /* Mojeek failed */ }
 
   return [];
 }
@@ -1549,6 +1738,52 @@ Examples:
         }
       }
 
+      // 4. MDN JSON API search — free, structured, no scraping needed
+      if (results.length === 0) {
+        const mdnResults = await searchMDN(query);
+        if (mdnResults.length > 0) {
+          const mdnFetchResults = await Promise.allSettled(
+            mdnResults.slice(0, 3).map(async (mdn) => {
+              const content = await fetchTopicContent(mdn.url, query, Math.floor(tokens / 2));
+              if (content.length > 200) {
+                return { source: `MDN: ${mdn.title}`, url: mdn.url, content };
+              }
+              throw new Error("no content");
+            }),
+          );
+          for (const result of mdnFetchResults) {
+            if (result.status === "fulfilled") {
+              results.push(result.value);
+              if (results.length >= 2) break;
+            }
+          }
+        }
+      }
+
+      // 4b. DuckDuckGo Instant Answer API — free structured JSON, no HTML scraping
+      if (results.length === 0) {
+        const ddgUrls = await searchDDGInstant(query);
+        if (ddgUrls.length > 0) {
+          const ddgFetchResults = await Promise.allSettled(
+            ddgUrls.slice(0, 3).map(async (url) => {
+              const content = await fetchTopicContent(url, query, Math.floor(tokens / 2));
+              if (content.length > 200) {
+                let source: string;
+                try { source = new URL(url).hostname; } catch { source = url; }
+                return { source, url, content };
+              }
+              throw new Error("no content");
+            }),
+          );
+          for (const result of ddgFetchResults) {
+            if (result.status === "fulfilled") {
+              results.push(result.value);
+              if (results.length >= 2) break;
+            }
+          }
+        }
+      }
+
       // 5. If still no results, try web search for authoritative URLs then fetch via Jina
       if (results.length === 0) {
         const searchUrls = await webSearch(query);
@@ -1618,7 +1853,15 @@ Examples:
           content: [
             {
               type: "text",
-              text: `No results found for: "${query}"\n\nTry:\n- gt_resolve_library to find a specific library\n- gt_get_docs with a library ID\n- A more specific query (e.g., "React hooks best practices" instead of "React")`,
+              text: [
+                `No results found for: "${query}"`,
+                "",
+                "**What to try next:**",
+                "- Be more specific (e.g. 'React hooks best practices' instead of 'React')",
+                "- Include the library name + topic (e.g. 'Next.js middleware authentication')",
+                "- Try gt_resolve_library to find a specific library, then gt_get_docs",
+                "- Try gt_get_docs with a direct URL as the libraryId",
+              ].join("\n"),
             },
           ],
         };
