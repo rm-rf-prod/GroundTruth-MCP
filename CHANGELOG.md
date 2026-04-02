@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.2.0] — 2026-04-02
+
+- chore: bump version to 5.1.0, update gitignore for research docs
+- feat: intelligent search pipeline, content quality detection, fuzzy discovery
+- fix(ci): regenerate lockfile for parser 8.58.0 resolution
+
+---
+
 ## [5.1.0] — 2026-04-02
 
 - feat: intelligent search pipeline, content quality detection, fuzzy discovery
