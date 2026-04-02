@@ -16,12 +16,13 @@ docs/private/
 docs/plans/
 docs/CHECKPOINT.json
 
-# Internal docs — publishing guide, handoffs, TODOs, analysis files
+# Internal docs — publishing guide, handoffs, TODOs, analysis files, research
 docs/PUBLISHING.md
 docs/HANDOFF-*.md
 docs/TODO-*.md
 docs/GEO-ANALYSIS.md
 docs/senorit-*.json
+docs/research-*.md
 
 # Claude Code - EXCLUDE EVERYTHING
 .claude/

@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.1.0] — 2026-04-02
+
+- feat: intelligent search pipeline, content quality detection, fuzzy discovery
+- fix(ci): regenerate lockfile for parser 8.58.0 resolution
+
+---
+
 ## [5.0.1] — 2026-04-01
 
 - chore(deps): update @typescript-eslint/parser to 8.57.2
