@@ -4,7 +4,11 @@ import { join } from "path";
 export interface LockfileVersion {
   packageName: string;
   version: string;
-  source: "package-lock" | "pnpm-lock" | "yarn-lock" | "cargo-lock" | "poetry-lock";
+  source: "package-lock" | "pnpm-lock" | "yarn-lock" | "cargo-lock" | "poetry-lock" | "uv-lock" | "go-mod";
+}
+
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 export async function detectVersionFromLockfile(
@@ -24,7 +28,7 @@ export async function detectVersionFromLockfile(
 
   try {
     const raw = await readFile(join(projectPath, "pnpm-lock.yaml"), "utf-8");
-    const escaped = packageName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const escaped = escapeRegex(packageName);
     const re = new RegExp(`['"]?/?${escaped}[@/]([\\d.]+)`, "m");
     const match = raw.match(re);
     if (match?.[1]) return match[1];
@@ -32,7 +36,7 @@ export async function detectVersionFromLockfile(
 
   try {
     const raw = await readFile(join(projectPath, "yarn.lock"), "utf-8");
-    const escaped = packageName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const escaped = escapeRegex(packageName);
     const re = new RegExp(`"?${escaped}@[^"]*"?[\\s\\S]*?\\n\\s+version\\s+"([^"]+)"`, "m");
     const match = raw.match(re);
     if (match?.[1]) return match[1];
@@ -40,7 +44,32 @@ export async function detectVersionFromLockfile(
 
   try {
     const raw = await readFile(join(projectPath, "Cargo.lock"), "utf-8");
-    const re = new RegExp(`\\[\\[package\\]\\]\\nname = "${packageName}"\\nversion = "([^"]+)"`, "m");
+    const escaped = escapeRegex(packageName);
+    const re = new RegExp(`\\[\\[package\\]\\]\\nname = "${escaped}"\\nversion = "([^"]+)"`, "m");
+    const match = raw.match(re);
+    if (match?.[1]) return match[1];
+  } catch { /* not found */ }
+
+  try {
+    const raw = await readFile(join(projectPath, "poetry.lock"), "utf-8");
+    const escaped = escapeRegex(packageName);
+    const re = new RegExp(`\\[\\[package\\]\\]\\nname = "${escaped}"\\nversion = "([^"]+)"`, "m");
+    const match = raw.match(re);
+    if (match?.[1]) return match[1];
+  } catch { /* not found */ }
+
+  try {
+    const raw = await readFile(join(projectPath, "uv.lock"), "utf-8");
+    const escaped = escapeRegex(packageName);
+    const re = new RegExp(`\\[\\[package\\]\\]\\nname = "${escaped}"\\nversion = "([^"]+)"`, "m");
+    const match = raw.match(re);
+    if (match?.[1]) return match[1];
+  } catch { /* not found */ }
+
+  try {
+    const raw = await readFile(join(projectPath, "go.sum"), "utf-8");
+    const escaped = escapeRegex(packageName);
+    const re = new RegExp(`^${escaped}\\s+v([\\d.a-zA-Z-]+)`, "m");
     const match = raw.match(re);
     if (match?.[1]) return match[1];
   } catch { /* not found */ }

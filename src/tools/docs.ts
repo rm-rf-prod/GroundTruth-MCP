@@ -9,6 +9,7 @@ import { extractRelevantContent } from "../utils/extract.js";
 import { isExtractionAttempt, withNotice, EXTRACTION_REFUSAL, assertPublicUrl } from "../utils/guard.js";
 import { sanitizeContent } from "../utils/sanitize.js";
 import { computeQualityScore } from "../utils/quality.js";
+import { detectVersionFromLockfile } from "../utils/lockfile.js";
 import { DEFAULT_TOKEN_LIMIT, MAX_TOKEN_LIMIT } from "../constants.js";
 
 const InputSchema = z.object({
@@ -38,6 +39,11 @@ const InputSchema = z.object({
     .max(MAX_TOKEN_LIMIT)
     .default(DEFAULT_TOKEN_LIMIT)
     .describe(`Max tokens to return (default: ${DEFAULT_TOKEN_LIMIT}, max: ${MAX_TOKEN_LIMIT})`),
+  projectPath: z
+    .string()
+    .max(500)
+    .optional()
+    .describe("Absolute project path. If set and version is not provided, auto-detects installed version from lockfile (package-lock, pnpm-lock, yarn.lock, Cargo.lock, poetry.lock, uv.lock)."),
 });
 
 function resolveLibraryFromId(libraryId: string) {
@@ -70,12 +76,21 @@ IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library 
         openWorldHint: true,
       },
     },
-    async ({ libraryId, topic = "", version, tokens }) => {
+    async ({ libraryId, topic = "", version, tokens, projectPath }) => {
       if (isExtractionAttempt(libraryId) || (topic && isExtractionAttempt(topic))) {
         return { content: [{ type: "text", text: EXTRACTION_REFUSAL }] };
       }
 
       const entry = resolveLibraryFromId(libraryId);
+
+      // Auto-detect version from lockfile if projectPath given and version not explicit
+      if (!version && projectPath && entry) {
+        const pkgName = entry.npmPackage ?? entry.pypiPackage ?? entry.id.split("/").pop() ?? "";
+        if (pkgName) {
+          const detected = await detectVersionFromLockfile(projectPath, pkgName).catch(() => null);
+          if (detected) version = detected;
+        }
+      }
 
       let docsUrl: string;
       let llmsTxtUrl: string | undefined;
@@ -253,8 +268,11 @@ IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library 
           libraryId,
           displayName,
           topic,
+          version: version ?? null,
           sourceUrl: fetchResult.url,
           sourceType: fetchResult.sourceType,
+          contentHash: fetchResult.contentHash,
+          fetchedAt: fetchResult.fetchedAt,
           truncated,
           qualityScore,
           qualityHints,

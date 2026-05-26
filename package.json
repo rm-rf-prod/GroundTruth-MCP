@@ -1,7 +1,7 @@
 {
   "name": "@groundtruth-mcp/gt-mcp",
   "mcpName": "io.github.rm-rf-prod/groundtruth",
-  "version": "5.2.0",
+  "version": "6.0.0",
   "description": "Self-hosted MCP server for live docs and best practices. Context7 alternative — 422+ curated libraries + npm/PyPI/crates.io/Go fallback, no rate limits, code audit tool.",
   "type": "module",
   "main": "dist/index.js",
@@ -33,7 +33,7 @@
     "release:major": "npm version major && npm publish --access public && mcp-publisher publish"
   },
   "engines": {
-    "node": ">=24"
+    "node": ">=22"
   },
   "keywords": [
     "mcp",
@@ -67,21 +67,21 @@
     "url": "https://github.com/rm-rf-prod/GroundTruth-MCP/issues"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.27.1",
-    "undici": ">=7.0.0",
-    "zod": "^4.3.6"
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "undici": "^8.3.0",
+    "zod": "^4.4.3"
   },
   "overrides": {
     "path-to-regexp": ">=8.4.0"
   },
   "devDependencies": {
-    "@types/node": "^25.5.0",
-    "@typescript-eslint/eslint-plugin": "^8.0.0",
-    "@typescript-eslint/parser": "^8.57.2",
+    "@types/node": "^25.9.1",
+    "@typescript-eslint/eslint-plugin": "^8.60.0",
+    "@typescript-eslint/parser": "^8.60.0",
     "@vitest/coverage-v8": "^4.1.0",
-    "eslint": "^10.1.0",
-    "javascript-obfuscator": "^5.3.0",
-    "tsx": "^4.21.0",
+    "eslint": "^10.4.0",
+    "javascript-obfuscator": "^5.4.3",
+    "tsx": "^4.22.3",
     "typescript": "^5.9.3",
     "vitest": "^4.1.0"
   }

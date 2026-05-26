@@ -1,17 +1,17 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.rm-rf-prod/groundtruth",
-  "description": "Self-hosted MCP for live docs, code audits, and best practices. 363+ libraries, no rate limits.",
+  "description": "Self-hosted MCP for live docs, snippets, code audits, and best practices. 444+ libraries, no rate limits, lockfile-aware version pinning, persistent snippet store, BM25 reranking. Context7 alternative.",
   "repository": {
     "url": "https://github.com/rm-rf-prod/GroundTruth-MCP",
     "source": "github"
   },
-  "version": "5.2.0",
+  "version": "6.0.0",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "@groundtruth-mcp/gt-mcp",
-      "version": "5.2.0",
+      "version": "6.0.0",
       "transport": {
         "type": "stdio"
       },

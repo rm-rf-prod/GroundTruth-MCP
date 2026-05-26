@@ -1,10 +1,10 @@
 import { config } from "./config.js";
 
 export const SERVER_NAME = "GroundTruth";
-export const SERVER_VERSION = "5.2.0";
+export const SERVER_VERSION = "6.0.0";
 
 // Known size of the full private registry (updated with each release that adds entries)
-export const REGISTRY_BADGE_SIZE = 422;
+export const REGISTRY_BADGE_SIZE = 444;
 
 export const CHARS_PER_TOKEN = 3.8;
 
