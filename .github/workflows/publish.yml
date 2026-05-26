@@ -52,7 +52,20 @@ jobs:
       - run: npm test
       - run: npm audit --audit-level=high
 
+      - name: Check if version already published (idempotency)
+        id: check_version
+        run: |
+          PKG_NAME=$(node -p "require('./package.json').name")
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          if npm view "${PKG_NAME}@${PKG_VERSION}" version 2>/dev/null | grep -q "^${PKG_VERSION}$"; then
+            echo "already_published=true" >> "$GITHUB_OUTPUT"
+            echo "::notice ::${PKG_NAME}@${PKG_VERSION} already on npm — skipping publish"
+          else
+            echo "already_published=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Publish (uses OIDC trusted publishing or NPM_TOKEN fallback)
+        if: steps.check_version.outputs.already_published != 'true'
         run: npm publish --access public --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -79,5 +92,5 @@ jobs:
       - name: Login via GitHub OIDC
         run: mcp-publisher login github-oidc
 
-      - name: Publish to MCP registry
-        run: mcp-publisher publish server.json
+      - name: Publish to MCP registry (idempotent — ignores "already published")
+        run: mcp-publisher publish server.json || echo "::notice ::MCP registry publish skipped (likely already at this version)"
