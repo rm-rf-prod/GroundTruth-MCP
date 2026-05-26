@@ -1,5 +1,12 @@
 # Changelog
 
+## [6.1.3] — 2026-05-26
+
+- fix(security): close CWE-23 path traversal in apply-enrichment.mjs
+- ci(publish): never fail on missing npm auth — graceful skip + poll-retry idempotency
+
+---
+
 ## [6.1.2] — 2026-05-26
 
 - See diff for changes.
