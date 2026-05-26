@@ -52,23 +52,73 @@ jobs:
       - run: npm test
       - run: npm audit --audit-level=high
 
-      - name: Check if version already published (idempotency)
+      # Poll registry up to 90s. Local publish race window covered — if maintainer
+      # publishes from CLI around the same time as the tag push, the version will
+      # appear here within the poll window and CI skips cleanly.
+      - name: Idempotency check (poll registry for current version)
         id: check_version
         run: |
           PKG_NAME=$(node -p "require('./package.json').name")
           PKG_VERSION=$(node -p "require('./package.json').version")
-          if npm view "${PKG_NAME}@${PKG_VERSION}" version 2>/dev/null | grep -q "^${PKG_VERSION}$"; then
-            echo "already_published=true" >> "$GITHUB_OUTPUT"
-            echo "::notice ::${PKG_NAME}@${PKG_VERSION} already on npm — skipping publish"
+          echo "Polling registry for ${PKG_NAME}@${PKG_VERSION} (up to 90s)…"
+          for i in $(seq 1 9); do
+            if npm view "${PKG_NAME}@${PKG_VERSION}" version 2>/dev/null | grep -q "^${PKG_VERSION}$"; then
+              echo "already_published=true" >> "$GITHUB_OUTPUT"
+              echo "::notice ::${PKG_NAME}@${PKG_VERSION} already on npm (attempt $i) — skipping publish step"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "already_published=false" >> "$GITHUB_OUTPUT"
+          echo "::notice ::${PKG_NAME}@${PKG_VERSION} not yet on npm — CI will attempt publish"
+
+      - name: Detect available auth method
+        id: detect_auth
+        if: steps.check_version.outputs.already_published != 'true'
+        env:
+          HAS_NPM_TOKEN: ${{ secrets.NPM_TOKEN != '' }}
+        run: |
+          if [ "$HAS_NPM_TOKEN" = "true" ]; then
+            echo "method=token" >> "$GITHUB_OUTPUT"
+            echo "::notice ::Auth method: NPM_TOKEN secret"
           else
-            echo "already_published=false" >> "$GITHUB_OUTPUT"
+            echo "method=oidc-or-none" >> "$GITHUB_OUTPUT"
+            echo "::notice ::Auth method: no NPM_TOKEN secret — will attempt OIDC trusted publishing"
           fi
 
-      - name: Publish (uses OIDC trusted publishing or NPM_TOKEN fallback)
+      # Soft-fail publish: if no auth is available AND no trusted publisher is
+      # configured on npmjs.com, this is treated as a "validation-only" CI run.
+      # The workflow stays GREEN; maintainer publishes from local instead.
+      # Hard failures (build break, test fail, version mismatch) are caught above.
+      - name: Publish to npm
         if: steps.check_version.outputs.already_published != 'true'
-        run: npm publish --access public --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set +e
+          npm publish --access public --provenance 2>&1 | tee /tmp/publish.log
+          RC=${PIPESTATUS[0]}
+          set -e
+          if [ $RC -eq 0 ]; then
+            echo "::notice ::Published successfully"
+            exit 0
+          fi
+          if grep -qE "ENEEDAUTH|need auth|401|403|Unable to authenticate" /tmp/publish.log; then
+            PKG_NAME=$(node -p "require('./package.json').name")
+            REPO_URL="https://github.com/${{ github.repository }}"
+            echo "::warning ::CI publish skipped — no usable npm auth."
+            echo "::warning ::Tests passed. To enable CI auto-publish, choose ONE:"
+            echo "::warning ::  Option A (recommended, no tokens): configure trusted publishing"
+            echo "::warning ::    → https://www.npmjs.com/package/${PKG_NAME}/access"
+            echo "::warning ::    Add publisher: GitHub Actions, repo=${{ github.repository }}, workflow=publish.yml"
+            echo "::warning ::  Option B: add NPM_TOKEN repo secret"
+            echo "::warning ::    → ${REPO_URL}/settings/secrets/actions/new"
+            echo "::warning ::Until then, maintainer must publish from local:"
+            echo "::warning ::  npm publish --access public --provenance=false"
+            exit 0
+          fi
+          echo "::error ::npm publish failed with non-auth error (exit $RC). See log above."
+          exit $RC
 
   publish-mcp-registry:
     name: Publish to MCP Registry
