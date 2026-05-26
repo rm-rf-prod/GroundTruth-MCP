@@ -16,14 +16,14 @@
   <a href="https://www.npmjs.com/package/@groundtruth-mcp/gt-mcp"><img src="https://img.shields.io/npm/v/@groundtruth-mcp/gt-mcp?color=00d4aa&label=npm" alt="npm version" /></a>
   <a href="https://github.com/rm-rf-prod/GroundTruth-MCP/actions/workflows/ci.yml"><img src="https://github.com/rm-rf-prod/GroundTruth-MCP/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-ELv2-orange" alt="Elastic License 2.0" /></a>
-  <img src="https://img.shields.io/badge/libraries-422%2B-teal" alt="422+ curated libraries" />
+  <img src="https://img.shields.io/badge/libraries-444%2B-teal" alt="444+ curated libraries" />
   <img src="https://img.shields.io/badge/audit_patterns-107%2B-red" alt="107+ audit patterns" />
-  <img src="https://img.shields.io/badge/tests-962-brightgreen" alt="962 tests" />
+  <img src="https://img.shields.io/badge/tests-996-brightgreen" alt="996 tests" />
   <img src="https://img.shields.io/badge/tools-12-blue" alt="12 tools" />
   <img src="https://img.shields.io/badge/node-%3E%3D24-green" alt="Node 24+" />
 </p>
 
-<h4 align="center">Self-hosted MCP server. 422+ curated libraries. 100+ audit patterns. No rate limits. No API keys.<br/>Ships updates continuously — your MCP client picks them up on restart.</h4>
+<h4 align="center">Self-hosted MCP server. 444+ curated libraries. 100+ audit patterns. No rate limits. No API keys.<br/>Ships updates continuously — your MCP client picks them up on restart.</h4>
 
 ---
 
@@ -31,7 +31,7 @@
 
 Your model doesn't know that React 19 killed `forwardRef`, that Next.js made `cookies()` async, or that Tailwind v4 nuked `@tailwind` directives. It writes deprecated patterns with full confidence. It hands you SQL injection dressed up as a query builder and uses `any` in TypeScript like it's a feature.
 
-**GroundTruth runs on your machine.** Fetches docs from the source — `llms.txt`, Jina Reader, GitHub — right when you ask. 422+ curated libraries, plus npm, PyPI, crates.io, and pkg.go.dev as fallback. The audit tool reads your actual files, finds issues at exact `file:line` locations, and fetches the current fix from the real spec.
+**GroundTruth runs on your machine.** Fetches docs from the source — `llms.txt`, Jina Reader, GitHub — right when you ask. 444+ curated libraries, plus npm, PyPI, crates.io, and pkg.go.dev as fallback. The audit tool reads your actual files, finds issues at exact `file:line` locations, and fetches the current fix from the real spec.
 
 ---
 
@@ -229,7 +229,7 @@ For every request, GroundTruth tries sources in order and stops at the first one
 
 ## Library coverage
 
-422+ curated entries with 100% best-practices and URL pattern coverage, plus automatic fallback to npm, PyPI, crates.io, and pkg.go.dev. Any public package in any major ecosystem is resolvable.
+444+ curated entries with 100% best-practices and URL pattern coverage, plus automatic fallback to npm, PyPI, crates.io, and pkg.go.dev. Any public package in any major ecosystem is resolvable.
 
 | Ecosystem | Libraries |
 |---|---|
@@ -267,7 +267,7 @@ Context7 is solid. Here's why I reach for this instead.
 | Changelog, compat, compare, examples, migration | Yes | No |
 | MCP Resources + Prompts | 2 resources, 8 prompts | No |
 | Lockfile detection | Reads exact versions from lockfiles | No |
-| Libraries | 422+ curated + npm/PyPI/crates.io/Go fallback | Undisclosed (claims "thousands") |
+| Libraries | 444+ curated + npm/PyPI/crates.io/Go fallback | Undisclosed (claims "thousands") |
 | API key required | No | No |
 
 Context7 indexes docs into a vector database — fast lookups, but with indexing lag on new releases. GroundTruth fetches from the source at query time, prioritizes `llms.txt`, and scores content quality so your model knows when to retry.
@@ -296,7 +296,7 @@ Issues and requests: [github.com/rm-rf-prod/GroundTruth-MCP/issues](https://gith
 
 ## Active development
 
-GroundTruth is under active development. New curated registry entries, audit patterns, search topics, and features are added regularly. The registry covers 422+ libraries with 100% bestPracticesPaths and urlPatterns coverage. Automatic fallback to npm, PyPI, crates.io, and pkg.go.dev means any public package is resolvable out of the box.
+GroundTruth is under active development. New curated registry entries, audit patterns, search topics, and features are added regularly. The registry covers 444+ libraries with 100% bestPracticesPaths and urlPatterns coverage. Automatic fallback to npm, PyPI, crates.io, and pkg.go.dev means any public package is resolvable out of the box.
 
 To stay updated:
 - **Star and watch** the [GitHub repo](https://github.com/rm-rf-prod/GroundTruth-MCP) for release notifications

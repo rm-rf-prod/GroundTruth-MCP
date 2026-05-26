@@ -1,0 +1,95 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`MCP tool schemas > exact tool name set is stable (snapshot) 1`] = `
+[
+  "gt_audit",
+  "gt_auto_scan",
+  "gt_batch_resolve",
+  "gt_best_practices",
+  "gt_changelog",
+  "gt_compare",
+  "gt_compat",
+  "gt_examples",
+  "gt_get_docs",
+  "gt_migration",
+  "gt_resolve_library",
+  "gt_search",
+  "gt_snippets",
+]
+`;
+
+exports[`MCP tool schemas > input schema shapes are stable (snapshot) 1`] = `
+{
+  "gt_audit": [
+    "categories",
+    "maxFiles",
+    "projectPath",
+    "tokens",
+  ],
+  "gt_auto_scan": [
+    "projectPath",
+    "tokensPerLib",
+    "topic",
+  ],
+  "gt_batch_resolve": [
+    "libraryNames",
+  ],
+  "gt_best_practices": [
+    "libraryId",
+    "tokens",
+    "topic",
+    "version",
+  ],
+  "gt_changelog": [
+    "libraryId",
+    "tokens",
+    "version",
+  ],
+  "gt_compare": [
+    "criteria",
+    "libraries",
+    "tokens",
+  ],
+  "gt_compat": [
+    "environments",
+    "feature",
+    "tokens",
+  ],
+  "gt_examples": [
+    "language",
+    "library",
+    "maxResults",
+    "pattern",
+  ],
+  "gt_get_docs": [
+    "libraryId",
+    "projectPath",
+    "tokens",
+    "topic",
+    "version",
+  ],
+  "gt_migration": [
+    "fromVersion",
+    "libraryId",
+    "toVersion",
+    "tokens",
+  ],
+  "gt_resolve_library": [
+    "libraryName",
+    "query",
+  ],
+  "gt_search": [
+    "query",
+    "tokens",
+  ],
+  "gt_snippets": [
+    "language",
+    "libraryId",
+    "maxSnippets",
+    "projectPath",
+    "refresh",
+    "topic",
+    "version",
+  ],
+}
+`;

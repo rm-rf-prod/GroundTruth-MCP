@@ -8,8 +8,16 @@ coverage/
 .env.*
 .mcpregistry_*
 
+# Credentials — must never be committed
+.npmrc
+*.npmrc.tmp
+.npm-token
+credentials.json
+secrets.json
+
 # Private registry — full 422+ entry version, never commit
 docs/private/
+docs/private.bak-*/
 *.ts.pub
 
 # Plan artifacts and checkpoints

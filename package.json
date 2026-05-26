@@ -1,8 +1,8 @@
 {
   "name": "@groundtruth-mcp/gt-mcp",
   "mcpName": "io.github.rm-rf-prod/groundtruth",
-  "version": "6.0.0",
-  "description": "Self-hosted MCP server for live docs and best practices. Context7 alternative — 422+ curated libraries + npm/PyPI/crates.io/Go fallback, no rate limits, code audit tool.",
+  "version": "6.1.0",
+  "description": "Self-hosted MCP server for live docs and best practices. Context7 alternative — 440+ curated libraries + npm/PyPI/crates.io/Go fallback, lockfile-aware version pinning, BM25 snippet ranking, code audit tool.",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
@@ -60,11 +60,16 @@
   "license": "Elastic-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/rm-rf-prod/GroundTruth-MCP"
+    "url": "git+https://github.com/rm-rf-prod/GroundTruth-MCP.git"
   },
   "homepage": "https://github.com/rm-rf-prod/GroundTruth-MCP#readme",
   "bugs": {
     "url": "https://github.com/rm-rf-prod/GroundTruth-MCP/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "registry": "https://registry.npmjs.org"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",

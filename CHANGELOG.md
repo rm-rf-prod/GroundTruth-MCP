@@ -1,5 +1,33 @@
 # Changelog
 
+## [6.1.0] — 2026-05-26
+
+**Release automation, CLI ergonomics, parallelism tuning.**
+
+### Added
+- `.github/workflows/publish.yml` — auto-publishes on tag push w/ npm provenance + Sigstore attestation. Also publishes to MCP Registry via `mcp-publisher` (GitHub OIDC).
+- `--health` CLI flag — prints JSON health snapshot (name, version, installId, tools, registryEntries, node) and exits 0. For container probes and quick diagnostics.
+- `--version` / `-v` CLI flag.
+- `--help` / `-h` CLI flag — documents env vars and flags.
+- `src/tools/schemas.test.ts` — snapshot tests for all 13 tool schemas; locks tool name set + input shape, catches accidental MCP contract drift.
+- `publishConfig` in `package.json` — pins `access: public` + `provenance: true` so any `npm publish` invocation gets attestation.
+
+### Changed
+- `gt_auto_scan` default fan-out concurrency 4 → 8 (FetchSemaphore caps at 12; previous default left 8 slots idle).
+- Hardened `scripts/update-stats.mjs` version sweep — now matches only `v6.0.0`, `"6.0.0"`, `` `6.0.0` ``, `@6.0.0`, `=6.0.0` patterns. Previous `replaceAll` matched any substring and corrupted CIDR comments (`172.16.0.0/12` → `172.16.1.0/12`).
+- `.gitignore` — added `.npmrc`, credential files, `docs/private.bak-*/`.
+- `package.json` repository URL → `git+https://...` form (npm provenance requirement).
+
+### Fixed
+- `src/services/fetcher.ts:62-68` — restored correct CIDR comments mangled by prior version sweep (`172.16.0.0/12`, `169.254.0.0/16`, `224.0.0.0/4`).
+
+### Notes
+- 996 tests pass across 34 files. Up from 990/33 in 6.0.0 (+6 from snapshot tests).
+- 13 tools E2E smoke-tested via stdio MCP handshake — all 13 return non-empty content under 3s.
+- npm audit 0 vulnerabilities.
+
+---
+
 ## [6.0.0] — 2026-05-26
 
 **Major upgrade — Context7 parity + surpass.**
