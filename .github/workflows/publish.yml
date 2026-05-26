@@ -45,6 +45,8 @@ jobs:
           fi
 
       - run: npm ci
+      - name: Install rolldown native binding (workaround npm/cli#4828)
+        run: npm install --no-save --force @rolldown/binding-linux-x64-gnu
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test

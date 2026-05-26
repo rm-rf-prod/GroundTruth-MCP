@@ -27,6 +27,8 @@ jobs:
           node-version-file: ".node-version"
           cache: "npm"
       - run: npm ci
+      - name: Install rolldown native binding (workaround npm/cli#4828)
+        run: npm install --no-save --force @rolldown/binding-linux-x64-gnu
       - run: npm run lint
       - run: npm run typecheck
 
@@ -42,6 +44,8 @@ jobs:
           node-version-file: ".node-version"
           cache: "npm"
       - run: npm ci
+      - name: Install rolldown native binding (workaround npm/cli#4828)
+        run: npm install --no-save --force @rolldown/binding-linux-x64-gnu
       - run: npm run test:coverage
       - name: Upload coverage
         if: always()
@@ -64,6 +68,8 @@ jobs:
           node-version-file: ".node-version"
           cache: "npm"
       - run: npm ci
+      - name: Install rolldown native binding (workaround npm/cli#4828)
+        run: npm install --no-save --force @rolldown/binding-linux-x64-gnu
       - run: npm run build
       - run: npm audit --audit-level=high
       - name: Check documentation URLs
