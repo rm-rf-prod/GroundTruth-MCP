@@ -18,7 +18,9 @@ jobs:
   publish-npm:
     name: Publish to npm with provenance
     runs-on: ubuntu-latest
-    environment: npm-publish
+    # Optional hardening: create a "npm-publish" environment in repo settings
+    # for an approval gate before publish. Uncomment next line after creation.
+    # environment: npm-publish
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -70,10 +72,10 @@ jobs:
           sudo mv mcp-publisher /usr/local/bin/
 
       - name: Validate server.json
-        run: mcp-publisher publish --dry-run --file=./server.json
+        run: mcp-publisher validate server.json
 
       - name: Login via GitHub OIDC
         run: mcp-publisher login github-oidc
 
       - name: Publish to MCP registry
-        run: mcp-publisher publish --file=./server.json
+        run: mcp-publisher publish server.json
