@@ -1,7 +1,7 @@
 {
   "name": "@groundtruth-mcp/gt-mcp",
   "mcpName": "io.github.rm-rf-prod/groundtruth",
-  "version": "6.1.1",
+  "version": "6.1.2",
   "description": "Self-hosted MCP server for live docs and best practices. Context7 alternative — 440+ curated libraries + npm/PyPI/crates.io/Go fallback, lockfile-aware version pinning, BM25 snippet ranking, code audit tool.",
   "type": "module",
   "main": "dist/index.js",
