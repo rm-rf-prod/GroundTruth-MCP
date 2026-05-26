@@ -72,12 +72,33 @@ const oldVersion = process.env.npm_old_version;
 const newVersion = process.env.npm_new_version;
 
 if (oldVersion && newVersion && oldVersion !== newVersion) {
+  // Strict patterns only — never substring-replace, which broke CIDR comments like 172.16.0.0/12.
+  // Match: v6.0.0 (with v prefix), "6.0.0" (quoted), `6.0.0` (backtick), @6.0.0 (npm pin), =6.0.0 (cli flag).
+  const escaped = oldVersion.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const SWEEP_PATTERNS = [
+    new RegExp(`v${escaped}\\b`, "g"),
+    new RegExp(`"${escaped}"`, "g"),
+    new RegExp("`" + escaped + "`", "g"),
+    new RegExp(`@${escaped}\\b`, "g"),
+    new RegExp(`=${escaped}\\b`, "g"),
+  ];
+  const REPLACEMENTS = [
+    `v${newVersion}`,
+    `"${newVersion}"`,
+    `\`${newVersion}\``,
+    `@${newVersion}`,
+    `=${newVersion}`,
+  ];
+
   const files = findSourceFiles(".");
   let swept = 0;
   for (const rel of files) {
     const abs = join(root, rel);
     const before = readFileSync(abs, "utf-8");
-    const after = before.replaceAll(oldVersion, newVersion);
+    let after = before;
+    for (let i = 0; i < SWEEP_PATTERNS.length; i++) {
+      after = after.replace(SWEEP_PATTERNS[i], REPLACEMENTS[i]);
+    }
     if (after !== before) {
       writeFileSync(abs, after, "utf-8");
       swept++;

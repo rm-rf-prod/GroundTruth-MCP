@@ -430,8 +430,9 @@ Reads: package.json, requirements.txt, pyproject.toml, Cargo.toml, go.mod, pom.x
       const versions = await detectAllVersions(resolvedPath, allDepNames);
 
       // Fetch best practices in parallel (with concurrency limit)
-      const rawConcurrency = parseInt(process.env.GT_CONCURRENCY ?? "4", 10);
-      const CONCURRENCY = Number.isFinite(rawConcurrency) && rawConcurrency > 0 ? Math.min(rawConcurrency, 12) : 4;
+      // Default 8 (server-wide FetchSemaphore caps at 12, leaving headroom for other concurrent tools)
+      const rawConcurrency = parseInt(process.env.GT_CONCURRENCY ?? "8", 10);
+      const CONCURRENCY = Number.isFinite(rawConcurrency) && rawConcurrency > 0 ? Math.min(rawConcurrency, 12) : 8;
       const results: Array<{ name: string; content: string; url: string }> = [];
 
       const fetchAllLibs = async (): Promise<void> => {
