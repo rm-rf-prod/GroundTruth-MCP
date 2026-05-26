@@ -76,6 +76,55 @@ describe("convertHtmlToMarkdown", () => {
     expect(result).toContain("Clean Content");
   });
 
+  describe("link href sanitization (CWE-79)", () => {
+    const padding = "<p>Padding text to clear the minimum content length threshold for extraction in the converter so the link assertion runs against real output.</p>";
+    const wrap = (anchor: string) =>
+      `<html><body><h1>Links</h1>${anchor}${padding}</body></html>`;
+
+    it.each([
+      ["javascript", `<a href="javascript:alert(1)">x</a>`],
+      ["JaVaScRiPt mixed case", `<a href="JaVaScRiPt:alert(1)">x</a>`],
+      ["data:text/html", `<a href="data:text/html,<script>alert(1)</script>">x</a>`],
+      ["data:image/svg", `<a href="data:image/svg+xml,<svg/onload=alert(1)>">x</a>`],
+      ["vbscript", `<a href="vbscript:msgbox(1)">x</a>`],
+      ["file://", `<a href="file:///etc/passwd">x</a>`],
+      ["about:", `<a href="about:blank">x</a>`],
+      ["tab in scheme", `<a href="java\tscript:alert(1)">x</a>`],
+      ["newline in scheme", `<a href="java\nscript:alert(1)">x</a>`],
+      ["leading whitespace", `<a href="  javascript:alert(1)">x</a>`],
+      ["entity-encoded js", `<a href="java&#x73;cript:alert(1)">x</a>`],
+      ["entity-encoded vb", `<a href="vb&#115;cript:msgbox(1)">x</a>`],
+    ])("strips href but keeps text: %s", (_label, anchor) => {
+      const result = convertHtmlToMarkdown(wrap(anchor));
+      expect(result).not.toMatch(/javascript:/i);
+      expect(result).not.toMatch(/vbscript:/i);
+      expect(result).not.toMatch(/data:/i);
+      expect(result).not.toMatch(/file:/i);
+      expect(result).not.toMatch(/about:/i);
+      expect(result).not.toMatch(/\]\(/); // no markdown link emitted
+      expect(result).toContain("x");
+    });
+
+    it.each([
+      ["http", `<a href="http://example.com">link</a>`, "(http://example.com)"],
+      ["https", `<a href="https://example.com/path">link</a>`, "(https://example.com/path)"],
+      ["mailto", `<a href="mailto:test@example.com">link</a>`, "(mailto:test@example.com)"],
+      ["tel", `<a href="tel:+15551234">link</a>`, "(tel:+15551234)"],
+      ["root-relative", `<a href="/docs/intro">link</a>`, "(/docs/intro)"],
+      ["relative", `<a href="docs/intro.html">link</a>`, "(docs/intro.html)"],
+    ])("keeps safe scheme: %s", (_label, anchor, expectedHref) => {
+      const result = convertHtmlToMarkdown(wrap(anchor));
+      expect(result).toContain("[link]");
+      expect(result).toContain(expectedHref);
+    });
+
+    it("drops bare fragment links but keeps text", () => {
+      const result = convertHtmlToMarkdown(wrap(`<a href="#section">jump</a>`));
+      expect(result).toContain("jump");
+      expect(result).not.toContain("](#");
+    });
+  });
+
   it("converts basic tables", () => {
     const html = `<html><body><h1>API Reference</h1><table><tr><th>Method</th><th>Path</th></tr><tr><td>GET</td><td>/api/users</td></tr><tr><td>POST</td><td>/api/users</td></tr></table><p>Additional content to ensure the output is long enough for the minimum threshold requirement that is enforced.</p></body></html>`;
     const result = convertHtmlToMarkdown(html);
