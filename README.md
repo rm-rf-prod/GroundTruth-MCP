@@ -261,7 +261,7 @@ Context7 is solid. Here's why I reach for this instead.
 | Rate limits | None | 1,000 free/month ($10/seat for 5,000) |
 | Transport | Stdio + Streamable HTTP | Stdio + Streamable HTTP |
 | Source priority | llms.txt -> Jina -> GitHub -> npm/PyPI | Vector DB with proprietary crawl pipeline |
-| Tools | 12 specialized tools | 2 tools |
+| Tools | 13 specialized tools | 2 tools |
 | Code audit | 107+ patterns, 18 categories, file:line, live fixes | No |
 | Freeform search | OWASP, MDN, AI docs, Google APIs, web standards | Library docs only |
 | Changelog, compat, compare, examples, migration | Yes | No |
@@ -282,7 +282,10 @@ All optional. Works out of the box with zero configuration.
 |---|---|---|
 | `GT_GITHUB_TOKEN` | GitHub API auth — raises rate limit from 60 to 5,000 req/hr | none |
 | `GT_CACHE_DIR` | Disk cache location for persistent cross-session caching | `~/.gt-mcp-cache` |
-| `GT_CONCURRENCY` | Parallel fetch limit in `gt_auto_scan` | `6` |
+| `GT_CONCURRENCY` | Parallel fetch limit in `gt_auto_scan` | `8` |
+| `GT_AUTH_TOKEN` | Bearer token required for HTTP transport endpoints | none |
+| `GT_HTTP_PORT` | Port to enable HTTP transport (otherwise stdio) | none |
+| `GT_HTTP_STATEFUL` | Set `=1` for session-per-request HTTP mode | `0` (stateless) |
 
 ---
 
