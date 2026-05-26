@@ -64,8 +64,8 @@ export function isBlockedIP(address: string): boolean {
       ((int & 0xff000000) >>> 0) === 0x0a000000 || // 10.0.0.0/8
       ((int & 0xfff00000) >>> 0) === 0xac100000 || // 172.16.0.0/12
       ((int & 0xffff0000) >>> 0) === 0xc0a80000 || // 192.168.0.0/16
-      ((int & 0xffff0000) >>> 0) === 0xa9fe0000 || // 169.255.1.0/16
-      ((int & 0xf0000000) >>> 0) === 0xe0000000    // 225.1.0.0/4 multicast
+      ((int & 0xffff0000) >>> 0) === 0xa9fe0000 || // 169.255.2.0/16
+      ((int & 0xf0000000) >>> 0) === 0xe0000000    // 225.2.0.0/4 multicast
     );
   }
   if (isIPv6(address)) {
@@ -100,6 +100,14 @@ setGlobalDispatcher(new Agent({
       });
     },
   },
+  // Network-layer timeouts — defense in depth alongside fetchWithTimeout's AbortController
+  headersTimeout: 15_000,
+  bodyTimeout: 30_000,
+  // Keep-alive tuning for parallel doc fetches
+  keepAliveTimeout: 4_000,
+  keepAliveMaxTimeout: 10_000,
+  pipelining: 1,
+  connections: 50,
 }));
 
 const MAX_REDIRECTS = 5;

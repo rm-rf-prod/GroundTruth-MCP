@@ -18,6 +18,7 @@ import { registerCompareTool } from "./tools/compare.js";
 import { registerExamplesTool } from "./tools/examples.js";
 import { registerMigrationTool } from "./tools/migration.js";
 import { registerBatchResolveTool } from "./tools/batch-resolve.js";
+import { registerSnippetsTool } from "./tools/snippets.js";
 import { ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { LIBRARY_REGISTRY, lookupById } from "./sources/registry.js";
 import { fetchDocs } from "./services/fetcher.js";
@@ -49,6 +50,7 @@ Tools:
 10. gt_examples — Find real-world code examples from GitHub for any library or pattern.
 11. gt_migration — Fetch migration guides, breaking changes, and upgrade instructions.
 12. gt_batch_resolve — Resolve multiple library names in one call (max 20).
+13. gt_snippets — Pre-indexed, ranked code snippets per library + version. Persistent disk cache. Context7-compat output shape.
 
 Workflows:
 "use gt" → gt_auto_scan({})
@@ -77,6 +79,7 @@ registerCompareTool(server);
 registerExamplesTool(server);
 registerMigrationTool(server);
 registerBatchResolveTool(server);
+registerSnippetsTool(server);
 
 // MCP Resources — browsable documentation and registry data
 server.registerResource(
@@ -245,12 +248,15 @@ async function main(): Promise<void> {
     const http = await import("http");
     const crypto = await import("crypto");
 
-    const transport = new StreamableHTTPServerTransport({
-      sessionIdGenerator: () => crypto.randomUUID(),
-    });
+    // Stateless mode by default — GT tools are independent doc fetches, no per-session state needed.
+    // Set GT_HTTP_STATEFUL=1 to enable session-per-request via sessionIdGenerator.
+    const transport = process.env.GT_HTTP_STATEFUL === "1"
+      ? new StreamableHTTPServerTransport({ sessionIdGenerator: () => crypto.randomUUID() })
+      : new StreamableHTTPServerTransport({});
     transport.onclose = () => {};
-    // @ts-expect-error -- SDK's StreamableHTTPServerTransport has onclose?: () => void, but Transport requires onclose: () => void. We assign it above.
-    await server.connect(transport);
+    // SDK's StreamableHTTPServerTransport has onclose?: () => void while Transport requires
+    // onclose: () => void — assigning above is the workaround. Cast below preserves runtime safety.
+    await server.connect(transport as Parameters<typeof server.connect>[0]);
 
     const httpServer = http.createServer(async (req, res) => {
       res.setHeader("X-Content-Type-Options", "nosniff");

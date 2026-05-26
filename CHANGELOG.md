@@ -1,5 +1,42 @@
 # Changelog
 
+## [6.0.0] — 2026-05-26
+
+**Major upgrade — Context7 parity + surpass.**
+
+### Added
+- `gt_snippets` tool — Context7-compat structured code snippets with per-(library, version) persistent disk-cached index. First call indexes; subsequent calls instant.
+- `src/utils/snippet-extract.ts` — markdown → structured `Snippet` records with title, description, language, code, source. BM25-scored ranking.
+- `src/services/snippet-store.ts` — disk-cached snippet index, query API with language filter + topic-rank.
+- Lockfile auto-version detection in `gt_get_docs` and `gt_snippets` — pass `projectPath` and the version is read from `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`, `Cargo.lock`, `poetry.lock`, `uv.lock`, or `go.sum`. Context7 needs manual `/repo@v` pinning.
+- `poetry.lock`, `uv.lock`, `go.sum` parsers in `src/utils/lockfile.ts`.
+- `contentHash` + `fetchedAt` exposed in `gt_get_docs` structured output (already stamped in `fetcher.ts`).
+- 22 new registry entries: Google GenAI SDK, Genkit, Pydantic AI, Mastra, E2B, Langfuse, Helicone, DSPy, AutoGen, smolagents, Together AI, Groq, Cerebras, Replicate, fal.ai, Modal, Elysia, Encore, Trigger.dev, PocketBase, Appwrite, PGlite.
+- `migration.test.ts` — closes the only test-coverage gap among tools.
+- Stateless HTTP transport mode by default; `GT_HTTP_STATEFUL=1` opts into session-per-request.
+- `headersTimeout`, `bodyTimeout`, `keepAliveTimeout`, `pipelining`, `connections` tuning on undici Agent.
+
+### Changed
+- `@modelcontextprotocol/sdk` 1.27.1 → 1.29.0 (PR #13 resolved).
+- `undici` 7.24.7 → 8.3.0.
+- `zod` 4.3.6 → 4.4.3.
+- `vitest` 4.1.2 → 4.1.7. `@vitest/coverage-v8` matched.
+- `@typescript-eslint/*` 8.58 → 8.60. `eslint` 10.1 → 10.4.
+- `@types/node` 25.5 → 25.9. `tsx` 4.21 → 4.22. `javascript-obfuscator` 5.4.1 → 5.4.3.
+- Node engine lowered `>=24` → `>=22`. `.node-version` 24.13.0 → 22.11.0. Removes the #1 adoption barrier.
+
+### Fixed
+- `registry.ts:718` Cloudflare Workers `bestPracticesPaths` were Vercel paths; replaced with `/workers/observability/`, `/workers/configuration/`, `/workers/platform/limits/`, `/workers/best-practices/`. `urlPatterns` likewise corrected.
+- `registry.ts:733` ESLint `urlPatterns` were Cloudflare Workers paths; replaced with `/docs/latest/use/{slug}`, `/docs/latest/rules/{slug}`, `/docs/latest/extend/{slug}`, `/docs/latest/{slug}`.
+- `registry.ts:746` Prettier `bestPracticesPaths` were Vercel paths; replaced with `/docs/en/options`, `/docs/en/configuration`, `/docs/en/integrating-with-linters`, `/docs/en/install`.
+
+### Notes
+- 970 tests pass across 31 test files.
+- Tests: 962 pre-upgrade → 970 post (added 8 migration tests).
+- Public registry: 421 → 442 entries.
+
+---
+
 ## [5.2.0] — 2026-04-02
 
 - chore: bump version to 5.1.0, update gitignore for research docs

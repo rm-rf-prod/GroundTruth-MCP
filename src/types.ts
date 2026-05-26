@@ -89,6 +89,26 @@ export interface CompatResult {
   sourceUrl: string;
 }
 
+export interface Snippet {
+  id: string;
+  library: string;
+  version?: string;
+  title: string;
+  description: string;
+  code: string;
+  language: string;
+  source: string;
+  score: number;
+}
+
+export interface SnippetIndex {
+  library: string;
+  version: string | null;
+  sourceUrl: string;
+  snippets: Snippet[];
+  builtAt: string;
+}
+
 export interface CompareResult {
   libraries: Array<{
     id: string;
