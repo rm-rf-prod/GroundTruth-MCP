@@ -95,12 +95,14 @@ function htmlToMarkdown(html: string): string {
     return text.includes("\n") ? text : `\`${text}\``;
   });
 
-  // Links
-  md = md.replace(/<a[^>]+href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi, (_, href: string, text: string) => {
+  // Links — allowlist scheme to block javascript:, data:, vbscript:, etc.
+  md = md.replace(/<a[^>]+href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi, (_, rawHref: string, text: string) => {
     const linkText = stripTags(text).trim();
     if (!linkText) return "";
-    if (href.startsWith("#") || href.startsWith("javascript:")) return linkText;
-    return `[${linkText}](${href})`;
+    const normalized = normalizeHref(rawHref);
+    if (normalized === "" || normalized.startsWith("#")) return linkText;
+    if (!isSafeHref(normalized)) return linkText;
+    return `[${linkText}](${normalized})`;
   });
 
   // Bold
@@ -171,6 +173,43 @@ function decodeHtmlEntities(text: string): string {
     .replace(/&rdquo;/g, '"')
     .replace(/&lsquo;/g, "'")
     .replace(/&rsquo;/g, "'");
+}
+
+// Schemes safe to render as links in extracted markdown. Allowlist beats denylist:
+// new schemes (e.g. intent:, file:, about:, vbscript:, livescript:, data:) auto-reject.
+const SAFE_URL_SCHEMES = new Set(["http", "https", "mailto", "tel"]);
+
+/**
+ * Normalize an href captured from raw HTML before scheme inspection:
+ *  - decode HTML entities (defeats `java&#x73;cript:` style bypass)
+ *  - strip C0 control bytes (\x00-\x1F) + DEL (\x7F); browsers ignore TAB/LF/CR
+ *    when resolving the scheme, so `java\tscript:` would otherwise pass
+ *  - trim whitespace
+ */
+function normalizeHref(rawHref: string): string {
+  return decodeHtmlEntities(rawHref)
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\x00-\x1F\x7F]/g, "")
+    .trim();
+}
+
+/**
+ * Allowlist-based URL safety check. Caller must pass the normalized href.
+ * Accepts: relative URLs, root-relative paths, fragments, http(s):, mailto:, tel:
+ * Rejects: javascript:, data:, vbscript:, file:, about:, and any other scheme.
+ */
+function isSafeHref(normalized: string): boolean {
+  if (normalized === "") return false;
+  if (normalized.startsWith("/") || normalized.startsWith("?") || normalized.startsWith("#")) {
+    return true;
+  }
+  const colonIdx = normalized.indexOf(":");
+  if (colonIdx === -1) return true; // relative URL, no scheme
+  const slashIdx = normalized.indexOf("/");
+  // Path segment with a literal colon before the first slash → treat as relative
+  if (slashIdx !== -1 && slashIdx < colonIdx) return true;
+  const scheme = normalized.slice(0, colonIdx).toLowerCase();
+  return SAFE_URL_SCHEMES.has(scheme);
 }
 
 function convertTable(tableHtml: string): string {
