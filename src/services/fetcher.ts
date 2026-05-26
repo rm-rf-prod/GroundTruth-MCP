@@ -86,7 +86,7 @@ setGlobalDispatcher(new Agent({
     lookup(hostname, options, callback) {
       dns.lookup(hostname, { ...options, all: true }, (err, addresses) => {
         if (err) return callback(err, "", 4);
-        const entries = (Array.isArray(addresses) ? addresses : [{ address: addresses as unknown as string, family: 4 }]) as Array<{ address: string; family: number }>;
+        const entries = (Array.isArray(addresses) ? addresses : [{ address: addresses, family: 4 }]) as Array<{ address: string; family: number }>;
         const safe = entries.filter((entry) => !isBlockedIP(entry.address));
         if (safe.length === 0) {
           return callback(new Error(`SSRF blocked: ${hostname} resolves to private/blocked IP`), "", 4);
@@ -96,7 +96,7 @@ setGlobalDispatcher(new Agent({
           return (callback as unknown as (err: null, entries: Array<{ address: string; family: number }>) => void)(null, safe);
         }
         const first = safe[0]!;
-        callback(null, first.address, first.family as 4 | 6);
+        callback(null, first.address, first.family);
       });
     },
   },
