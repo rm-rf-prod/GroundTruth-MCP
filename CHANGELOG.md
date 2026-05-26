@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.1.2] — 2026-05-26
+
+- See diff for changes.
+
+---
+
 ## [6.1.1] — 2026-05-26
 
 - fix(security): block path traversal + XSS URL scheme bypasses
