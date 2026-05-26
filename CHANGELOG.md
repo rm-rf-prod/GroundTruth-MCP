@@ -1,5 +1,11 @@
 # Changelog
 
+## [6.1.1] — 2026-05-26
+
+- fix(security): block path traversal + XSS URL scheme bypasses
+
+---
+
 ## [6.1.0] — 2026-05-26
 
 **Release automation, CLI ergonomics, parallelism tuning.**
