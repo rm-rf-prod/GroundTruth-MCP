@@ -6,6 +6,7 @@ import { extractRelevantContent, normalizeQueryYear } from "../utils/extract.js"
 import { sanitizeContent } from "../utils/sanitize.js";
 import { docCache } from "../services/cache.js";
 import { DEFAULT_TOKEN_LIMIT, MAX_TOKEN_LIMIT, CACHE_TTLS } from "../constants.js";
+import { withTelemetry } from "../services/telemetry.js";
 
 const InputSchema = z.object({
   query: z
@@ -1661,7 +1662,7 @@ Works for:
 - Infrastructure: "Docker best practices", "GitHub Actions CI/CD"
 - Anything else: just ask
 
-Say "use ws" or "ws search [topic]" to invoke.
+Say "use gt" or "gt search [topic]" to invoke.
 
 Examples:
 - gt_search({ query: "latest best practices" }) — auto-detects from project context
@@ -1673,11 +1674,12 @@ Examples:
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,
-        idempotentHint: false,
+        idempotentHint: true,
         openWorldHint: true,
       },
     },
     async ({ query: rawQuery, tokens }) => {
+     return withTelemetry("gt_search", async (ctx) => {
       const query = normalizeQueryYear(rawQuery);
       const results: Array<{ source: string; url: string; content: string }> = [];
 
@@ -1879,6 +1881,7 @@ Examples:
         .map((r) => `## ${r.source}\n> Source: ${r.url}\n\n${r.content}\n\n---\n`)
         .join("\n");
 
+      ctx.resolved = results.length > 0;
       return {
         content: [{ type: "text", text: header + body }],
         structuredContent: {
@@ -1886,6 +1889,7 @@ Examples:
           sources: results.map((r) => ({ name: r.source, url: r.url, content: r.content })),
         },
       };
+     });
     },
   );
 }

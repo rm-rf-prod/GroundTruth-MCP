@@ -9,6 +9,7 @@ import { isExtractionAttempt, withNotice, withToolTimeout, EXTRACTION_REFUSAL, s
 import { sanitizeContent } from "../utils/sanitize.js";
 import type { LibraryEntry } from "../types.js";
 import { detectAllVersions } from "../utils/lockfile.js";
+import { withTelemetry } from "../services/telemetry.js";
 
 const InputSchema = z.object({
   projectPath: z
@@ -367,11 +368,12 @@ Reads: package.json, requirements.txt, pyproject.toml, Cargo.toml, go.mod, pom.x
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,
-        idempotentHint: false,
+        idempotentHint: true,
         openWorldHint: true,
       },
     },
     async ({ projectPath, topic = "latest best practices", tokensPerLib }) => {
+     return withTelemetry("gt_auto_scan", async (ctx) => {
       let resolvedPath: string;
       try {
         resolvedPath = safeguardPath(projectPath ?? process.cwd());
@@ -514,6 +516,7 @@ Reads: package.json, requirements.txt, pyproject.toml, Cargo.toml, go.mod, pom.x
         )
         .join("\n");
 
+      ctx.resolved = results.length > 0;
       return {
         content: [{ type: "text", text: withNotice(header + sections) }],
         structuredContent: {
@@ -526,6 +529,7 @@ Reads: package.json, requirements.txt, pyproject.toml, Cargo.toml, go.mod, pom.x
           results: results.map((r) => ({ name: r.name, url: r.url, content: r.content })),
         },
       };
+     });
     },
   );
 }

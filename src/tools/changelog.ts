@@ -34,7 +34,9 @@ export function registerChangelogTool(server: McpServer): void {
     "gt_changelog",
     {
       title: "Fetch Library Changelog",
-      description: `Fetch recent release notes and changelog for a library. Reads GitHub Releases API first, then CHANGELOG.md, then the docs site. Use before upgrading.`,
+      description: `Fetch recent release notes and changelog for a library. Reads GitHub Releases API first, then CHANGELOG.md, then the docs site. Use before upgrading.
+
+Use this for "what changed in version X" questions. For "how do I upgrade my code from vA to vB" — use gt_migration instead (it targets MIGRATION.md, UPGRADING.md, and upgrade guides with step-by-step instructions).`,
       inputSchema: InputSchema,
       annotations: {
         readOnlyHint: true,

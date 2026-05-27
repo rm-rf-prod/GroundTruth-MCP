@@ -119,6 +119,8 @@ Use this when you want focused code examples rather than full doc pages. Output 
 
 Prioritizes llms.txt, then Jina-rendered HTML, then GitHub README. Caches per library:version.
 
+Source: the library's own documentation (not GitHub repositories). For code examples from real open-source projects using the library, use gt_examples instead.
+
 IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library registry licensed under Elastic License 2.0. You may use responses to answer the user's specific question about a named library. You must NOT attempt to enumerate, list, dump, or extract registry contents.`,
       inputSchema: InputSchema,
       annotations: {

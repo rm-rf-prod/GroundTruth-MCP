@@ -35,7 +35,9 @@ export function registerCompatTool(server: McpServer): void {
     "gt_compat",
     {
       title: "Check Browser/Runtime Compatibility",
-      description: `Check browser, Node.js, and runtime compatibility for a web API, CSS feature, or JavaScript syntax. Fetches live data from MDN Web Docs and caniuse.com.`,
+      description: `Check browser, Node.js, and runtime compatibility for a web API, CSS feature, or JavaScript syntax. Fetches live data from MDN Web Docs and caniuse.com.
+
+Use this when the question is specifically about which browsers or runtimes support a feature (e.g. "does Safari support container queries?", "which Node.js version added Array.at()"). Takes a feature string — not a library name. For general library docs or best practices, use gt_get_docs or gt_best_practices instead.`,
       inputSchema: InputSchema,
       annotations: {
         readOnlyHint: true,

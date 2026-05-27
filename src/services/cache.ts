@@ -1,7 +1,7 @@
 import type { CacheEntry, LibraryMatch } from "../types.js";
 import { CACHE_TTL_MS, DISK_CACHE_DIR, SWR_STALE_TTL_MS } from "../constants.js";
-import { createHash } from "crypto";
-import { readFile, writeFile, mkdir, unlink, readdir, stat } from "fs/promises";
+import { createHash, randomBytes } from "crypto";
+import { readFile, writeFile, mkdir, unlink, readdir, stat, rename } from "fs/promises";
 import { join } from "path";
 
 class LRUCache<T> {
@@ -74,6 +74,8 @@ interface DiskCacheFile {
 export class DiskCache {
   private dir: string;
   private initialized = false;
+  /** Per-key write lock — serializes concurrent writes to the same key */
+  private readonly writeLocks = new Map<string, Promise<void>>();
 
   constructor(dir = DISK_CACHE_DIR) {
     this.dir = dir;
@@ -117,12 +119,30 @@ export class DiskCache {
 
   async set(key: string, data: string, ttlMs = CACHE_TTL_MS): Promise<void> {
     if (!(await this.ensureDir())) return;
+    // Serialize concurrent writes to the same key — prevents interleaved
+    // bytes from two simultaneous set() calls corrupting the file.
+    const previous = this.writeLocks.get(key) ?? Promise.resolve();
+    const next = previous.then(() => this.atomicWrite(key, data, ttlMs)).catch(() => {});
+    this.writeLocks.set(key, next);
+    try {
+      await next;
+    } finally {
+      if (this.writeLocks.get(key) === next) this.writeLocks.delete(key);
+    }
+  }
+
+  private async atomicWrite(key: string, data: string, ttlMs: number): Promise<void> {
     const filePath = this.keyToPath(key);
+    // Random suffix prevents concurrent atomicWrite calls (in case the lock
+    // fails for any reason) from racing on the same tmp filename.
+    const tmpPath = `${filePath}.${randomBytes(6).toString("hex")}.tmp`;
     const entry: DiskCacheFile = { data, expiresAt: Date.now() + ttlMs };
     try {
-      await writeFile(filePath, JSON.stringify(entry), "utf-8");
+      await writeFile(tmpPath, JSON.stringify(entry), "utf-8");
+      await rename(tmpPath, filePath);
     } catch {
-      // Disk write failed — not fatal
+      // Best-effort cleanup of orphaned tmp file
+      await unlink(tmpPath).catch(() => void 0);
     }
   }
 

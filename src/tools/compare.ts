@@ -37,7 +37,9 @@ export function registerCompareTool(server: McpServer): void {
     "gt_compare",
     {
       title: "Compare Libraries Side-by-Side",
-      description: `Compare 2–3 libraries side-by-side. Fetches live documentation for each and presents content relevant to the comparison criteria.`,
+      description: `Compare 2–3 libraries side-by-side. Fetches live documentation for each and presents content relevant to the comparison criteria.
+
+Pass library NAMES (e.g. ['prisma', 'drizzle-orm']) — not registry IDs. The tool resolves them internally. Use for "X vs Y" or "which library should I choose" questions. For fetching docs about a single library, use gt_get_docs instead.`,
       inputSchema: InputSchema,
       annotations: {
         readOnlyHint: true,

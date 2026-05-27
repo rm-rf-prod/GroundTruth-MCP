@@ -1,5 +1,48 @@
 # Changelog
 
+## [7.0.0] — 2026-05-28
+
+Adds a dispatch tool, hardens the security model, and instruments every tool with telemetry.
+
+### Added
+- `gt_dispatch` (14th tool). Takes a plain-text intent ("use gt mcp", "find issues", "use gt for next.js") and returns a routing decision with tool, args, reason, and confidence. Falls back to a structured "next steps" response when nothing else fits.
+- `src/services/intent-router.ts`. Deterministic plain-text to tool routing. 13 verb-hint categories, URL detection, library-alias lookup against the registry, migration-version extraction, project-level detection. Also renders the routing table embedded in `server.instructions`.
+- `src/services/telemetry.ts`. Request lifecycle tracking. Per-tool success, resolve, and error counters. p50 and p95 latency. 200-call recent outcome window. Structured logs. Exposed via the `/health` endpoint and the `withTelemetry(name, fn)` wrapper.
+- `src/utils/result-guarantee.ts`. `guaranteeText()` and `buildFallbackResponse()`. Every tool can return a "what to do next" response when a fetch fails.
+- Updated `server.instructions`. 14-tool descriptions, the trigger-phrase routing table, anti-patterns, and a reliability section so LLM clients pick the right tool first try.
+- `--routing-table` CLI flag. Prints the routing table from the terminal.
+- 4 new top-priority registry entries: `charmbracelet/bubbletea`, `open-webui/open-webui`, `google/adk-python`, `openai/openai-agents-python`.
+- Verified `llms.txt` URLs on `expressjs/express`, `getsentry/sentry`, `anthropics/anthropic-sdk`.
+- 64 new tests. intent-router (14), telemetry (10), dispatch (7), result-guarantee (9), IPv6 SSRF (14), Unicode bypass (11). Total: 1015 → 1083.
+
+### Security (high severity fixes)
+- C1. SSRF via `gt_get_docs` libraryId. `libraryId.includes(".")` previously hit `fetch(https://${libraryId})` without a public-URL check. Passing `169.254.169.254/...` could reach cloud metadata. Now gated by `assertPublicUrl()`.
+- C2. IPv6 full-form bypass. `isBlockedIP()` only matched IPv6 shorthand. Full-form `0000:0000:0000:0000:0000:0000:0000:0001` (equal to `::1`) was passing through. The function now expands `::`, splits 8 hextets, and checks loopback, ULA, link-local, multicast, and IPv4-mapped recursively.
+- H4 and H5. Unicode injection bypass. Added zero-width, RTL-override, and soft-hyphen stripping, plus NFKD normalization and an explicit homoglyph map (Latin small-caps, Cyrillic, Greek). `ɪɢɴᴏʀᴇ ᴘʀᴇᴠɪᴏᴜs` no longer slips past the injection patterns.
+- H2. DiskCache non-atomic write. `writeFile` mid-process-kill produced corrupt JSON. Now writes to `${path}.${nonce}.tmp` and uses `rename()` atomically.
+- H3. DiskCache concurrent-write race. Added a per-key `Map<string, Promise<void>>` lock so concurrent `set()` calls serialize.
+
+### Reliability
+- H1. `tryFetch` silent error swallow. Now logs structured WARN on rate-limit, exhausted retries, and SSRF block. Logs DEBUG on attempt failure, circuit-open, and too-short response. Operators can diagnose what's broken.
+- `gt_migration` URL race. 7 migration URL suffixes were probed sequentially (35s worst case). Now `Promise.any()` in parallel. About 5s worst case.
+- Telemetry on hot-path tools. `gt_dispatch`, `gt_resolve_library`, `gt_get_docs`, `gt_audit`, `gt_auto_scan`, and `gt_search` record success, resolve, and cacheHit per call.
+
+### Data quality
+- Registry ID cleanup. 11 entries had a placeholder owner `nicolo-ribaudo` (lucia, bcryptjs, web-vitals, pdf-lib, swiftui, puppeteer, react-pdf, node, nanoid, tauri, electron). All now use the real GitHub owner (lucia-auth, dcodeIO, GoogleChrome, Hopding, apple, puppeteer, diegomura, nodejs, ai, tauri-apps, electron).
+- Tool annotations. All 14 tools set `idempotentHint: true`. Read-only documentation fetches are idempotent for a given input and time window. Clients can auto-retry on transient failures without re-prompting.
+- REGISTRY_BADGE_SIZE: 444 → 445.
+
+### Tool description quality
+- Tool descriptions follow the six-component template from arXiv 2602.14878. Purpose, when to call, when not to call, limitations, parameters, examples.
+- `gt_resolve_library`. Full Context7-style description with result fields, selection process, and a rate-limit note.
+- `gt_migration`. Clarifies the "how to upgrade" vs `gt_changelog` "what changed" distinction.
+
+### Internal
+- New files: `src/tools/dispatch.ts`, `src/services/intent-router.ts`, `src/services/telemetry.ts`, `src/utils/result-guarantee.ts`.
+- New tests: `intent-router.test.ts`, `telemetry.test.ts`, `dispatch.test.ts`, `result-guarantee.test.ts`, `fetcher.ipv6.test.ts`, `sanitize.unicode.test.ts`, `docs.ssrf.test.ts`.
+
+---
+
 ## [6.1.3] — 2026-05-26
 
 - fix(security): close CWE-23 path traversal in apply-enrichment.mjs

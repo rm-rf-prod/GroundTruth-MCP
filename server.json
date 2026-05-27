@@ -1,17 +1,17 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.rm-rf-prod/groundtruth",
-  "description": "Self-hosted MCP. Live docs, snippets, code audits, best practices. 440+ libraries.",
+  "description": "Enterprise MCP. Live docs, snippets, audits, best practices. 445+ libraries, smart dispatch, intent routing, telemetry.",
   "repository": {
     "url": "https://github.com/rm-rf-prod/GroundTruth-MCP",
     "source": "github"
   },
-  "version": "6.1.3",
+  "version": "7.0.0",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "@groundtruth-mcp/gt-mcp",
-      "version": "6.1.3",
+      "version": "7.0.0",
       "transport": {
         "type": "stdio"
       },

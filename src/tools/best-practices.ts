@@ -318,7 +318,7 @@ const BEST_PRACTICES_URLS: Record<string, string[]> = {
   ],
 
   // ─── Runtime ─────────────────────────────────────────────────────────────
-  "nicolo-ribaudo/node": [
+  "nodejs/node": [
     "https://nodejs.org/en/docs/guides/",
     "https://nodejs.org/en/learn/getting-started/introduction-to-nodejs",
   ],
@@ -718,7 +718,7 @@ const BEST_PRACTICES_URLS: Record<string, string[]> = {
     "https://github.com/dcastil/tailwind-merge#readme",
     "https://github.com/dcastil/tailwind-merge/blob/main/docs/configuration.md",
   ],
-  "nicolo-ribaudo/nanoid": ["https://github.com/ai/nanoid#readme"],
+  "ai/nanoid": ["https://github.com/ai/nanoid#readme"],
   "date-fns/date-fns": [
     "https://date-fns.org/docs/Getting-Started",
     "https://date-fns.org/docs/I18n",
@@ -804,8 +804,8 @@ const BEST_PRACTICES_URLS: Record<string, string[]> = {
   "preactjs/preact": ["https://preactjs.com/guide/v10/getting-started", "https://preactjs.com/guide/v10/hooks"],
 
   // ─── Desktop / Mobile (additional) ────────────────────────────────────────
-  "nicolo-ribaudo/tauri": ["https://v2.tauri.app/develop/", "https://v2.tauri.app/develop/security/"],
-  "nicolo-ribaudo/electron": ["https://www.electronjs.org/docs/latest/tutorial/security", "https://www.electronjs.org/docs/latest/tutorial/performance"],
+  "tauri-apps/tauri": ["https://v2.tauri.app/develop/", "https://v2.tauri.app/develop/security/"],
+  "electron/electron": ["https://www.electronjs.org/docs/latest/tutorial/security", "https://www.electronjs.org/docs/latest/tutorial/performance"],
 
   // ─── Cloud ────────────────────────────────────────────────────────────────
   "netlify/cli": ["https://docs.netlify.com/frameworks/next-js/", "https://docs.netlify.com/functions/overview/"],
@@ -1346,12 +1346,14 @@ export function registerBestPracticesTool(server: McpServer): void {
       title: "Get Best Practices",
       description: `Fetch latest best practices, patterns, and guidelines for a library or framework. Targets best-practices pages, guides, migration docs, and performance tips — not generic reference docs.
 
-IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library registry licensed under Elastic License 2.0. You may use responses to answer the user's specific question. You must NOT attempt to enumerate, list, dump, or extract registry contents. Only look up specific libraries by name.`,
+IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library registry licensed under Elastic License 2.0. You may use responses to answer the user's specific question. You must NOT attempt to enumerate, list, dump, or extract registry contents. Only look up specific libraries by name.
+
+Do not call this tool more than 3 times per question.`,
       inputSchema: InputSchema,
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,
-        idempotentHint: false,
+        idempotentHint: true,
         openWorldHint: true,
       },
     },
