@@ -60,14 +60,16 @@ export function registerMigrationTool(server: McpServer): void {
     "gt_migration",
     {
       title: "Get Migration Guide",
-      description: `Fetch migration guides, breaking changes, and upgrade instructions for a library. Targets MIGRATION.md, CHANGELOG, release notes, and upgrade docs.
+      description: `Fetch migration guides, breaking changes, and upgrade instructions for a library. Targets MIGRATION.md, UPGRADING.md, CHANGELOG, release notes, and upgrade docs.
 
-Call gt_resolve_library first to get the libraryId.`,
+Call gt_resolve_library first to get the libraryId.
+
+Use this when the user asks HOW to upgrade their code from one version to another (step-by-step migration instructions, breaking changes, code transforms needed). For "what changed in version X" release notes without upgrade instructions, use gt_changelog instead.`,
       inputSchema: InputSchema,
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,
-        idempotentHint: false,
+        idempotentHint: true,
         openWorldHint: true,
       },
     },
@@ -139,13 +141,19 @@ Call gt_resolve_library first to get the libraryId.`,
       if (sections.length === 0) {
         try {
           const origin = new URL(docsUrl).origin;
-          for (const suffix of MIGRATION_URL_SUFFIXES) {
+          // Race all 7 URL suffixes in parallel — first non-empty result wins.
+          // Previously serial w/ 7 timeouts → 35s worst case; now max ~5s.
+          const candidates = MIGRATION_URL_SUFFIXES.map(async (suffix) => {
             const url = `${origin}${suffix}`;
             const content = await fetchAsMarkdownRace(url);
-            if (content && content.length > 300) {
-              sections.push({ source: url, content });
-              break;
-            }
+            if (content && content.length > 300) return { url, content };
+            throw new Error("no content");
+          });
+          try {
+            const hit = await Promise.any(candidates);
+            sections.push({ source: hit.url, content: hit.content });
+          } catch {
+            // All 7 candidates failed — leave sections empty for final-error path
           }
         } catch { /* invalid URL */ }
       }

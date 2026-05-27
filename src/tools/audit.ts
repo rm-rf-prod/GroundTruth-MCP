@@ -7,6 +7,7 @@ import { safeguardPath, withToolTimeout } from "../utils/guard.js";
 import { fetchDocs, fetchGitHubExamples, fetchGitHubReleases, fetchAsMarkdownRace, isIndexContent, rankIndexLinks } from "../services/fetcher.js";
 import { extractRelevantContent } from "../utils/extract.js";
 import { sanitizeContent } from "../utils/sanitize.js";
+import { withTelemetry } from "../services/telemetry.js";
 
 const InputSchema = z.object({
   projectPath: z
@@ -1708,11 +1709,12 @@ If doc fetches fail with empty results, the user likely needs to set GT_GITHUB_T
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,
-        idempotentHint: false,
+        idempotentHint: true,
         openWorldHint: true,
       },
     },
     async ({ projectPath, categories, tokens, maxFiles }) => {
+     return withTelemetry("gt_audit", async (ctx) => {
       let resolvedPath: string;
       try {
         resolvedPath = safeguardPath(projectPath ?? process.cwd());
@@ -1809,6 +1811,7 @@ If doc fetches fail with empty results, the user likely needs to set GT_GITHUB_T
           .join("\n");
       });
 
+      ctx.resolved = allIssues.length > 0 || files.length > 0;
       return {
         content: [{ type: "text", text: header + sections.join("") }],
         structuredContent: {
@@ -1825,6 +1828,7 @@ If doc fetches fail with empty results, the user likely needs to set GT_GITHUB_T
           })),
         },
       };
+     });
     },
   );
 }

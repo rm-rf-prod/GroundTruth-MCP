@@ -8,6 +8,7 @@ import type { FetchResult } from "../types.js";
 import { docCache, diskDocCache } from "./cache.js";
 import { assertPublicUrl } from "../utils/guard.js";
 import { convertHtmlToMarkdown } from "../utils/html-to-md.js";
+import { log } from "../utils/logger.js";
 
 /**
  * Global fetch semaphore — caps total concurrent outbound HTTP requests.
@@ -70,13 +71,50 @@ export function isBlockedIP(address: string): boolean {
   }
   if (isIPv6(address)) {
     const lower = address.toLowerCase();
-    return (
-      lower === "::1" || lower === "::" ||
-      lower.startsWith("fc") || lower.startsWith("fd") ||
-      lower.startsWith("fe8") || lower.startsWith("fe9") ||
-      lower.startsWith("fea") || lower.startsWith("feb") ||
-      lower.startsWith("ff") || lower.startsWith("::ffff:")
-    );
+    // Quick wins on shorthand forms
+    if (lower === "::1" || lower === "::") return true;
+    if (lower.startsWith("fc") || lower.startsWith("fd")) return true;
+    if (lower.startsWith("fe8") || lower.startsWith("fe9") || lower.startsWith("fea") || lower.startsWith("feb")) return true;
+    if (lower.startsWith("ff")) return true;
+    if (lower.startsWith("::ffff:")) return true;
+
+    // Defense against full-form bypass: 0000:...:0001 == ::1
+    // Normalize by expanding "::" then checking each 8-group hextet
+    // explicitly so 0000-padded forms cannot slip through.
+    try {
+      let expanded = lower;
+      if (expanded.includes("::")) {
+        const [head, tail] = expanded.split("::");
+        const headGroups = head ? head.split(":") : [];
+        const tailGroups = tail ? tail.split(":") : [];
+        const missing = 8 - headGroups.length - tailGroups.length;
+        if (missing >= 0) {
+          expanded = [...headGroups, ...Array(missing).fill("0"), ...tailGroups].join(":");
+        }
+      }
+      const groups = expanded.split(":").map((g) => parseInt(g || "0", 16));
+      if (groups.length === 8 && groups.every((g) => Number.isInteger(g) && g >= 0 && g <= 0xffff)) {
+        const isLoopback = groups.slice(0, 7).every((g) => g === 0) && groups[7] === 1;
+        const isUnspecified = groups.every((g) => g === 0);
+        // IPv4-mapped IPv6 (::ffff:a.b.c.d) — recheck against IPv4 rules
+        const isV4Mapped = groups.slice(0, 5).every((g) => g === 0) && groups[5] === 0xffff;
+        if (isLoopback || isUnspecified) return true;
+        if (isV4Mapped) {
+          const v4 = `${(groups[6]! >> 8) & 0xff}.${groups[6]! & 0xff}.${(groups[7]! >> 8) & 0xff}.${groups[7]! & 0xff}`;
+          return isBlockedIP(v4);
+        }
+        // ULA fc00::/7 → first byte high bit pattern 1111110x
+        if ((groups[0]! & 0xfe00) === 0xfc00) return true;
+        // Link-local fe80::/10
+        if ((groups[0]! & 0xffc0) === 0xfe80) return true;
+        // Multicast ff00::/8
+        if ((groups[0]! & 0xff00) === 0xff00) return true;
+      }
+    } catch {
+      // If parsing fails on something unusual, refuse by default
+      return true;
+    }
+    return false;
   }
   return true;
 }
@@ -162,22 +200,33 @@ export async function fetchWithTimeout(
 }
 
 async function tryFetch(url: string, retries = 1, extraHeaders?: Record<string, string>): Promise<string | null> {
-  try { assertPublicUrl(url); } catch { return null; }
+  try { assertPublicUrl(url); } catch (err) {
+    log({ level: "warn", msg: "tryFetch.ssrf_blocked", url, error: err instanceof Error ? err.message : String(err) });
+    return null;
+  }
   const domain = extractDomain(url);
-  if (isCircuitOpen(domain)) return null;
+  if (isCircuitOpen(domain)) {
+    log({ level: "debug", msg: "tryFetch.circuit_open", url, domain });
+    return null;
+  }
+  let lastError: string | undefined;
+  let lastStatus: number | undefined;
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       const res = await fetchWithTimeout(url, FETCH_TIMEOUT_MS, extraHeaders);
+      lastStatus = res.status;
       if (res.status === 429 || res.status === 503) {
         recordFailure(domain);
         if (attempt < retries) {
           await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
           continue;
         }
+        log({ level: "warn", msg: "tryFetch.rate_limited", url, status: res.status, attempts: attempt + 1 });
         return null;
       }
       if (!res.ok) {
         recordFailure(domain);
+        log({ level: "debug", msg: "tryFetch.http_error", url, status: res.status });
         return null;
       }
       const text = await res.text();
@@ -185,13 +234,26 @@ async function tryFetch(url: string, retries = 1, extraHeaders?: Record<string, 
         recordSuccess(domain);
         return text;
       }
+      log({ level: "debug", msg: "tryFetch.too_short", url, length: text.length });
       return null;
-    } catch {
+    } catch (err) {
       recordFailure(domain);
+      lastError = err instanceof Error ? err.message : String(err);
+      log({ level: "debug", msg: "tryFetch.exception", url, error: lastError, attempt });
       if (attempt < retries) {
         await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
       }
     }
+  }
+  if (lastError !== undefined || lastStatus !== undefined) {
+    log({
+      level: "warn",
+      msg: "tryFetch.exhausted",
+      url,
+      attempts: retries + 1,
+      ...(lastError !== undefined ? { error: lastError } : {}),
+      ...(lastStatus !== undefined ? { lastStatus } : {}),
+    });
   }
   return null;
 }

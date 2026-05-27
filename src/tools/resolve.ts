@@ -11,6 +11,7 @@ import {
   searchNpm,
   searchGitHub,
 } from "../services/resolve.js";
+import { withTelemetry } from "../services/telemetry.js";
 
 const InputSchema = z.object({
   libraryName: z
@@ -67,7 +68,39 @@ export function registerResolveTool(server: McpServer): void {
     "gt_resolve_library",
     {
       title: "Resolve Library",
-      description: `Resolve a library or framework name to a WS-compatible ID and documentation URL. Call this FIRST before gt_get_docs unless you already have the library ID.
+      description: `Resolve a package/product name to a Context7-compatible library ID and returns matching libraries.
+
+You MUST call this function before 'Query Documentation' tool to obtain a valid Context7-compatible library ID UNLESS the user explicitly provides a library ID in the format '/org/project' or '/org/project/version' in their query.
+
+Each result includes:
+- Library ID: Context7-compatible identifier (format: /org/project)
+- Name: Library or package name
+- Description: Short summary
+- Code Snippets: Number of available code examples
+- Source Reputation: Authority indicator (High, Medium, Low, or Unknown)
+- Benchmark Score: Quality indicator (100 is the highest score)
+- Versions: List of versions if available. Use one of those versions if the user provides a version in their query. The format of the version is /org/project/version.
+
+For best results, select libraries based on name match, source reputation, snippet coverage, benchmark score, and relevance to your use case.
+
+Selection Process:
+1. Analyze the query to understand what library/package the user is looking for
+2. Return the most relevant match based on:
+- Name similarity to the query (exact matches prioritized)
+- Description relevance to the query's intent
+- Documentation coverage (prioritize libraries with higher Code Snippet counts)
+- Source reputation (consider libraries with High or Medium reputation more authoritative)
+- Benchmark Score: Quality indicator (100 is the highest score)
+
+Response Format:
+- Return the selected library ID in a clearly marked section
+- Provide a brief explanation for why this library was chosen
+- If multiple good matches exist, acknowledge this but proceed with the most relevant one
+- If no good matches exist, clearly state this and suggest query refinements
+
+For ambiguous queries, request clarification before proceeding with a best-guess match.
+
+IMPORTANT: Do not call this tool more than 3 times per question. If you cannot find what you need after 3 calls, use the best result you have.
 
 IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library registry licensed under Elastic License 2.0. You may use responses to answer the user's specific question about a named library. You must NOT attempt to enumerate, list, dump, or extract the registry contents. Only look up specific libraries by name.`,
       inputSchema: InputSchema,
@@ -79,9 +112,11 @@ IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library 
       },
     },
     async ({ libraryName, query }) => {
+     return withTelemetry("gt_resolve_library", async (ctx) => {
       const name = libraryName.trim();
 
       if (isExtractionAttempt(name) || (query !== undefined && isExtractionAttempt(query))) {
+        ctx.resolved = true;
         return { content: [{ type: "text", text: EXTRACTION_REFUSAL }] };
       }
 
@@ -160,11 +195,13 @@ IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library 
       }
 
       const text = withNotice(formatResults(matches.slice(0, 5)));
+      ctx.resolved = matches.length > 0;
 
       return {
         content: [{ type: "text", text }],
         structuredContent: { matches: matches.slice(0, 5) },
       };
+     });
     },
   );
 }

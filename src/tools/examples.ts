@@ -39,7 +39,9 @@ export function registerExamplesTool(server: McpServer): void {
       title: "Find Real-World Code Examples",
       description: `Search GitHub for real-world usage examples of any library or pattern. Returns code snippets from popular open-source projects with repository attribution.
 
-Requires GT_GITHUB_TOKEN env var for higher rate limits.`,
+Requires GT_GITHUB_TOKEN env var for higher rate limits (5000 req/hr vs 60 unauthenticated).
+
+Source: open-source GitHub repositories (not the library's own docs). Use this when you want to see how real projects use a library. For code snippets extracted from the library's own documentation, use gt_snippets instead.`,
       inputSchema: InputSchema,
       annotations: {
         readOnlyHint: true,

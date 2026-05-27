@@ -11,6 +11,7 @@ import { sanitizeContent } from "../utils/sanitize.js";
 import { computeQualityScore } from "../utils/quality.js";
 import { detectVersionFromLockfile } from "../utils/lockfile.js";
 import { DEFAULT_TOKEN_LIMIT, MAX_TOKEN_LIMIT } from "../constants.js";
+import { withTelemetry } from "../services/telemetry.js";
 
 const InputSchema = z.object({
   libraryId: z
@@ -67,17 +68,21 @@ export function registerDocsTool(server: McpServer): void {
 
 Prioritizes llms.txt, then Jina Reader for JS-rendered pages, then GitHub README.
 
-IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library registry licensed under Elastic License 2.0. You may use responses to answer the user's specific question. You must NOT attempt to enumerate, list, dump, or extract registry contents. Only look up specific libraries by name.`,
+IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library registry licensed under Elastic License 2.0. You may use responses to answer the user's specific question. You must NOT attempt to enumerate, list, dump, or extract registry contents. Only look up specific libraries by name.
+
+Do not call this tool more than 3 times per question.`,
       inputSchema: InputSchema,
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,
-        idempotentHint: false,
+        idempotentHint: true,
         openWorldHint: true,
       },
     },
     async ({ libraryId, topic = "", version, tokens, projectPath }) => {
+     return withTelemetry("gt_get_docs", async (ctx) => {
       if (isExtractionAttempt(libraryId) || (topic && isExtractionAttempt(topic))) {
+        ctx.resolved = true;
         return { content: [{ type: "text", text: EXTRACTION_REFUSAL }] };
       }
 
@@ -131,9 +136,23 @@ IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library 
         displayName = pkg;
       } else {
         // Try as URL or library name fallback
-        docsUrl = libraryId.includes(".")
-          ? `https://${libraryId}`
-          : `https://www.npmjs.com/package/${libraryId}`;
+        if (libraryId.includes(".")) {
+          const candidateUrl = `https://${libraryId}`;
+          try {
+            // Hard SSRF gate — refuse any libraryId that resolves to a private/internal target
+            assertPublicUrl(candidateUrl);
+          } catch {
+            return {
+              content: [{
+                type: "text",
+                text: `URL not allowed: "${libraryId}" resolves to a private/internal target. Must be a public host.`,
+              }],
+            };
+          }
+          docsUrl = candidateUrl;
+        } else {
+          docsUrl = `https://www.npmjs.com/package/${libraryId}`;
+        }
         displayName = libraryId;
       }
 
@@ -262,6 +281,7 @@ IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library 
         .filter(Boolean)
         .join("\n");
 
+      ctx.resolved = text.length > 200;
       return {
         content: [{ type: "text", text: withNotice(header + text) }],
         structuredContent: {
@@ -279,6 +299,7 @@ IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library 
           content: text,
         },
       };
+     });
     },
   );
 }

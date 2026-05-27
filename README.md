@@ -16,14 +16,14 @@
   <a href="https://www.npmjs.com/package/@groundtruth-mcp/gt-mcp"><img src="https://img.shields.io/npm/v/@groundtruth-mcp/gt-mcp?color=00d4aa&label=npm" alt="npm version" /></a>
   <a href="https://github.com/rm-rf-prod/GroundTruth-MCP/actions/workflows/ci.yml"><img src="https://github.com/rm-rf-prod/GroundTruth-MCP/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-ELv2-orange" alt="Elastic License 2.0" /></a>
-  <img src="https://img.shields.io/badge/libraries-444%2B-teal" alt="444+ curated libraries" />
+  <img src="https://img.shields.io/badge/libraries-445%2B-teal" alt="445+ curated libraries" />
   <img src="https://img.shields.io/badge/audit_patterns-107%2B-red" alt="107+ audit patterns" />
-  <img src="https://img.shields.io/badge/tests-1015-brightgreen" alt="1015 tests" />
-  <img src="https://img.shields.io/badge/tools-12-blue" alt="12 tools" />
+  <img src="https://img.shields.io/badge/tests-1083-brightgreen" alt="1083 tests" />
+  <img src="https://img.shields.io/badge/tools-14-blue" alt="14 tools" />
   <img src="https://img.shields.io/badge/node-%3E%3D24-green" alt="Node 24+" />
 </p>
 
-<h4 align="center">Self-hosted MCP server. 444+ curated libraries. 100+ audit patterns. No rate limits. No API keys.<br/>Ships updates continuously — your MCP client picks them up on restart.</h4>
+<h4 align="center">Self-hosted MCP server. 445+ libraries. 14 tools. A dispatch tool routes "use gt mcp" to the right call.<br/>SSRF and Unicode-injection hardened. Per-tool telemetry. Atomic disk cache. No rate limits, no API keys.</h4>
 
 ---
 

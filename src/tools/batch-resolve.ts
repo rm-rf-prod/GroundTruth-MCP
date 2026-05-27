@@ -18,7 +18,7 @@ export function registerBatchResolveTool(server: McpServer): void {
       title: "Batch Resolve Libraries",
       description: `Resolve multiple library names to IDs and docs URLs in a single call. Returns results for each library. Max 20 per call.
 
-Useful for dependency audits — pass all package names from package.json at once.`,
+Use this when you already have a list of library names and need to batch-resolve them to IDs efficiently (e.g. before calling gt_get_docs for each). Registry-only lookup — no external npm/PyPI/crates fallback. For a single library with external fallback, use gt_resolve_library instead. For scanning a project's actual dependency files and fetching best practices, use gt_auto_scan instead.`,
       inputSchema: InputSchema,
       annotations: {
         readOnlyHint: true,
