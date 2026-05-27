@@ -31,7 +31,7 @@
 
 Your model doesn't know that React 19 killed `forwardRef`, that Next.js made `cookies()` async, or that Tailwind v4 nuked `@tailwind` directives. It writes deprecated patterns with full confidence. It hands you SQL injection dressed up as a query builder and uses `any` in TypeScript like it's a feature.
 
-**GroundTruth runs on your machine.** Fetches docs from the source — `llms.txt`, Jina Reader, GitHub — right when you ask. 444+ curated libraries, plus npm, PyPI, crates.io, and pkg.go.dev as fallback. The audit tool reads your actual files, finds issues at exact `file:line` locations, and fetches the current fix from the real spec.
+**GroundTruth runs on your machine.** Fetches docs from the source — `llms.txt`, Jina Reader, GitHub — right when you ask. 445+ curated libraries, plus npm, PyPI, crates.io, and pkg.go.dev as fallback. The audit tool reads your actual files, finds issues at exact `file:line` locations, and fetches the current fix from the real spec.
 
 ---
 
@@ -229,7 +229,7 @@ For every request, GroundTruth tries sources in order and stops at the first one
 
 ## Library coverage
 
-444+ curated entries with 100% best-practices and URL pattern coverage, plus automatic fallback to npm, PyPI, crates.io, and pkg.go.dev. Any public package in any major ecosystem is resolvable.
+445+ curated entries with 100% best-practices and URL pattern coverage, plus automatic fallback to npm, PyPI, crates.io, and pkg.go.dev. Any public package in any major ecosystem is resolvable.
 
 | Ecosystem | Libraries |
 |---|---|
@@ -267,7 +267,7 @@ Context7 is solid. Here's why I reach for this instead.
 | Changelog, compat, compare, examples, migration | Yes | No |
 | MCP Resources + Prompts | 2 resources, 8 prompts | No |
 | Lockfile detection | Reads exact versions from lockfiles | No |
-| Libraries | 444+ curated + npm/PyPI/crates.io/Go fallback | Undisclosed (claims "thousands") |
+| Libraries | 445+ curated + npm/PyPI/crates.io/Go fallback | Undisclosed (claims "thousands") |
 | API key required | No | No |
 
 Context7 indexes docs into a vector database — fast lookups, but with indexing lag on new releases. GroundTruth fetches from the source at query time, prioritizes `llms.txt`, and scores content quality so your model knows when to retry.
@@ -299,7 +299,7 @@ Issues and requests: [github.com/rm-rf-prod/GroundTruth-MCP/issues](https://gith
 
 ## Active development
 
-GroundTruth is under active development. New curated registry entries, audit patterns, search topics, and features are added regularly. The registry covers 444+ libraries with 100% bestPracticesPaths and urlPatterns coverage. Automatic fallback to npm, PyPI, crates.io, and pkg.go.dev means any public package is resolvable out of the box.
+GroundTruth is under active development. New curated registry entries, audit patterns, search topics, and features are added regularly. The registry covers 445+ libraries with 100% bestPracticesPaths and urlPatterns coverage. Automatic fallback to npm, PyPI, crates.io, and pkg.go.dev means any public package is resolvable out of the box.
 
 To stay updated:
 - **Star and watch** the [GitHub repo](https://github.com/rm-rf-prod/GroundTruth-MCP) for release notifications
