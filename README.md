@@ -18,7 +18,7 @@
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-ELv2-orange" alt="Elastic License 2.0" /></a>
   <img src="https://img.shields.io/badge/libraries-445%2B-teal" alt="445+ curated libraries" />
   <img src="https://img.shields.io/badge/audit_patterns-107%2B-red" alt="107+ audit patterns" />
-  <img src="https://img.shields.io/badge/tests-1083-brightgreen" alt="1083 tests" />
+  <img src="https://img.shields.io/badge/tests-1119-brightgreen" alt="1119 tests" />
   <img src="https://img.shields.io/badge/tools-14-blue" alt="14 tools" />
   <img src="https://img.shields.io/badge/node-%3E%3D24-green" alt="Node 24+" />
 </p>
