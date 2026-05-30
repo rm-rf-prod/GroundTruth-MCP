@@ -652,3 +652,26 @@ describe("AUDIT_PATTERNS category coverage", () => {
     }
   });
 });
+
+describe("charOffset is honoured for repeated identical lines", () => {
+  // Regression for the indexOf(line) bug: context-window patterns must inspect
+  // the match's real position (charOffset), not the FIRST occurrence of the line.
+  it("flags the second identical <FlatList> whose own context lacks keyExtractor", () => {
+    const TARGET = "<FlatList data={items} />";
+    const content =
+      `${TARGET}\nkeyExtractor={(i) => i.id}\n` +
+      "// padding line to push the second match past the 500-char window\n".repeat(20) +
+      `${TARGET}\n`;
+    const lines = content.split("\n");
+    const secondOffset = content.lastIndexOf(TARGET);
+    const secondLineIndex = lines.lastIndexOf(TARGET);
+    const pattern = AUDIT_PATTERNS.find((p) => p.title === "FlatList without keyExtractor");
+    if (!pattern) throw new Error("pattern not found");
+
+    // First occurrence (offset 0) has keyExtractor within its window -> not flagged.
+    expect(pattern.test(TARGET, content, 0, lines, 0)).toBeNull();
+    // Second occurrence: the old indexOf(line) code would re-inspect offset 0 and
+    // wrongly see keyExtractor. With charOffset it inspects the real position and flags it.
+    expect(pattern.test(TARGET, content, secondOffset, lines, secondLineIndex)).toBe(TARGET);
+  });
+});

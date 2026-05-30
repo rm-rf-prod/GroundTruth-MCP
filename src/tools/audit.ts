@@ -237,9 +237,9 @@ export const AUDIT_PATTERNS: AuditPattern[] = [
       "useEffect fires after the first render causing a visible loading waterfall. It also lacks caching, deduplication, and error handling.",
     fix: "Move data fetching to a Server Component (no hook needed) or use SWR/TanStack Query for client-cached fetching.",
     docsQuery: "React Server Components data fetching SWR TanStack Query avoid useEffect",
-    test: (line, content) => {
+    test: (line, content, charOffset) => {
       if (/useEffect\s*\(/.test(line)) {
-        const block = content.slice(content.indexOf(line), content.indexOf(line) + 400);
+        const block = content.slice(charOffset, charOffset + 400);
         if (/\bfetch\s*\(|axios\./.test(block)) return line;
       }
       return null;
@@ -470,9 +470,9 @@ export const AUDIT_PATTERNS: AuditPattern[] = [
       "Server Actions are public POST endpoints callable by anyone. Without validation, attackers can send arbitrary data.",
     fix: "Parse all inputs with zod at the very start of every Server Action before any other logic.",
     docsQuery: "Next.js Server Actions zod input validation security",
-    test: (line, content) => {
+    test: (line, content, charOffset) => {
       if (/['"]use server['"]/.test(line)) {
-        const block = content.slice(content.indexOf(line), content.indexOf(line) + 600);
+        const block = content.slice(charOffset, charOffset + 600);
         if (!block.includes("zod") && !block.includes(".parse(") && !block.includes(".safeParse("))
           return line;
       }
@@ -603,10 +603,10 @@ export const AUDIT_PATTERNS: AuditPattern[] = [
       "addEventListener without a cleanup return in useEffect accumulates listeners on each re-render, causing memory leaks.",
     fix: "Return a cleanup function: `return () => { element.removeEventListener(event, handler); }`",
     docsQuery: "useEffect cleanup addEventListener memory leak React hooks",
-    test: (line, content) => {
+    test: (line, content, charOffset) => {
       if (/addEventListener\s*\(|setInterval\s*\(|\.subscribe\s*\(/.test(line)) {
-        const start = Math.max(0, content.lastIndexOf("useEffect", content.indexOf(line)));
-        const nearby = content.slice(start, content.indexOf(line) + 300);
+        const start = Math.max(0, content.lastIndexOf("useEffect", charOffset));
+        const nearby = content.slice(start, charOffset + 300);
         if (/useEffect/.test(nearby) && !/return\s*\(\s*\)\s*=>/.test(nearby)) return line;
       }
       return null;
@@ -1194,9 +1194,9 @@ export const AUDIT_PATTERNS: AuditPattern[] = [
     detail: "Missing keyExtractor causes list re-render performance issues",
     fix: "Add keyExtractor: <FlatList keyExtractor={(item) => item.id.toString()} ...>",
     docsQuery: "React Native FlatList keyExtractor performance",
-    test: (line, content) => {
+    test: (line, content, charOffset) => {
       if (!line.includes("<FlatList") && !line.includes("FlatList ")) return null;
-      const nearby = content.slice(Math.max(0, content.indexOf(line) - 500), content.indexOf(line) + 500);
+      const nearby = content.slice(Math.max(0, charOffset - 500), charOffset + 500);
       return !nearby.includes("keyExtractor") ? line : null;
     },
   },
@@ -1207,9 +1207,9 @@ export const AUDIT_PATTERNS: AuditPattern[] = [
     detail: "TouchableOpacity and Pressable elements need accessible={true} and accessibilityLabel",
     fix: "Add accessible={true} accessibilityLabel=\"Description\" to touchable components",
     docsQuery: "React Native accessibility accessibilityLabel touchable",
-    test: (line, content) => {
+    test: (line, content, charOffset) => {
       if (!/<(?:TouchableOpacity|Pressable|TouchableHighlight)/.test(line)) return null;
-      const nearby = content.slice(Math.max(0, content.indexOf(line) - 200), content.indexOf(line) + 300);
+      const nearby = content.slice(Math.max(0, charOffset - 200), charOffset + 300);
       return !nearby.includes("accessibilityLabel") ? line : null;
     },
   },
@@ -1255,9 +1255,9 @@ export const AUDIT_PATTERNS: AuditPattern[] = [
     detail: "Uncaught async errors in route handlers crash the process",
     fix: "Wrap handler body in try/catch or use an async error wrapper middleware",
     docsQuery: "Express async route handler error handling",
-    test: (line, content) => {
+    test: (line, content, charOffset) => {
       if (!/(app|router)\.\s*(?:get|post|put|patch|delete)\s*\(/.test(line)) return null;
-      const handlerStart = content.indexOf(line);
+      const handlerStart = charOffset;
       const nearby = content.slice(handlerStart, handlerStart + 500);
       return !/try\s*\{/.test(nearby) ? line : null;
     },
@@ -1410,9 +1410,9 @@ export const AUDIT_PATTERNS: AuditPattern[] = [
     detail: "Defining StyleSheet.create inside a component recreates styles on every render. Move it outside the component.",
     fix: "Move StyleSheet.create to module scope: const styles = StyleSheet.create({...}) after the component",
     docsQuery: "React Native StyleSheet.create performance outside component",
-    test: (line, content) => {
+    test: (line, content, charOffset) => {
       if (!/StyleSheet\.create/.test(line)) return null;
-      const idx = content.indexOf(line);
+      const idx = charOffset;
       const before = content.slice(Math.max(0, idx - 2000), idx);
       const hasComponentAbove = /(?:function\s+\w+|const\s+\w+\s*=\s*(?:\([^)]*\)|[^=])*=>|class\s+\w+)/.test(before);
       const hasReturnAbove = /\breturn\s*\(/.test(before);
@@ -1437,9 +1437,9 @@ export const AUDIT_PATTERNS: AuditPattern[] = [
     detail: "Nesting a FlatList inside a ScrollView disables virtualization and causes performance issues",
     fix: "Remove the outer ScrollView, use ListHeaderComponent and ListFooterComponent instead",
     docsQuery: "React Native FlatList ScrollView nesting performance VirtualizedList",
-    test: (line, content) => {
+    test: (line, content, charOffset) => {
       if (!/<ScrollView/.test(line)) return null;
-      const idx = content.indexOf(line);
+      const idx = charOffset;
       const after = content.slice(idx, idx + 3000);
       return /(?:<FlatList|<SectionList)/.test(after) ? line : null;
     },
@@ -1451,9 +1451,9 @@ export const AUDIT_PATTERNS: AuditPattern[] = [
     detail: "Images without width and height cause layout shifts during loading",
     fix: "Add explicit width and height to all Image components, or use aspectRatio with one dimension",
     docsQuery: "React Native Image dimensions layout shift performance",
-    test: (line, content) => {
+    test: (line, content, charOffset) => {
       if (!/<Image\s/.test(line)) return null;
-      const idx = content.indexOf(line);
+      const idx = charOffset;
       const nearby = content.slice(idx, idx + 500);
       return !/(?:width|height)\s*[:=]/.test(nearby) && !/style=/.test(nearby) ? line : null;
     },
@@ -1476,9 +1476,9 @@ export const AUDIT_PATTERNS: AuditPattern[] = [
     detail: "Unhandled errors in navigation screens crash the entire app. Wrap screens in error boundaries.",
     fix: "Add ErrorBoundary wrapper: <ErrorBoundary fallback={<CrashScreen />}><Screen /></ErrorBoundary>",
     docsQuery: "React Native error boundary navigation crash handling",
-    test: (line, content) => {
+    test: (line, content, charOffset) => {
       if (!/Screen\s+name=/.test(line)) return null;
-      const idx = content.indexOf(line);
+      const idx = charOffset;
       const nearby = content.slice(Math.max(0, idx - 500), idx + 500);
       return !/ErrorBoundary/.test(nearby) ? line : null;
     },
