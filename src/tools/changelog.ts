@@ -2,7 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { lookupById, lookupByAlias } from "../sources/registry.js";
 import { fetchGitHubReleases, fetchGitHubContent, fetchAsMarkdownRace } from "../services/fetcher.js";
-import { extractRelevantContent } from "../utils/extract.js";
+import { extractRelevantContent, sliceVersionBand } from "../utils/extract.js";
 import { sanitizeContent } from "../utils/sanitize.js";
 import { isExtractionAttempt, withNotice, EXTRACTION_REFUSAL } from "../utils/guard.js";
 import { docCache } from "../services/cache.js";
@@ -53,7 +53,7 @@ Use this for "what changed in version X" questions. For "how do I upgrade my cod
         return { content: [{ type: "text", text: EXTRACTION_REFUSAL }] };
       }
 
-      const cacheKey = `changelog:${libraryId}:${version ?? ""}`;
+      const cacheKey = `changelog:${libraryId}:${version ?? ""}:${tokens}`;
       const cached = docCache.get(cacheKey);
       if (typeof cached === "string") {
         return {
@@ -119,17 +119,11 @@ Use this for "what changed in version X" questions. For "how do I upgrade my cod
 
       let content = sanitizeContent(raw);
 
-      // Filter to requested version prefix
+      // Slice to the requested version band. Replaces a fragile first-match
+      // includes() scan that could anchor on an unrelated mention of the number
+      // and then grab a fixed 100-line window.
       if (version) {
-        const vNorm = version.replace(/^v/, "");
-        const lines = content.split("\n");
-        const startIdx = lines.findIndex(
-          (l) => l.includes(version) || l.includes(`v${vNorm}`) || l.includes(vNorm),
-        );
-        if (startIdx !== -1) {
-          const nextHeading = lines.findIndex((l, i) => i > startIdx && /^#{1,3}\s/.test(l));
-          content = lines.slice(startIdx, nextHeading !== -1 ? nextHeading : startIdx + 100).join("\n");
-        }
+        content = sliceVersionBand(content, version, version);
       }
 
       const { text, truncated } = extractRelevantContent(

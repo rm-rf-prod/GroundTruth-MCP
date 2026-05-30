@@ -15,10 +15,33 @@ const SOURCE_WEIGHTS: Record<string, number> = {
   "npm": 0.4,
 };
 
+/**
+ * Score how strongly the content matches the requested version(s).
+ * Returns 1 when no versions are requested (preserves prior behaviour for
+ * every non-version tool). Otherwise it looks for the target versions in the
+ * leading third of the content — where a correct migration/changelog names its
+ * target — and returns 0.3 on a complete miss so version-mismatched docs
+ * collapse below the trust threshold instead of being stamped ~0.96.
+ */
+function computeVersionRelevance(content: string, versions: string[]): number {
+  const norms = versions.map((v) => v.replace(/^v/i, "").trim()).filter(Boolean);
+  if (norms.length === 0) return 1;
+  const head = content.slice(0, Math.max(400, Math.floor(content.length / 3)));
+  let hits = 0;
+  for (const v of norms) {
+    const esc = v.replace(/\./g, "\\.");
+    // Boundary guards stop "15" matching inside "2015" or "150".
+    if (new RegExp(`(?<![\\d.])${esc}(?![\\d])`).test(head)) hits += 1;
+  }
+  if (hits === 0) return 0.3;
+  return 0.7 + 0.3 * (hits / norms.length);
+}
+
 export function computeQualityScore(
   content: string,
   topic: string,
   sourceType: string,
+  targetVersions?: string[],
 ): QualityResult {
   const topicTokens = tokenize(topic);
   let topicCoverage = 1;
@@ -57,7 +80,7 @@ export function computeQualityScore(
   const listItems = (content.match(/^[\s]*[-*]|\d+\.\s/gm) ?? []).length;
   const listBonus = listItems >= 5 ? 0.05 : listItems >= 2 ? 0.02 : 0;
 
-  const score =
+  const rawScore =
     topicCoverage * 0.35 +
     structureScore * 0.2 +
     sourceScore * 0.2 +
@@ -66,7 +89,19 @@ export function computeQualityScore(
     codeDensityBonus +
     listBonus;
 
+  // When the caller asks about specific versions (gt_migration 15 -> 16),
+  // content that never names the target version is almost always the wrong
+  // band — multiply the score down rather than reporting a misleading high one.
+  const versionFactor =
+    targetVersions && targetVersions.length > 0
+      ? computeVersionRelevance(content, targetVersions)
+      : 1;
+  const score = rawScore * versionFactor;
+
   const hints: string[] = [];
+  if (versionFactor < 0.5) {
+    hints.push("Content does not reference the requested version -- it may be from a different release; verify against the official upgrade guide");
+  }
   if (topicCoverage < 0.5) hints.push("Try a more specific topic");
   if (sourceScore < 0.6) hints.push("Try gt_resolve_library for a more accurate library ID");
   if (lengthScore < 0.5) hints.push("Content is sparse -- try gt_search for alternative sources");

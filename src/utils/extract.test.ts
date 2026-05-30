@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { extractRelevantContent } from "./extract.js";
+import { extractRelevantContent, sliceVersionBand, parseMajor, tokenize } from "./extract.js";
 
 const SHORT = "Hello world. This is short content.";
 const LONG_DOC = `
@@ -109,5 +109,76 @@ Content about coconuts and apples again.
     if (aIdx !== -1 && cIdx !== -1) {
       expect(aIdx).toBeLessThan(cIdx);
     }
+  });
+});
+
+describe("sliceVersionBand", () => {
+  it("keeps only the requested inclusive version band", () => {
+    const doc = "## v14\nold withAmp stuff\n## v15\nnew app router\n## v16\nfuture cache";
+    const out = sliceVersionBand(doc, "14", "15");
+    expect(out).toContain("v14");
+    expect(out).toContain("v15");
+    expect(out).not.toContain("v16");
+    expect(out).not.toContain("future cache");
+  });
+
+  it("excludes ancient sections for a forward migration (the gt_migration P0 bug)", () => {
+    const doc = [
+      "## Upgrading from version 10 to 11",
+      "Remove withAmp and @zeit/next-typescript.",
+      "## Version 15",
+      "App Router stabilized.",
+      "## Version 16",
+      "Cache Components and async params.",
+    ].join("\n");
+    const out = sliceVersionBand(doc, "15", "16");
+    expect(out).toContain("Version 16");
+    expect(out).toContain("Cache Components");
+    expect(out).not.toContain("withAmp");
+    expect(out).not.toContain("version 10 to 11");
+  });
+
+  it("returns full content unchanged when neither bound is given", () => {
+    const doc = "## v1\na\n## v2\nb";
+    expect(sliceVersionBand(doc)).toBe(doc);
+  });
+
+  it("falls back to full content when no versioned heading matches the band", () => {
+    const doc = "## Overview\nGeneral notes.\n## Setup\nInstall steps.";
+    expect(sliceVersionBand(doc, "15", "16")).toBe(doc);
+  });
+
+  it("inherits include state for heading-less sub-sections", () => {
+    const doc = "## v16\nmain\n### Details\nsub detail\n## v9\nancient";
+    const out = sliceVersionBand(doc, "16", "16");
+    expect(out).toContain("sub detail");
+    expect(out).not.toContain("ancient");
+  });
+});
+
+describe("parseMajor", () => {
+  it.each([
+    ["15", 15],
+    ["v15.2.0", 15],
+    ["v3", 3],
+    ["16.0.0", 16],
+  ])("parses %s -> %i", (input, expected) => {
+    expect(parseMajor(input as string)).toBe(expected);
+  });
+
+  it("returns undefined for missing, non-numeric, or year-like values", () => {
+    expect(parseMajor(undefined)).toBeUndefined();
+    expect(parseMajor("latest")).toBeUndefined();
+    expect(parseMajor("2026")).toBeUndefined();
+  });
+});
+
+describe("tokenize version tokens", () => {
+  it("keeps short version tokens that would otherwise be dropped", () => {
+    expect(tokenize("migration v15 v16")).toEqual(["migration", "v15", "v16"]);
+  });
+
+  it("keeps a bare numeric version", () => {
+    expect(tokenize("upgrade to 16")).toContain("16");
   });
 });

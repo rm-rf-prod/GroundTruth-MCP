@@ -67,4 +67,27 @@ Access DOM elements directly.
     const { hints } = computeQualityScore(richContent, "react hooks", "llms-txt");
     expect(hints).toEqual([]);
   });
+
+  it("collapses score for version-mismatched content even when topic matches (gt_migration P0)", () => {
+    const ancient =
+      `# Migration Guide: upgrade from version 8 to 9\n\n## withAmp removed\nUse the config object instead.\n\n## @zeit/next-typescript\nRemove this package.\n` +
+      "x".repeat(500);
+    const { score, hints } = computeQualityScore(ancient, "migration upgrade", "github-readme", ["15", "16"]);
+    expect(score).toBeLessThan(0.4);
+    expect(hints.some((h) => h.includes("requested version"))).toBe(true);
+  });
+
+  it("keeps a high score when content names the requested version", () => {
+    const onTarget =
+      `# v16 Migration Guide\n\nTo upgrade, run npm install next@16.\n\n## Cache Components\n\`\`\`ts\nexport const config = {};\n\`\`\`\n\n## Async params\nawait params now.\n` +
+      "x".repeat(500);
+    const { score } = computeQualityScore(onTarget, "migration upgrade", "github-readme", ["15", "16"]);
+    expect(score).toBeGreaterThanOrEqual(0.6);
+  });
+
+  it("ignores version relevance when no targetVersions are passed (back-compat)", () => {
+    const a = computeQualityScore(richContent, "react hooks", "llms-txt").score;
+    const b = computeQualityScore(richContent, "react hooks", "llms-txt", []).score;
+    expect(a).toBe(b);
+  });
 });

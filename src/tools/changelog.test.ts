@@ -16,7 +16,8 @@ vi.mock("../services/fetcher.js", () => ({
   fetchAsMarkdownRace: vi.fn(),
 }));
 
-vi.mock("../utils/extract.js", () => ({
+vi.mock("../utils/extract.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../utils/extract.js")>()),
   extractRelevantContent: vi.fn((content: string, _topic: string, _tokens: number) => ({
     text: content,
     truncated: false,
