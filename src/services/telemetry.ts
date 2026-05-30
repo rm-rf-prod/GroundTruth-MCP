@@ -14,7 +14,7 @@
  */
 
 import { randomBytes } from "crypto";
-import { log } from "../utils/logger.js";
+import { log, type LogEntry } from "../utils/logger.js";
 import { recordToolCall } from "./metrics.js";
 
 export interface TelemetryContext {
@@ -161,7 +161,7 @@ function finish(
   if (errorMessage !== undefined) outcome.error = errorMessage;
   pushOutcome(outcome);
 
-  const baseEntry: Record<string, unknown> = {
+  const baseEntry: LogEntry = {
     level: success ? "info" : "error",
     msg: success ? "tool.end" : "tool.error",
     tool: ctx.tool,
@@ -171,7 +171,7 @@ function finish(
     resolved: ctx.resolved,
   };
   if (errorMessage !== undefined) baseEntry["error"] = errorMessage;
-  log(baseEntry as never);
+  log(baseEntry);
   const result: TelemetryResult = { durationMs, success, cacheHit: ctx.cacheHit, resolved: ctx.resolved };
   if (errorMessage !== undefined) result.error = errorMessage;
   return result;

@@ -7,7 +7,6 @@ import { join } from "path";
 class LRUCache<T> {
   private readonly store = new Map<string, CacheEntry<T>>();
   private readonly maxSize: number;
-  private readonly _staleKeys = new Set<string>();
 
   constructor(maxSize = 200) {
     this.maxSize = maxSize;
@@ -18,8 +17,9 @@ class LRUCache<T> {
     if (!entry) return undefined;
     const now = Date.now();
     if (now > entry.expiresAt) {
+      // Serve-stale within the SWR window to smooth over brief upstream hiccups;
+      // drop entirely once the stale window has also elapsed.
       if (now <= entry.expiresAt + SWR_STALE_TTL_MS) {
-        this._staleKeys.add(key);
         this.store.delete(key);
         this.store.set(key, entry);
         return entry.data;
@@ -30,12 +30,6 @@ class LRUCache<T> {
     this.store.delete(key);
     this.store.set(key, entry);
     return entry.data;
-  }
-
-  getStaleKeys(): string[] {
-    const keys = [...this._staleKeys];
-    this._staleKeys.clear();
-    return keys;
   }
 
   set(key: string, data: T, ttlMs = CACHE_TTL_MS): void {
