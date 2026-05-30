@@ -82,8 +82,12 @@ export async function detectAllVersions(
   packageNames: string[],
 ): Promise<Map<string, string>> {
   const versions = new Map<string, string>();
-  for (const name of packageNames) {
-    const v = await detectVersionFromLockfile(projectPath, name);
+  // Detect all packages in parallel — auto-scan can request 20+ at once, and
+  // each detection independently reads the same lockfiles.
+  const entries = await Promise.all(
+    packageNames.map(async (name) => [name, await detectVersionFromLockfile(projectPath, name)] as const),
+  );
+  for (const [name, v] of entries) {
     if (v) versions.set(name, v);
   }
   return versions;

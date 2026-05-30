@@ -173,17 +173,36 @@ function dedupeSnippets(snippets: Snippet[]): Snippet[] {
   return out;
 }
 
-function scoreSnippet(snippet: Snippet, queryTokens: string[]): number {
+function buildSnippetIDF(snippets: Snippet[], queryTokens: string[]): Map<string, number> {
+  const N = Math.max(snippets.length, 1);
+  const idf = new Map<string, number>();
+  for (const qt of queryTokens) {
+    let df = 0;
+    for (const s of snippets) {
+      const tokens = tokenize(`${s.title} ${s.description} ${s.code}`);
+      if (tokens.some((t) => t === qt || t.includes(qt))) df += 1;
+    }
+    // Robertson-Sparck-Jones IDF: rare query terms (e.g. "useEffect") outweigh
+    // terms that appear in every snippet (e.g. the library name).
+    idf.set(qt, Math.log((N - df + 0.5) / (df + 0.5) + 1));
+  }
+  return idf;
+}
+
+function scoreSnippet(snippet: Snippet, queryTokens: string[], idf: Map<string, number>): number {
   if (queryTokens.length === 0) return 1;
   const titleTokens = tokenize(snippet.title);
   const descTokens = tokenize(snippet.description);
   const codeTokens = tokenize(snippet.code);
   let score = 0;
   for (const qt of queryTokens) {
-    if (titleTokens.some((t) => t === qt)) score += 12;
-    else if (titleTokens.some((t) => t.includes(qt))) score += 6;
-    if (descTokens.includes(qt)) score += 4;
-    if (codeTokens.includes(qt)) score += 3;
+    // base 1 + IDF: never reduces a match below its prior weight, only boosts
+    // discriminative terms, so matched snippets always keep score > 0.
+    const w = 1 + (idf.get(qt) ?? 0);
+    if (titleTokens.some((t) => t === qt)) score += 12 * w;
+    else if (titleTokens.some((t) => t.includes(qt))) score += 6 * w;
+    if (descTokens.includes(qt)) score += 4 * w;
+    if (codeTokens.includes(qt)) score += 3 * w;
   }
   // Quality bonuses only apply when the query actually matched something — otherwise
   // every snippet would tie with score=2 and pass the "score > 0" filter.
@@ -209,10 +228,11 @@ export function rankSnippets(
     : snippets;
 
   const queryTokens = tokenize(topic);
+  const idf = buildSnippetIDF(filtered, queryTokens);
 
   const scored = filtered.map((s) => ({
     ...s,
-    score: scoreSnippet(s, queryTokens),
+    score: scoreSnippet(s, queryTokens, idf),
   }));
 
   const ranked = queryTokens.length === 0
