@@ -45,3 +45,6 @@ CLAUDE*.md
 # local-only draft artifacts (never publish)
 docs/npm-gdpr-request-draft.md
 docs/*.png
+
+# Internal docs — local-only (purged from public history 2026-05-31)
+docs/
