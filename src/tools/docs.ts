@@ -59,6 +59,18 @@ function resolveLibraryFromId(libraryId: string) {
   return null;
 }
 
+/**
+ * Validate an npm / PyPI package name for safe URL construction.
+ * Allows an optional @scope/ prefix and the standard name charset; rejects path
+ * traversal (.., //), protocol-relative input, and over-long names. Preserves
+ * valid scoped packages that encodeURIComponent would otherwise corrupt.
+ */
+function isValidPackageName(pkg: string): boolean {
+  if (!pkg || pkg.length > 214) return false;
+  if (pkg.includes("..") || pkg.includes("//")) return false;
+  return /^@?[a-z0-9._-]+(?:\/[a-z0-9._-]+)?$/i.test(pkg);
+}
+
 export function registerDocsTool(server: McpServer): void {
   server.registerTool(
     "gt_get_docs",
@@ -128,10 +140,16 @@ Do not call this tool more than 3 times per question.`,
       } else if (libraryId.startsWith("npm:")) {
         // npm package — point to npmjs.com
         const pkg = libraryId.slice(4);
+        if (!isValidPackageName(pkg)) {
+          return { content: [{ type: "text", text: `Invalid npm package name: "${pkg}".` }] };
+        }
         docsUrl = `https://www.npmjs.com/package/${pkg}`;
         displayName = pkg;
       } else if (libraryId.startsWith("pypi:")) {
         const pkg = libraryId.slice(5);
+        if (!isValidPackageName(pkg)) {
+          return { content: [{ type: "text", text: `Invalid PyPI package name: "${pkg}".` }] };
+        }
         docsUrl = `https://pypi.org/project/${pkg}`;
         displayName = pkg;
       } else {
@@ -151,6 +169,9 @@ Do not call this tool more than 3 times per question.`,
           }
           docsUrl = candidateUrl;
         } else {
+          if (!isValidPackageName(libraryId)) {
+            return { content: [{ type: "text", text: `Invalid library name: "${libraryId}".` }] };
+          }
           docsUrl = `https://www.npmjs.com/package/${libraryId}`;
         }
         displayName = libraryId;
@@ -170,9 +191,11 @@ Do not call this tool more than 3 times per question.`,
       }
       if (version && !fetchResult) {
         const pkgName = entry?.id?.replace(/^[^/]+\//, "") ?? libraryId.replace(/^npm:/, "");
-        const versionedUrl = `https://www.npmjs.com/package/${pkgName}/v/${version}`;
-        const raw = await fetchAsMarkdownRace(versionedUrl).catch(() => null);
-        if (raw && raw.length > 200) fetchResult = { content: raw, url: versionedUrl, sourceType: "npm" };
+        if (isValidPackageName(pkgName) && /^[\w.-]+$/.test(version)) {
+          const versionedUrl = `https://www.npmjs.com/package/${pkgName}/v/${version}`;
+          const raw = await fetchAsMarkdownRace(versionedUrl).catch(() => null);
+          if (raw && raw.length > 200) fetchResult = { content: raw, url: versionedUrl, sourceType: "npm" };
+        }
       }
 
       try {

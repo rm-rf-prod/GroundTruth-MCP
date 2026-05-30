@@ -132,4 +132,33 @@ describe("convertHtmlToMarkdown", () => {
     expect(result).toContain("GET");
     expect(result).toContain("/api/users");
   });
+
+  // Bug C-4 — when no <main>/<article>/content-div selector matches,
+  // extractMainContent() previously fell through to return the entire HTML.
+  // The DOCTYPE + <head> survived, polluting LLM output.
+  describe("Bug C-4: HTML preamble defenses", () => {
+    it("strips DOCTYPE before extraction so it never leaks", () => {
+      const html = '<!DOCTYPE html><html><body><main><h1>Title</h1><p>' + 'x'.repeat(250) + '</p></main></body></html>';
+      const result = convertHtmlToMarkdown(html);
+      expect(result).not.toContain("DOCTYPE");
+    });
+
+    it("strips <head> block before extraction so meta/link tags never leak", () => {
+      const html = '<!DOCTYPE html><html><head><meta charset="utf-8"/><link rel="preload" href="/x.woff2"/></head><body><main><h1>Real</h1><p>' + 'x'.repeat(250) + '</p></main></body></html>';
+      const result = convertHtmlToMarkdown(html);
+      expect(result).not.toContain("<meta");
+      expect(result).not.toContain("<link");
+      expect(result).toContain("Real");
+    });
+
+    it("returns empty when extraction produces structural-HTML-only short output", () => {
+      // Simulates JS-rendered shell where no <main> matched and body extraction
+      // produced a residual <html>/<body> shell with no real content.
+      const html = '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/></head><body><div id="__next"></div></body></html>';
+      const result = convertHtmlToMarkdown(html);
+      // Either empty (rejected) or no residual structural tags left.
+      expect(result.includes("<html")).toBe(false);
+      expect(result.includes("<body")).toBe(false);
+    });
+  });
 });

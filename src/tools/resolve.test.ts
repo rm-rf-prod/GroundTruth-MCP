@@ -523,6 +523,38 @@ describe("gt_resolve_library handler", () => {
       const result = await handler({ libraryName: "zzz-unknown-go-module" });
       expect(result.structuredContent!.matches).toHaveLength(0);
     });
+
+    // Bug C-2 — pkg.go.dev returns HTTP 200 with body "Title: 404 Not Found - Go Packages"
+    // for unknown modules. Without detection, gt_resolve_library surfaced a fake
+    // "go:zzzz-foo" match with garbage description.
+    it("Bug C-2: rejects pkg.go.dev 404 page body so unknown module returns no result", async () => {
+      vi.mocked(lookupByAlias).mockReturnValue(null);
+      vi.mocked(fuzzySearch).mockReturnValue([]);
+      vi.mocked(fetchNpmPackage).mockResolvedValue(null);
+      vi.mocked(fetchPypiPackage).mockResolvedValue(null);
+      vi.mocked(fetchWithTimeout).mockResolvedValue({ ok: false } as Response);
+      // Simulate pkg.go.dev "200 OK" with 404 body — observed live response shape.
+      vi.mocked(fetchAsMarkdownRace).mockResolvedValue(
+        "Title: 404 Not Found - Go Packages\n\nURL Source: https://pkg.go.dev/zzzz-does-not-exist-xyz\n\nMarkdown Content:\n# 404 Not Found",
+      );
+      const result = await handler({ libraryName: "zzzz-does-not-exist-xyz" });
+      const matches = result.structuredContent!.matches as Array<{ source: string }>;
+      expect(matches).toHaveLength(0);
+    });
+
+    it("Bug C-2: still accepts a real Go module page", async () => {
+      vi.mocked(lookupByAlias).mockReturnValue(null);
+      vi.mocked(fuzzySearch).mockReturnValue([]);
+      vi.mocked(fetchNpmPackage).mockResolvedValue(null);
+      vi.mocked(fetchPypiPackage).mockResolvedValue(null);
+      vi.mocked(fetchWithTimeout).mockResolvedValue({ ok: false } as Response);
+      vi.mocked(fetchAsMarkdownRace).mockResolvedValue(
+        "Package gin implements a HTTP web framework for Go applications",
+      );
+      const result = await handler({ libraryName: "github.com/gin-gonic/gin" });
+      const matches = result.structuredContent!.matches as Array<{ source: string }>;
+      expect(matches[0]!.source).toBe("go");
+    });
   });
 
   describe("no results", () => {

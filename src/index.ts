@@ -297,15 +297,17 @@ async function main(): Promise<void> {
       "  gt-mcp [flags]",
       "",
       "Flags:",
-      "  --version, -v   Print version and exit",
-      "  --health        Print health JSON and exit",
-      "  --help, -h      Print this help",
+      "  --version, -v     Print version and exit",
+      "  --health          Print health JSON and exit",
+      "  --routing-table   Print trigger-phrase routing table and exit",
+      "  --help, -h        Print this help",
       "",
       "Environment:",
       "  GT_HTTP_PORT       Enable HTTP transport on port",
       "  GT_HTTP_STATEFUL   Set =1 for session-per-request mode",
       "  GT_AUTH_TOKEN      Bearer token required for HTTP endpoints",
       "  GT_GITHUB_TOKEN    GitHub API token for higher rate limits",
+      "  GT_CACHE_DIR       Disk cache directory (default ~/.gt-mcp-cache)",
       "",
       "Without flags, runs as MCP server via stdio.",
       "",
@@ -344,7 +346,9 @@ async function main(): Promise<void> {
         return;
       }
 
-      if (req.method === "POST" && req.url === "/mcp") {
+      if (req.url === "/mcp" && (req.method === "POST" || req.method === "GET" || req.method === "DELETE")) {
+        // MCP Streamable HTTP: POST = client messages, GET = server-push SSE stream,
+        // DELETE = session termination. The transport differentiates internally.
         await transport.handleRequest(req, res);
       } else if (req.method === "GET" && req.url === "/health") {
         res.writeHead(200, { "Content-Type": "application/json" });

@@ -188,7 +188,6 @@ const SAFE_URL_SCHEMES = new Set(["http", "https", "mailto", "tel"]);
  */
 function normalizeHref(rawHref: string): string {
   return decodeHtmlEntities(rawHref)
-    // eslint-disable-next-line no-control-regex
     .replace(/[\x00-\x1F\x7F]/g, "")
     .trim();
 }
@@ -259,12 +258,25 @@ export function convertHtmlToMarkdown(html: string): string {
   const tagDensity = (html.match(/<[a-z]/gi) ?? []).length / Math.max(html.length, 1);
   if (tagDensity < 0.005) return html;
 
-  const cleaned = stripNoisyElements(html);
+  // Strip DOCTYPE + entire <head>...</head> early so extractMainContent's body
+  // fallback never returns these to the LLM. Without this, JS-rendered pages
+  // (Next.js apps, Vite shells) leak `<!DOCTYPE html><html ...><head>...</head>`
+  // when no <main>/<article>/content-div selector matches.
+  let preCleaned = html.replace(/<!DOCTYPE\s+[^>]*>/gi, "");
+  preCleaned = preCleaned.replace(/<head\b[^>]*>[\s\S]*?<\/head>/gi, "");
+
+  const cleaned = stripNoisyElements(preCleaned);
   const mainContent = extractMainContent(cleaned);
   const markdown = htmlToMarkdown(mainContent);
 
   // Filter out results that are too short (extraction failed)
   if (markdown.length < 100) return "";
+
+  // Final guard: if structural HTML tags survived (eg. <html>/<body> from
+  // unmatched body extraction), reject — sanitize.ts will also strip these
+  // but rejecting here lets fetchDocs fall through to Jina Reader instead.
+  const residualHtmlRatio = (markdown.match(/<(?:html|body|meta|link)\b/gi) ?? []).length;
+  if (residualHtmlRatio > 0 && markdown.length < 500) return "";
 
   return markdown;
 }

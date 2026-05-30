@@ -240,6 +240,9 @@ async function tryFetch(url: string, retries = 1, extraHeaders?: Record<string, 
       recordFailure(domain);
       lastError = err instanceof Error ? err.message : String(err);
       log({ level: "debug", msg: "tryFetch.exception", url, error: lastError, attempt });
+      // A timeout (AbortError) means the deadline already passed — retrying just
+      // burns another semaphore slot and timeout window for no gain.
+      if (err instanceof Error && err.name === "AbortError") break;
       if (attempt < retries) {
         await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
       }
@@ -671,20 +674,19 @@ export async function fetchGitHubContent(
     }
   }
 
-  // Fallback: GitHub REST API with auth (5000/hr vs 60/hr unauthenticated)
+  // Fallback: GitHub REST API. Works unauthenticated (60 req/hr); GT_GITHUB_TOKEN
+  // raises the limit to 5000/hr. Previously gated entirely behind the token, which
+  // disabled the fallback for the common no-token case.
   const token = process.env.GT_GITHUB_TOKEN;
-  if (token) {
-    for (const branch of ["main", "master"]) {
-      const apiUrl = `https://api.github.com/repos/${repoPath}/contents/${path}?ref=${branch}`;
-      const content = await tryFetch(apiUrl, 0, {
-        Authorization: `Bearer ${token}`,
-        Accept: "application/vnd.github.raw+json",
-      });
-      if (content) {
-        docCache.set(cacheKey, content, CACHE_TTLS.GITHUB_README);
-        void diskDocCache.set(cacheKey, content, CACHE_TTLS.GITHUB_README);
-        return { content, url: apiUrl, sourceType: "github-readme" };
-      }
+  const apiHeaders: Record<string, string> = { Accept: "application/vnd.github.raw+json" };
+  if (token) apiHeaders.Authorization = `Bearer ${token}`;
+  for (const branch of ["main", "master"]) {
+    const apiUrl = `https://api.github.com/repos/${repoPath}/contents/${path}?ref=${branch}`;
+    const content = await tryFetch(apiUrl, 0, apiHeaders);
+    if (content) {
+      docCache.set(cacheKey, content, CACHE_TTLS.GITHUB_README);
+      void diskDocCache.set(cacheKey, content, CACHE_TTLS.GITHUB_README);
+      return { content, url: apiUrl, sourceType: "github-readme" };
     }
   }
 
@@ -709,7 +711,12 @@ export async function fetchGitHubReleases(githubUrl: string): Promise<string | n
   }
 
   try {
-    const apiUrl = `https://api.github.com/repos/${repoPath}/releases?per_page=3`;
+    // GitHub releases API has no server-side prerelease filter — we must fetch
+    // a window and filter client-side. Canary-heavy projects (Next.js, etc.)
+    // can have the top 3 entries all be prereleases, so fetch 30 (the API default)
+    // to ensure we see real stable releases.
+    // ref: https://docs.github.com/en/rest/releases/releases#list-releases
+    const apiUrl = `https://api.github.com/repos/${repoPath}/releases?per_page=30`;
     // GT_GITHUB_TOKEN raises rate limit from 60/hr to 5000/hr
     const res = await fetchWithTimeout(apiUrl, 10_000, githubAuthHeaders());
     // 403 = rate limit (unauthenticated: 60 req/hr), 429 = explicit rate limit
@@ -720,14 +727,23 @@ export async function fetchGitHubReleases(githubUrl: string): Promise<string | n
       body?: string;
       published_at?: string;
       prerelease?: boolean;
+      draft?: boolean;
     }>;
 
     if (!Array.isArray(releases) || releases.length === 0) return null;
 
+    // Filter out prereleases (canary, beta, rc) + drafts, keep top 3 stable.
+    // Fall back to including prereleases if NO stable exists (some libs
+    // ship canary-only between major releases).
+    const stable = releases.filter((r) => !r.prerelease && !r.draft).slice(0, 3);
+    const picked = stable.length > 0 ? stable : releases.filter((r) => !r.draft).slice(0, 3);
+    if (picked.length === 0) return null;
+
     const lines: string[] = ["## Recent Releases\n"];
-    for (const r of releases.slice(0, 3)) {
-      if (r.prerelease) continue;
-      lines.push(`### ${r.tag_name ?? r.name ?? "Release"}`);
+    for (const r of picked) {
+      const label = r.tag_name ?? r.name ?? "Release";
+      const tag = r.prerelease ? `${label} _(prerelease)_` : label;
+      lines.push(`### ${tag}`);
       if (r.published_at) lines.push(`_Published: ${r.published_at.slice(0, 10)}_`);
       if (r.body) lines.push(r.body.slice(0, 2000));
       lines.push("");

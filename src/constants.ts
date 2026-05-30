@@ -25,7 +25,7 @@ export const CACHE_TTLS = {
   LLMS_TXT: 30 * 60 * 1000,
   DOCS_PAGE: 60 * 60 * 1000,
   GITHUB_README: 60 * 60 * 1000,
-  GITHUB_RELEASES: 60 * 60 * 1000,
+  GITHUB_RELEASES: 6 * 60 * 60 * 1000,
   PACKAGE_METADATA: 60 * 60 * 1000,
   DEVDOCS: 24 * 60 * 60 * 1000,
   SITEMAP: 24 * 60 * 60 * 1000,
@@ -71,8 +71,14 @@ export const INJECTION_PATTERNS: RegExp[] = [
   /\bfrom\s+now\s+on\b.{0,30}(?:you|ignore|forget)/gi,
   // ChatML / special token delimiters
   /<\|(?:im_|system|user|assistant|endoftext)[_a-z]*\|?>/gi,
-  // Markdown image exfiltration attempts
-  /!\[.*?\]\(https?:\/\/[^)]*(?:exfil|steal|leak|callback|webhook|requestbin|hookbin|burp)[^)]*\)/gi,
-  // Tool/function override attempts
-  /\btool_call\b|\bfunction_call\b|\btool_result\b/gi,
+  // Markdown image exfiltration attempts (incl. modern OAST / callback platforms)
+  /!\[.*?\]\(https?:\/\/[^)]*(?:exfil|steal|leak|callback|webhook|requestbin|hookbin|burp|interact\.sh|oast\.(?:me|site|fun|live|pro)|canarytokens|pipedream\.net|ngrok(?:\.io|-free\.app)|webhook\.site|beeceptor)[^)]*\)/gi,
+  // Tool/function override attempts — scoped to delimiter / role-key usage so
+  // legitimate prose references (e.g. ".tool_calls" in OpenAI/MCP API docs) survive.
+  /(?:^|<)\s*(?:tool_call|function_call|tool_result)\s*(?:>|\s*:\s*"(?:tool|function))/gim,
+  // Claude / Llama role delimiters + instruction-exfiltration prompts
+  /\bHUMAN\s*:/g,
+  /<\|(?:begin_of_text|eot_id|start_header_id|end_header_id)[^|]*\|>/gi,
+  /(?:reveal|print|show|output|display)\s+your\s+(?:instructions?|system\s+prompt|context|prompt)/gi,
+  /repeat\s+(?:the\s+following|after\s+me)\b/gi,
 ];

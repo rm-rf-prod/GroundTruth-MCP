@@ -37,23 +37,46 @@ interface CratesApiResponse {
   };
 }
 
-export async function probeLlmsTxt(homepage: string): Promise<{ llmsTxtUrl?: string; llmsFullTxtUrl?: string }> {
-  try { assertPublicUrl(homepage); } catch { return {}; }
+/**
+ * Normalize a homepage URL for safe path concatenation.
+ * Strips URL fragment (#readme) + query (?utm) + trailing slashes — these break
+ * `${homepage}/llms.txt` style concat by producing URLs like
+ * `https://github.com/x/y#readme/llms.txt` (invalid).
+ */
+function normalizeHomepageForProbe(homepage: string): string | null {
+  try {
+    const u = new URL(homepage);
+    u.hash = "";
+    u.search = "";
+    // Strip trailing slashes from pathname (keep "/" if pathname IS just "/")
+    if (u.pathname.length > 1) {
+      u.pathname = u.pathname.replace(/\/+$/, "");
+    }
+    return u.toString().replace(/\/$/, "");
+  } catch {
+    return null;
+  }
+}
 
-  const cacheKey = `llms-probe:${new URL(homepage).origin}`;
+export async function probeLlmsTxt(homepage: string): Promise<{ llmsTxtUrl?: string; llmsFullTxtUrl?: string }> {
+  const base = normalizeHomepageForProbe(homepage);
+  if (!base) return {};
+  try { assertPublicUrl(base); } catch { return {}; }
+
+  const cacheKey = `llms-probe:${new URL(base).origin}`;
   const cached = llmsProbeCache.get(cacheKey);
   if (cached) return cached;
 
   const result: { llmsTxtUrl?: string; llmsFullTxtUrl?: string } = {};
   const [fullResult, txtResult] = await Promise.allSettled([
-    fetchWithTimeout(`${homepage}/llms-full.txt`, 5000),
-    fetchWithTimeout(`${homepage}/llms.txt`, 5000),
+    fetchWithTimeout(`${base}/llms-full.txt`, 5000),
+    fetchWithTimeout(`${base}/llms.txt`, 5000),
   ]);
   if (fullResult.status === "fulfilled" && fullResult.value.ok) {
-    result.llmsFullTxtUrl = `${homepage}/llms-full.txt`;
+    result.llmsFullTxtUrl = `${base}/llms-full.txt`;
   }
   if (txtResult.status === "fulfilled" && txtResult.value.ok) {
-    result.llmsTxtUrl = `${homepage}/llms.txt`;
+    result.llmsTxtUrl = `${base}/llms.txt`;
   }
 
   llmsProbeCache.set(cacheKey, result);
@@ -183,6 +206,20 @@ export async function resolveFromCrates(packageName: string): Promise<LibraryMat
   }
 }
 
+/**
+ * pkg.go.dev returns HTTP 200 with a "404 Not Found" body for unknown modules.
+ * Detect that page so callers do not get a garbage match.
+ */
+function isGoPkgNotFound(content: string): boolean {
+  const head = content.slice(0, 1500).toLowerCase();
+  // Common pkg.go.dev 404 signals — title contains "404 Not Found" and
+  // body mentions the redirect / search-help text.
+  if (/title:\s*404 not found\b/i.test(content.slice(0, 500))) return true;
+  if (/404 not found - go packages/i.test(head)) return true;
+  if (head.includes("could not find") && head.includes("pkg.go.dev")) return true;
+  return false;
+}
+
 export async function resolveFromGo(moduleName: string): Promise<LibraryMatch | null> {
   const cacheKey = `go-resolve:${moduleName}`;
   const cached = resolveCache.get(cacheKey);
@@ -191,6 +228,10 @@ export async function resolveFromGo(moduleName: string): Promise<LibraryMatch | 
   const pageUrl = `https://pkg.go.dev/${moduleName}`;
   const content = await fetchAsMarkdownRace(pageUrl);
   if (!content) return null;
+
+  // pkg.go.dev serves a 200-OK 404 page for unknown modules — reject it so we
+  // do not surface "Title: 404 Not Found - Go Packages" as a real result.
+  if (isGoPkgNotFound(content)) return null;
 
   const descMatch = content.match(/^(.{20,300})/m);
   const description = descMatch?.[1]?.trim() ?? "";

@@ -499,6 +499,60 @@ describe("fetchGitHubReleases", () => {
     expect(result).toBe(cachedReleases);
     expect(mockFetch).not.toHaveBeenCalled();
   });
+
+  // Regression — v7.0.x: canary-heavy projects (Next.js) had top-3 releases all
+  // prereleases. With per_page=3 + filter prereleases, result was empty → tool
+  // returned "No changelog found". Fix: fetch 30, take first 3 stable.
+  it("Bug C-1: picks stable releases even when top entries are canaries", async () => {
+    const releases = [
+      { tag_name: "v16.3.0-canary.30", body: "Canary", published_at: "2026-05-25T00:00:00Z", prerelease: true },
+      { tag_name: "v16.3.0-canary.29", body: "Canary", published_at: "2026-05-24T00:00:00Z", prerelease: true },
+      { tag_name: "v16.3.0-canary.28", body: "Canary", published_at: "2026-05-23T00:00:00Z", prerelease: true },
+      { tag_name: "v16.2.0", body: "Stable 16.2", published_at: "2026-05-10T00:00:00Z", prerelease: false },
+      { tag_name: "v16.1.5", body: "Stable 16.1.5", published_at: "2026-05-01T00:00:00Z", prerelease: false },
+      { tag_name: "v16.1.4", body: "Stable 16.1.4", published_at: "2026-04-20T00:00:00Z", prerelease: false },
+    ];
+    mockFetch.mockResolvedValueOnce(makeRes(JSON.stringify(releases)));
+    const result = await fetchGitHubReleases("https://github.com/vercel/next-fixture-1");
+    expect(result).not.toBeNull();
+    expect(result).toContain("v16.2.0");
+    expect(result).toContain("v16.1.5");
+    expect(result).toContain("v16.1.4");
+    expect(result).not.toContain("canary");
+  });
+
+  it("Bug C-1: requests per_page=30 (not 3) to see past canary buffer", async () => {
+    mockFetch.mockResolvedValueOnce(makeRes(JSON.stringify([
+      { tag_name: "v1.0.0", body: "Release", published_at: "2024-01-01T00:00:00Z", prerelease: false },
+    ])));
+    await fetchGitHubReleases("https://github.com/org/per-page-fixture");
+    const [url] = mockFetch.mock.calls[0]!;
+    expect(url.toString()).toContain("per_page=30");
+  });
+
+  it("Bug C-1: falls back to including prereleases when no stable exists", async () => {
+    const releases = [
+      { tag_name: "v2.0.0-beta.5", body: "Beta 5", published_at: "2026-05-15T00:00:00Z", prerelease: true },
+      { tag_name: "v2.0.0-beta.4", body: "Beta 4", published_at: "2026-05-10T00:00:00Z", prerelease: true },
+      { tag_name: "v2.0.0-beta.3", body: "Beta 3", published_at: "2026-05-01T00:00:00Z", prerelease: true },
+    ];
+    mockFetch.mockResolvedValueOnce(makeRes(JSON.stringify(releases)));
+    const result = await fetchGitHubReleases("https://github.com/org/canary-only-fixture");
+    expect(result).not.toBeNull();
+    expect(result).toContain("v2.0.0-beta.5");
+    expect(result).toContain("(prerelease)");
+  });
+
+  it("Bug C-1: filters out drafts even when prerelease is false", async () => {
+    const releases = [
+      { tag_name: "v3.0.0", body: "Draft release", published_at: "2026-06-01T00:00:00Z", prerelease: false, draft: true },
+      { tag_name: "v2.0.0", body: "Stable", published_at: "2026-05-01T00:00:00Z", prerelease: false, draft: false },
+    ];
+    mockFetch.mockResolvedValueOnce(makeRes(JSON.stringify(releases)));
+    const result = await fetchGitHubReleases("https://github.com/org/draft-fixture");
+    expect(result).toContain("v2.0.0");
+    expect(result).not.toContain("v3.0.0");
+  });
 });
 
 // ── fetchGitHubExamples ─────────────────────────────────────────────────────

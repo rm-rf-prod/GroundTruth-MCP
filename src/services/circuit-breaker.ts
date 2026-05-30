@@ -61,10 +61,22 @@ export function recordSuccess(domain: string): void {
   entry.failures = 0;
   entry.state = "closed";
   entry.lastSuccess = Date.now();
+  // Reset the failure clock so the next reset window measures from a real failure.
+  entry.lastFailure = 0;
 }
 
 export function recordFailure(domain: string): void {
   const entry = getEntry(domain);
+
+  // A failed probe while half-open re-opens the circuit cleanly and restarts the
+  // reset window, without unbounded failure accumulation. Recovery is retried
+  // after CIRCUIT_BREAKER_RESET_MS via isCircuitOpen's half-open transition.
+  if (entry.state === "half-open") {
+    entry.state = "open";
+    entry.lastFailure = Date.now();
+    return;
+  }
+
   entry.failures++;
   entry.lastFailure = Date.now();
 

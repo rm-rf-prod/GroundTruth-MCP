@@ -91,4 +91,60 @@ describe("sanitizeContent", () => {
     const result = sanitizeContent(content);
     expect(result).not.toMatch(/v2\.1\.0.*2024-01-15/);
   });
+
+  // Bug C-4 \u2014 gt_compare on prisma vs drizzle leaked raw HTML preamble.
+  // html-to-md fell through to body fallback that returned whole HTML.
+  // sanitize.ts now strips structural HTML defense-in-depth.
+  describe("Bug C-4: HTML structural preamble strip", () => {
+    it("strips <!DOCTYPE html> declaration", () => {
+      const content = "<!DOCTYPE html><p>Real content here</p>";
+      const result = sanitizeContent(content);
+      expect(result).not.toContain("DOCTYPE");
+    });
+
+    it("strips <html> and </html> tags", () => {
+      const content = "<html lang=\"en\" class=\"font-foo\"><p>Body content</p></html>";
+      const result = sanitizeContent(content);
+      expect(result).not.toContain("<html");
+      expect(result).not.toContain("</html");
+      expect(result).toContain("Body content");
+    });
+
+    it("strips entire <head>...</head> block", () => {
+      const content = "<head><meta charset=\"utf-8\"/><title>Foo</title></head><p>Visible</p>";
+      const result = sanitizeContent(content);
+      expect(result).not.toContain("<head");
+      expect(result).not.toContain("<title");
+      expect(result).toContain("Visible");
+    });
+
+    it("strips standalone <meta>, <link>, <base> self-closing tags", () => {
+      const content = "<meta charset=\"utf-8\"/><link rel=\"preload\" href=\"x\"/><base href=\"/\"/><p>Ok</p>";
+      const result = sanitizeContent(content);
+      expect(result).not.toContain("<meta");
+      expect(result).not.toContain("<link");
+      expect(result).not.toContain("<base");
+      expect(result).toContain("Ok");
+    });
+
+    it("strips <body> open/close tags but keeps inner content", () => {
+      const content = "<body class=\"page\">Hello world</body>";
+      const result = sanitizeContent(content);
+      expect(result).not.toContain("<body");
+      expect(result).not.toContain("</body>");
+      expect(result).toContain("Hello world");
+    });
+
+    it("Bug C-4 repro: prisma-style leak collapses to clean markdown", () => {
+      // Original observed leak head from gt_compare prisma vs drizzle (truncated)
+      const leak = '## (overview)\n<!DOCTYPE html>[content removed]<html lang="en" class="inter_5901b7c6"><head><meta charSet="utf-8"/><title>Prisma</title></head><body><p>Prisma is the next-generation ORM.</p></body></html>';
+      const result = sanitizeContent(leak);
+      expect(result).not.toContain("DOCTYPE");
+      expect(result).not.toContain("<html");
+      expect(result).not.toContain("<head");
+      expect(result).not.toContain("<meta");
+      expect(result).not.toContain("<body");
+      expect(result).toContain("Prisma is the next-generation ORM");
+    });
+  });
 });

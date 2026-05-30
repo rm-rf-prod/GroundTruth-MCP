@@ -73,30 +73,24 @@ export function registerResolveTool(server: McpServer): void {
 You MUST call this function before 'Query Documentation' tool to obtain a valid Context7-compatible library ID UNLESS the user explicitly provides a library ID in the format '/org/project' or '/org/project/version' in their query.
 
 Each result includes:
-- Library ID: Context7-compatible identifier (format: /org/project)
-- Name: Library or package name
-- Description: Short summary
-- Code Snippets: Number of available code examples
-- Source Reputation: Authority indicator (High, Medium, Low, or Unknown)
-- Benchmark Score: Quality indicator (100 is the highest score)
-- Versions: List of versions if available. Use one of those versions if the user provides a version in their query. The format of the version is /org/project/version.
-
-For best results, select libraries based on name match, source reputation, snippet coverage, benchmark score, and relevance to your use case.
+- id: the library ID to pass to gt_get_docs (e.g. 'vercel/next.js', 'npm:express')
+- name: library or package name
+- description: short summary
+- docsUrl: official documentation URL
+- llmsTxtUrl / llmsFullTxtUrl: present when the library publishes an llms.txt — prefer these results, they yield the cleanest docs
+- githubUrl: source repository when known
+- score: 0-100 name-match quality (100 = exact registry alias)
+- source: where the match came from (registry > npm > pypi > crates > go > github)
 
 Selection Process:
-1. Analyze the query to understand what library/package the user is looking for
-2. Return the most relevant match based on:
-- Name similarity to the query (exact matches prioritized)
-- Description relevance to the query's intent
-- Documentation coverage (prioritize libraries with higher Code Snippet counts)
-- Source reputation (consider libraries with High or Medium reputation more authoritative)
-- Benchmark Score: Quality indicator (100 is the highest score)
+1. Analyze the query to understand which library/package the user wants
+2. Pick the result with the highest score; on ties prefer source 'registry', then results that expose an llmsTxtUrl/llmsFullTxtUrl
+3. Pass that result's id to gt_get_docs
 
 Response Format:
 - Return the selected library ID in a clearly marked section
-- Provide a brief explanation for why this library was chosen
-- If multiple good matches exist, acknowledge this but proceed with the most relevant one
-- If no good matches exist, clearly state this and suggest query refinements
+- If multiple good matches exist, acknowledge this but proceed with the highest-scored one
+- If no good matches exist, say so and suggest gt_search or providing a direct docs URL
 
 For ambiguous queries, request clarification before proceeding with a best-guess match.
 

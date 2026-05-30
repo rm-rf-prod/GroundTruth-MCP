@@ -180,6 +180,16 @@ export function sanitizeContent(content: string): string {
   sanitized = sanitized.replace(/<script[\s\S]*?<\/script>/gi, "");
   sanitized = sanitized.replace(/<style[\s\S]*?<\/style>/gi, "");
 
+  // Strip raw HTML structural preamble that leaks through when html-to-md
+  // extraction fails to find a <main>/<article> region. These add zero
+  // signal for an LLM consumer.
+  sanitized = sanitized.replace(/<!DOCTYPE\s+[^>]*>/gi, "");
+  sanitized = sanitized.replace(/<\/?html\b[^>]*>/gi, "");
+  sanitized = sanitized.replace(/<head\b[^>]*>[\s\S]*?<\/head>/gi, "");
+  sanitized = sanitized.replace(/<\/?body\b[^>]*>/gi, "");
+  // <meta>, <link>, <base> are self-closing structural tags
+  sanitized = sanitized.replace(/<(?:meta|link|base)\b[^>]*\/?>/gi, "");
+
   // Collapse excessive whitespace
   sanitized = sanitized.replace(/\n{4,}/g, "\n\n\n");
 
