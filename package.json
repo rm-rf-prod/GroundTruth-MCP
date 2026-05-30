@@ -84,10 +84,10 @@
     "@typescript-eslint/eslint-plugin": "^8.60.0",
     "@typescript-eslint/parser": "^8.60.0",
     "@vitest/coverage-v8": "^4.1.0",
-    "eslint": "^10.4.0",
+    "eslint": "^10.4.1",
     "javascript-obfuscator": "^5.4.3",
     "tsx": "^4.22.3",
-    "typescript": "^5.9.3",
+    "typescript": "^6.0.3",
     "vitest": "^4.1.0"
   }
 }
