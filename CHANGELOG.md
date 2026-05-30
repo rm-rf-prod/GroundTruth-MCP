@@ -1,5 +1,21 @@
 # Changelog
 
+## [7.0.1] — 2026-05-30
+
+- chore: ignore local draft artifacts
+- docs: record implementation status (done / skipped-as-wrong / deferred)
+- fix(resolve): key llms.txt probe cache on full path, not origin
+- perf: snippet IDF ranking, cache + lockfile + telemetry cleanup
+- build: upgrade to TypeScript 6.0 + NodeNext, align Node 24
+- fix: reliability, security and protocol hardening
+- fix(audit): use charOffset for repeated-line context windows
+- fix: version-aware migration/changelog pipeline
+- docs: add enterprise upgrade plan
+- chore: shorten server.json description (MCP registry 100-char limit)
+- chore: stats — README library count 444 -> 445
+
+---
+
 ## [7.0.0] — 2026-05-28
 
 Adds a dispatch tool, hardens the security model, and instruments every tool with telemetry.
