@@ -63,7 +63,9 @@ export async function probeLlmsTxt(homepage: string): Promise<{ llmsTxtUrl?: str
   if (!base) return {};
   try { assertPublicUrl(base); } catch { return {}; }
 
-  const cacheKey = `llms-probe:${new URL(base).origin}`;
+  // Key on the full normalized base path, not just the origin: two libraries on
+  // the same host (docs.example.com/react vs /vue) must not share a probe result.
+  const cacheKey = `llms-probe:${base}`;
   const cached = llmsProbeCache.get(cacheKey);
   if (cached) return cached;
 
