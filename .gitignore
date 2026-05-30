@@ -41,3 +41,7 @@ CLAUDE*.md
 *.claude*
 .claude/*.local.md
 .claude/*.local.json
+
+# local-only draft artifacts (never publish)
+docs/npm-gdpr-request-draft.md
+docs/*.png
