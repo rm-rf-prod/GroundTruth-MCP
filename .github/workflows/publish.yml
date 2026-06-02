@@ -33,7 +33,7 @@ jobs:
           registry-url: "https://registry.npmjs.org"
 
       - name: Upgrade npm to latest (trusted publishing requires 11.5.1+)
-        run: npm install -g npm@latest
+        run: npm install -g "npm@11"
 
       - name: Verify versions match
         run: |
@@ -132,7 +132,11 @@ jobs:
 
       - name: Install mcp-publisher
         run: |
-          curl -L "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_linux_amd64.tar.gz" | tar xz mcp-publisher
+          # Download to a file instead of piping curl into tar, so a sha256
+          # verification can slot in once modelcontextprotocol/registry publishes
+          # a checksums file (BSC-003). -f fails the job on an HTTP error.
+          curl -fsSL "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_linux_amd64.tar.gz" -o mcp-publisher.tar.gz
+          tar xzf mcp-publisher.tar.gz mcp-publisher
           chmod +x mcp-publisher
           sudo mv mcp-publisher /usr/local/bin/
 

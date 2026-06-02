@@ -147,11 +147,12 @@ try {
     testCount = stats.numTotalTests ?? 0;
     try { (await import("fs")).unlinkSync(statsFile); } catch { /* best effort */ }
   }
-} catch {
-  for (const file of testFiles) {
-    const content = read(file);
-    testCount += countMatches(content, /^\s+(?:it|test)\s*\(/gm);
-  }
+} catch (err) {
+  // Never write a wrong test-count badge. The old grep fallback undercounts by
+  // ~14% (it can't see table/each-generated cases), so a publish could ship a
+  // stale badge. Fail instead — vitest is always available in CI and prepublish.
+  console.error("update-stats: vitest stats unavailable —", err instanceof Error ? err.message : String(err));
+  process.exit(1);
 }
 
 // ── Update README ─────────────────────────────────────────────────────────────
@@ -184,6 +185,12 @@ readme = readme.replace(
   `${toolWord} tools.`,
 );
 
+// Comparison-table cell + tools badge (MX-005b/MX-002) — the prose regex above
+// only matches a sentence at line start, not the "| N specialized tools |" cell.
+readme = readme.replace(/\| \d+ specialized tools \|/, `| ${toolCount} specialized tools |`);
+readme = readme.replace(/https:\/\/img\.shields\.io\/badge\/tools-\d+-blue/g, `https://img.shields.io/badge/tools-${toolCount}-blue`);
+readme = readme.replace(/alt="\d+ tools"/g, `alt="${toolCount} tools"`);
+
 // Prose counts
 readme = readme.replace(/\b\d+\+\s+patterns\b/g, `${patternCount}+ patterns`);
 readme = readme.replace(/\ball\s+\d+\+\s+patterns\b/g, `all ${patternCount}+ patterns`);
@@ -196,11 +203,16 @@ readme = readme.replace(/\d+ tests across \d+ files/, `${testCount} tests across
 
 write("README.md", readme);
 
-// Keep REGISTRY_BADGE_SIZE in constants.ts in sync with actual private registry count
+// Keep REGISTRY_BADGE_SIZE + TOOL_COUNT in constants.ts in sync (MX-002) — both
+// are derived values, so adding a tool or registry entry never needs a manual edit.
 const currentConstants = read("src/constants.ts");
-const updatedConstants = currentConstants.replace(
+let updatedConstants = currentConstants.replace(
   /REGISTRY_BADGE_SIZE\s*=\s*\d+/,
   `REGISTRY_BADGE_SIZE = ${libraryBadgeSize}`,
+);
+updatedConstants = updatedConstants.replace(
+  /TOOL_COUNT\s*=\s*\d+/,
+  `TOOL_COUNT = ${toolCount}`,
 );
 if (updatedConstants !== currentConstants) {
   write("src/constants.ts", updatedConstants);
