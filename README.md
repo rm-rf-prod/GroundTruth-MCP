@@ -82,7 +82,7 @@ claude mcp add gt -e GT_GITHUB_TOKEN=ghp_yourtoken -- npx -y @groundtruth-mcp/gt
 
 ## What it does
 
-Twelve tools. Each does one thing.
+Fourteen tools. Each does one thing.
 
 | Tool | What it does |
 |---|---|
@@ -98,6 +98,8 @@ Twelve tools. Each does one thing.
 | `gt_examples` | Real-world code examples from GitHub |
 | `gt_migration` | Migration guides and breaking changes |
 | `gt_batch_resolve` | Resolve up to 20 libraries in one call |
+| `gt_snippets` | Pre-indexed, ranked code snippets per library and version, cached on disk |
+| `gt_dispatch` | Routes a plain-text query ("use gt mcp") to the right tool with args |
 
 ---
 

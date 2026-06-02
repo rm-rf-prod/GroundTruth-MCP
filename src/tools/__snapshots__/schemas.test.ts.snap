@@ -9,6 +9,7 @@ exports[`MCP tool schemas > exact tool name set is stable (snapshot) 1`] = `
   "gt_changelog",
   "gt_compare",
   "gt_compat",
+  "gt_dispatch",
   "gt_examples",
   "gt_get_docs",
   "gt_migration",
@@ -54,6 +55,10 @@ exports[`MCP tool schemas > input schema shapes are stable (snapshot) 1`] = `
     "environments",
     "feature",
     "tokens",
+  ],
+  "gt_dispatch": [
+    "projectPath",
+    "query",
   ],
   "gt_examples": [
     "language",

@@ -13,6 +13,7 @@ import { registerExamplesTool } from "./examples.js";
 import { registerMigrationTool } from "./migration.js";
 import { registerBatchResolveTool } from "./batch-resolve.js";
 import { registerSnippetsTool } from "./snippets.js";
+import { registerDispatchTool } from "./dispatch.js";
 
 interface ToolRegistration {
   name: string;
@@ -77,9 +78,11 @@ describe("MCP tool schemas", () => {
   registerBatchResolveTool(server);
   // @ts-expect-error — mock server
   registerSnippetsTool(server);
+  // @ts-expect-error — mock server
+  registerDispatchTool(server);
 
-  it("registers exactly 13 tools", () => {
-    expect(server.tools.size).toBe(13);
+  it("registers exactly 14 tools", () => {
+    expect(server.tools.size).toBe(14);
   });
 
   it("every tool name starts with gt_", () => {
