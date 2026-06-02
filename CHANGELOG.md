@@ -1,5 +1,15 @@
 # Changelog
 
+## [7.0.2] — 2026-06-02
+
+- fix: backfill registry languages, cover gt_dispatch, sync docs
+- fix: correct resolver, migration band and compat cache defects
+- fix: harden security, reliability and observability from deep audit
+- chore: gitignore docs/ — internal planning docs, local-only
+- fix(scripts): stop version-sweep from rewriting .github action versions
+
+---
+
 ## [7.0.1] — 2026-05-30
 
 - chore: ignore local draft artifacts
