@@ -98,7 +98,13 @@ export function extractSnippets(
     const line = rawLine.replace(/\r$/, "");
 
     if (inCode) {
-      if (line.trimEnd().startsWith(currentFence)) {
+      // CommonMark close: a fence run >= the opening length, same char, only
+      // trailing spaces. startsWith() would wrongly close a 3-backtick block on
+      // a nested 4-backtick line.
+      const trimmedLine = line.trimEnd();
+      const fenceChar = currentFence[0] ?? "`";
+      const fenceRun = trimmedLine.match(new RegExp("^" + fenceChar.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "+"))?.[0] ?? "";
+      if (fenceRun.length >= currentFence.length && trimmedLine.slice(fenceRun.length).trim() === "") {
         const code = codeBuffer.join("\n").trim();
         if (code.length >= MIN_CODE_LENGTH && code.length <= MAX_CODE_LENGTH) {
           const heading = currentHeading();
