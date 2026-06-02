@@ -125,6 +125,7 @@ IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library 
           description: exact.description,
           docsUrl: exact.docsUrl,
           llmsTxtUrl: exact.llmsTxtUrl,
+          ...(exact.llmsFullTxtUrl !== undefined && { llmsFullTxtUrl: exact.llmsFullTxtUrl }),
           githubUrl: exact.githubUrl,
           score: 100,
           source: "registry",
@@ -142,6 +143,7 @@ IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library 
               description: entry.description,
               docsUrl: entry.docsUrl,
               llmsTxtUrl: entry.llmsTxtUrl,
+              ...(entry.llmsFullTxtUrl !== undefined && { llmsFullTxtUrl: entry.llmsFullTxtUrl }),
               githubUrl: entry.githubUrl,
               score: 80,
               source: "registry",
@@ -150,9 +152,11 @@ IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library 
         }
       }
 
-      // 3. Fallback to package registries (npm, PyPI, crates.io, Go)
-      // Try even if fuzzy search returned results — external registries may have better matches
-      if (matches.length === 0 || matches.every((m) => m.source === "registry" && m.score < 90)) {
+      // 3. Fallback to package registries (npm, PyPI, crates.io, Go) — only when
+      // the registry gave nothing, or very few low-quality fuzzy hits. Multiple
+      // decent fuzzy results suppress the external round-trips (a well-aliased
+      // entry should not trigger npm/pypi lookups just for scoring < 90).
+      if (matches.length === 0 || (matches.length < 3 && matches.every((m) => m.source === "registry" && m.score < 85))) {
         const [npmResult, pypiResult] = await Promise.all([
           resolveFromNpm(name),
           resolveFromPypi(name),
@@ -165,8 +169,8 @@ IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library 
             resolveFromCrates(name),
             resolveFromGo(name),
           ]);
-          if (cratesResult) matches.push(cratesResult);
-          if (goResult) matches.push(goResult);
+          if (cratesResult && !matches.some((m) => m.id === cratesResult.id)) matches.push(cratesResult);
+          if (goResult && !matches.some((m) => m.id === goResult.id)) matches.push(goResult);
         }
 
         if (matches.length === 0) {
@@ -181,9 +185,13 @@ IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library 
 
       // Boost score if query tokens match description/tags
       if (query && query.trim()) {
-        const qt = query.toLowerCase();
+        // Token-level match: a multi-word query ("async runtime") should boost a
+        // description that contains the words separately, not only as an exact
+        // substring. .some() avoids under-boosting when the query has stop words.
+        const tokens = query.toLowerCase().split(/\s+/).filter((t) => t.length > 2);
         for (const m of matches) {
-          if (m.description.toLowerCase().includes(qt)) m.score += 5;
+          const desc = m.description.toLowerCase();
+          if (tokens.some((t) => desc.includes(t))) m.score += 5;
         }
         matches.sort((a, b) => b.score - a.score);
       }

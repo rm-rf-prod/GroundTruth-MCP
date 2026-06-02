@@ -79,7 +79,9 @@ export function registerDispatchTool(server: McpServer): void {
           intent.tool === "gt_audit"
         ) {
           try {
-            resolvedPath = safeguardPath((intent.args["projectPath"] as string) ?? projectPath ?? process.cwd());
+            const rawPath = intent.args["projectPath"];
+            const pathArg = typeof rawPath === "string" ? rawPath : undefined;
+            resolvedPath = safeguardPath(pathArg ?? projectPath ?? process.cwd());
             intent.args["projectPath"] = resolvedPath;
           } catch {
             // fall back to bare cwd marker — actual tool will re-validate

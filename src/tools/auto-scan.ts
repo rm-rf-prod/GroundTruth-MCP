@@ -133,6 +133,32 @@ export async function detectDependencies(projectPath: string): Promise<Dependenc
       }
     }
 
+    // [tool.poetry.dev-dependencies] — Poetry dev-only deps (legacy section,
+    // dropped silently before this; deduped into uniqueDeps below).
+    const poetryDevBlock = pyproject.match(/\[tool\.poetry\.dev-dependencies\]([\s\S]*?)(?:\[|$)/);
+    if (poetryDevBlock?.[1]) {
+      for (const line of poetryDevBlock[1].split("\n")) {
+        const match = line.match(/^([a-zA-Z0-9_-]+)\s*=/);
+        if (match?.[1] && match[1] !== "python") deps.push(match[1]);
+      }
+    }
+
+    // [dependency-groups] — PEP 735 (pip 24+, uv). Each group is an array; a
+    // `{ include-group = "x" }` entry references another group and is skipped.
+    const groupBlock = pyproject.match(/\[dependency-groups\]([\s\S]*?)(?:\n\[|$)/);
+    if (groupBlock?.[1]) {
+      for (const arr of groupBlock[1].matchAll(/=\s*\[([\s\S]*?)\]/g)) {
+        if (!arr[1]) continue;
+        for (const line of arr[1].split("\n")) {
+          const trimmed = line.trim().replace(/^["']|["'],?$/g, "");
+          const pkgName = trimmed.split(/[>=<!~[\s]/)[0]?.trim();
+          if (pkgName && pkgName.length > 0 && !pkgName.startsWith("#") && !pkgName.startsWith("{")) {
+            deps.push(pkgName);
+          }
+        }
+      }
+    }
+
     const uniqueDeps = [...new Set(deps)];
     if (uniqueDeps.length > 0) {
       sources.push({ file: "pyproject.toml", dependencies: uniqueDeps });
@@ -175,8 +201,18 @@ export async function detectDependencies(projectPath: string): Promise<Dependenc
         }
       }
     }
+    // Single-line form: `require github.com/pkg/errors v0.9.1` — emitted by
+    // `go mod tidy` for indirect deps, outside the require(...) block. The
+    // `[^\s(]` first-char guard skips the `require (` block opener.
+    for (const m of goMod.matchAll(/^require\s+([^\s(]\S*)\s+\S+/gm)) {
+      const path = m[1];
+      if (path) {
+        const segs = path.split("/");
+        deps.push(segs[segs.length - 1] ?? path);
+      }
+    }
     if (deps.length > 0) {
-      sources.push({ file: "go.mod", dependencies: deps });
+      sources.push({ file: "go.mod", dependencies: [...new Set(deps)] });
     }
   }
 

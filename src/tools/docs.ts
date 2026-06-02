@@ -203,9 +203,22 @@ Do not call this tool more than 3 times per question.`,
       } catch {
         // Fallback to GitHub README
         if (githubUrl) {
-          const ghResult = await fetchGitHubContent(githubUrl);
-          if (ghResult) {
-            fetchResult = ghResult;
+          // If a version was requested, prefer the version-tagged README so the
+          // fallback does not silently serve HEAD content for a pinned request.
+          if (version && !fetchResult) {
+            const ghMatch = githubUrl.match(/github\.com\/([^/]+\/[^/]+)/);
+            if (ghMatch) {
+              const tagRef = version.startsWith("v") ? version : `v${version}`;
+              const rawUrl = `https://raw.githubusercontent.com/${ghMatch[1]}/${tagRef}/README.md`;
+              const raw = await fetchAsMarkdownRace(rawUrl).catch(() => null);
+              if (raw && raw.length > 200) fetchResult = { content: raw, url: rawUrl, sourceType: "github-readme" };
+            }
+          }
+          if (!fetchResult) {
+            const ghResult = await fetchGitHubContent(githubUrl);
+            if (ghResult) {
+              fetchResult = ghResult;
+            }
           }
         }
         if (!fetchResult) {

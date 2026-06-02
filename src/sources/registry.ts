@@ -6031,7 +6031,7 @@ export function lookupByAlias(name: string): LibraryEntry | undefined {
   return byAlias.get(name.toLowerCase());
 }
 
-export function fuzzySearch(query: string, limit = 5): LibraryEntry[] {
+export function fuzzySearch(query: string, limit = 5, minScore = 1): LibraryEntry[] {
   const q = query.toLowerCase();
   const scored: Array<{ entry: LibraryEntry; score: number }> = [];
 
@@ -6053,7 +6053,9 @@ export function fuzzySearch(query: string, limit = 5): LibraryEntry[] {
     if (entry.npmPackage?.toLowerCase().includes(q)) score += 15;
     if (entry.tags.some((t) => t.includes(q))) score += 10;
 
-    if (score > 0) scored.push({ entry, score });
+    // minScore default 1 == prior score>0 (scores are integers); detectLibrary
+    // passes 20 so tag-only (10) / npm-only (15) matches cannot misroute.
+    if (score >= minScore) scored.push({ entry, score });
   }
 
   return scored
