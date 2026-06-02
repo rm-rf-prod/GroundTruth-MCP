@@ -18,7 +18,7 @@
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-ELv2-orange" alt="Elastic License 2.0" /></a>
   <img src="https://img.shields.io/badge/libraries-445%2B-teal" alt="445+ curated libraries" />
   <img src="https://img.shields.io/badge/audit_patterns-107%2B-red" alt="107+ audit patterns" />
-  <img src="https://img.shields.io/badge/tests-1120-brightgreen" alt="1120 tests" />
+  <img src="https://img.shields.io/badge/tests-1198-brightgreen" alt="1198 tests" />
   <img src="https://img.shields.io/badge/tools-14-blue" alt="14 tools" />
   <img src="https://img.shields.io/badge/node-%3E%3D24-green" alt="Node 24+" />
 </p>
@@ -263,7 +263,7 @@ Context7 is solid. Here's why I reach for this instead.
 | Rate limits | None | 1,000 free/month ($10/seat for 5,000) |
 | Transport | Stdio + Streamable HTTP | Stdio + Streamable HTTP |
 | Source priority | llms.txt -> Jina -> GitHub -> npm/PyPI | Vector DB with proprietary crawl pipeline |
-| Tools | 13 specialized tools | 2 tools |
+| Tools | 14 specialized tools | 2 tools |
 | Code audit | 107+ patterns, 18 categories, file:line, live fixes | No |
 | Freeform search | OWASP, MDN, AI docs, Google APIs, web standards | Library docs only |
 | Changelog, compat, compare, examples, migration | Yes | No |
