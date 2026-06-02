@@ -7,6 +7,8 @@ interface BreakerEntry {
   failures: number;
   lastFailure: number;
   lastSuccess: number;
+  /** Single-flight guard: true while a half-open probe is in flight. */
+  probePending: boolean;
 }
 
 const breakers = new Map<string, BreakerEntry>();
@@ -26,7 +28,7 @@ function getEntry(domain: string): BreakerEntry {
       }
       if (oldestKey) breakers.delete(oldestKey);
     }
-    entry = { state: "closed", failures: 0, lastFailure: 0, lastSuccess: 0 };
+    entry = { state: "closed", failures: 0, lastFailure: 0, lastSuccess: 0, probePending: false };
     breakers.set(domain, entry);
   }
   return entry;
@@ -48,11 +50,17 @@ export function isCircuitOpen(domain: string): boolean {
   if (entry.state === "open") {
     if (Date.now() - entry.lastFailure >= CIRCUIT_BREAKER_RESET_MS) {
       entry.state = "half-open";
-      return false;
+      entry.probePending = true;
+      return false; // this caller owns the single probe
     }
     return true;
   }
 
+  // half-open: gate subsequent callers so only one probe is in flight at a time.
+  if (entry.probePending) return true; // probe already running — fail-fast
+  // Defensive: half-open with probePending=false should not occur in normal flow
+  // (recordSuccess/recordFailure both clear it AND leave half-open); guard against
+  // a future code path or an external resetCircuit race.
   return false;
 }
 
@@ -60,6 +68,7 @@ export function recordSuccess(domain: string): void {
   const entry = getEntry(domain);
   entry.failures = 0;
   entry.state = "closed";
+  entry.probePending = false;
   entry.lastSuccess = Date.now();
   // Reset the failure clock so the next reset window measures from a real failure.
   entry.lastFailure = 0;
@@ -74,6 +83,7 @@ export function recordFailure(domain: string): void {
   if (entry.state === "half-open") {
     entry.state = "open";
     entry.lastFailure = Date.now();
+    entry.probePending = false;
     return;
   }
 

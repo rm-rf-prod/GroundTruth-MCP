@@ -1,5 +1,6 @@
 import { createHash } from "crypto";
 import dns from "dns";
+import type { LookupAddress } from "dns";
 import { isIPv4, isIPv6 } from "net";
 import { Agent, setGlobalDispatcher } from "undici";
 import { FETCH_TIMEOUT_MS, JINA_BASE_URL, SERVER_VERSION, MAX_CONCURRENT_FETCHES, CACHE_TTLS } from "../constants.js";
@@ -8,6 +9,7 @@ import type { FetchResult } from "../types.js";
 import { docCache, diskDocCache } from "./cache.js";
 import { assertPublicUrl } from "../utils/guard.js";
 import { convertHtmlToMarkdown } from "../utils/html-to-md.js";
+import { sanitizeContent } from "../utils/sanitize.js";
 import { log } from "../utils/logger.js";
 
 /**
@@ -38,6 +40,12 @@ class FetchSemaphore {
   }
 
   release(): void {
+    // Fail-safe: a spurious/double release must not drive active negative —
+    // that would let acquire() skip the queue and exceed MAX_CONCURRENT_FETCHES.
+    if (this.active <= 0) {
+      log({ level: "warn", msg: "FetchSemaphore.release_underflow", active: this.active });
+      return;
+    }
     this.active--;
     const next = this.queue.shift();
     if (next) next();
@@ -128,14 +136,16 @@ setGlobalDispatcher(new Agent({
     lookup(hostname, options, callback) {
       dns.lookup(hostname, { ...options, all: true }, (err, addresses) => {
         if (err) return callback(err, "", 4);
-        const entries = (Array.isArray(addresses) ? addresses : [{ address: addresses, family: 4 }]) as Array<{ address: string; family: number }>;
+        // all:true always yields an array; the fallback branch is dead code kept only for exhaustive typing.
+        const entries: LookupAddress[] = Array.isArray(addresses) ? addresses : [{ address: String(addresses), family: 4 }];
         const safe = entries.filter((entry) => !isBlockedIP(entry.address));
         if (safe.length === 0) {
           return callback(new Error(`SSRF blocked: ${hostname} resolves to private/blocked IP`), "", 4);
         }
         // Undici expects array format when options.all is true, single entry otherwise
         if (options.all) {
-          return (callback as unknown as (err: null, entries: Array<{ address: string; family: number }>) => void)(null, safe);
+          // net.LookupFunction type omits the all-addresses overload; cast is required.
+          return (callback as unknown as (err: null, addrs: LookupAddress[]) => void)(null, safe);
         }
         const first = safe[0]!;
         callback(null, first.address, first.family);
@@ -163,6 +173,18 @@ const USER_AGENT =
 
 // In-flight deduplication: prevents N concurrent fetches of the same URL
 const inFlightRequests = new Map<string, Promise<string | null>>();
+
+/**
+ * Write fetched documentation CONTENT to memory + disk cache, sanitizing once
+ * before storage so poisoned upstream content is never persisted raw (SEC-009).
+ * Metadata writes (npm/pypi JSON, sitemap URL lists) must NOT use this — running
+ * them through the injection-stripper would corrupt the JSON.
+ */
+function cacheDoc(cacheKey: string, content: string, ttl: number): void {
+  const clean = sanitizeContent(content);
+  docCache.set(cacheKey, clean, ttl);
+  void diskDocCache.set(cacheKey, clean, ttl);
+}
 
 /** Build Authorization header for GitHub API if GT_GITHUB_TOKEN is set */
 export function githubAuthHeaders(): Record<string, string> {
@@ -363,8 +385,7 @@ export async function fetchViaJina(url: string): Promise<string | null> {
         const text = await res.text();
         if (text.length < 100) return null;
         recordSuccess(jinaDomain);
-        docCache.set(cacheKey, text, CACHE_TTLS.JINA_RESULT);
-        void diskDocCache.set(cacheKey, text, CACHE_TTLS.JINA_RESULT);
+        cacheDoc(cacheKey, text, CACHE_TTLS.JINA_RESULT);
         return text;
       } catch {
         recordFailure(jinaDomain);
@@ -410,16 +431,14 @@ export async function fetchAsMarkdown(url: string): Promise<string | null> {
       // Check if it's already markdown/plain text (llms.txt, README)
       const tagDensity = (directHtml.match(/<[a-z]/gi) ?? []).length / Math.max(directHtml.length, 1);
       if (tagDensity < 0.005 && directHtml.length > 100 && !isGarbageContent(directHtml).garbage) {
-        docCache.set(cacheKey, directHtml, CACHE_TTLS.DOCS_PAGE);
-        void diskDocCache.set(cacheKey, directHtml, CACHE_TTLS.DOCS_PAGE);
+        cacheDoc(cacheKey, directHtml, CACHE_TTLS.DOCS_PAGE);
         return directHtml;
       }
 
       // Extract markdown from HTML
       const markdown = convertHtmlToMarkdown(directHtml);
       if (markdown.length >= 200 && !isGarbageContent(markdown).garbage) {
-        docCache.set(cacheKey, markdown, CACHE_TTLS.DOCS_PAGE);
-        void diskDocCache.set(cacheKey, markdown, CACHE_TTLS.DOCS_PAGE);
+        cacheDoc(cacheKey, markdown, CACHE_TTLS.DOCS_PAGE);
         return markdown;
       }
     }
@@ -427,8 +446,7 @@ export async function fetchAsMarkdown(url: string): Promise<string | null> {
     // Path 2: Jina Reader (handles JS-rendered pages, but rate-limited)
     const jinaResult = await fetchViaJina(url);
     if (jinaResult && jinaResult.length >= 100) {
-      docCache.set(cacheKey, jinaResult, CACHE_TTLS.DOCS_PAGE);
-      void diskDocCache.set(cacheKey, jinaResult, CACHE_TTLS.DOCS_PAGE);
+      cacheDoc(cacheKey, jinaResult, CACHE_TTLS.DOCS_PAGE);
       return jinaResult;
     }
 
@@ -489,8 +507,7 @@ export async function fetchAsMarkdownRace(url: string): Promise<string | null> {
         })(),
       ]);
 
-      docCache.set(cacheKey, result, CACHE_TTLS.DOCS_PAGE);
-      void diskDocCache.set(cacheKey, result, CACHE_TTLS.DOCS_PAGE);
+      cacheDoc(cacheKey, result, CACHE_TTLS.DOCS_PAGE);
       return result;
     } catch {
       return null;
@@ -613,8 +630,7 @@ export async function fetchDocs(
     // Prefer llms-full.txt > llms.txt
     for (const r of results) {
       if (r.content) {
-        docCache.set(cacheKey, r.content, CACHE_TTLS.LLMS_TXT);
-        void diskDocCache.set(cacheKey, r.content, CACHE_TTLS.LLMS_TXT);
+        cacheDoc(cacheKey, r.content, CACHE_TTLS.LLMS_TXT);
         return stamp({ content: r.content, url: r.url, sourceType: r.sourceType });
       }
     }
@@ -625,8 +641,7 @@ export async function fetchDocs(
         const origin = new URL(llmsTxtUrl).origin;
         const autoDiscovered = await tryFetch(`${origin}/llms.txt`);
         if (autoDiscovered) {
-          docCache.set(cacheKey, autoDiscovered, CACHE_TTLS.LLMS_TXT);
-          void diskDocCache.set(cacheKey, autoDiscovered, CACHE_TTLS.LLMS_TXT);
+          cacheDoc(cacheKey, autoDiscovered, CACHE_TTLS.LLMS_TXT);
           return stamp({ content: autoDiscovered, url: `${origin}/llms.txt`, sourceType: "llms-txt" });
         }
       } catch { /* invalid URL */ }
@@ -681,8 +696,7 @@ export async function fetchDocs(
 
   try {
     const hit = await Promise.any(candidates);
-    docCache.set(cacheKey, hit.content, CACHE_TTLS.DOCS_PAGE);
-    void diskDocCache.set(cacheKey, hit.content, CACHE_TTLS.DOCS_PAGE);
+    cacheDoc(cacheKey, hit.content, CACHE_TTLS.DOCS_PAGE);
     return stamp(hit);
   } catch {
     // All candidates failed — fall through to error
@@ -718,8 +732,7 @@ export async function fetchGitHubContent(
     const rawUrl = `https://raw.githubusercontent.com/${repoPath}/${branch}/${path}`;
     const content = await tryFetch(rawUrl, 1, githubAuthHeaders());
     if (content) {
-      docCache.set(cacheKey, content, CACHE_TTLS.GITHUB_README);
-      void diskDocCache.set(cacheKey, content, CACHE_TTLS.GITHUB_README);
+      cacheDoc(cacheKey, content, CACHE_TTLS.GITHUB_README);
       return { content, url: rawUrl, sourceType: "github-readme" };
     }
   }
@@ -734,8 +747,7 @@ export async function fetchGitHubContent(
     const apiUrl = `https://api.github.com/repos/${repoPath}/contents/${path}?ref=${branch}`;
     const content = await tryFetch(apiUrl, 0, apiHeaders);
     if (content) {
-      docCache.set(cacheKey, content, CACHE_TTLS.GITHUB_README);
-      void diskDocCache.set(cacheKey, content, CACHE_TTLS.GITHUB_README);
+      cacheDoc(cacheKey, content, CACHE_TTLS.GITHUB_README);
       return { content, url: apiUrl, sourceType: "github-readme" };
     }
   }
@@ -800,10 +812,10 @@ export async function fetchGitHubReleases(githubUrl: string): Promise<string | n
     }
 
     const content = lines.join("\n");
-    docCache.set(cacheKey, content, CACHE_TTLS.GITHUB_RELEASES);
-    void diskDocCache.set(cacheKey, content, CACHE_TTLS.GITHUB_RELEASES);
+    cacheDoc(cacheKey, content, CACHE_TTLS.GITHUB_RELEASES);
     return content;
-  } catch {
+  } catch (err: unknown) {
+    log({ level: "debug", msg: "fetchGitHubReleases.error", repo: repoPath, error: err instanceof Error ? err.message : String(err) });
     return null;
   }
 }
@@ -857,8 +869,7 @@ export async function fetchGitHubExamples(githubUrl: string): Promise<string | n
 
     for (const result of results) {
       if (result.status === "fulfilled" && result.value) {
-        docCache.set(cacheKey, result.value, CACHE_TTLS.CHANGELOG);
-        void diskDocCache.set(cacheKey, result.value, CACHE_TTLS.CHANGELOG);
+        cacheDoc(cacheKey, result.value, CACHE_TTLS.CHANGELOG);
         return result.value;
       }
     }
@@ -933,8 +944,7 @@ export async function fetchDevDocs(slug: string, topic?: string): Promise<string
   for (const url of urls) {
     const content = await fetchViaJina(url);
     if (content && content.length >= 200 && !isErrorPage(content)) {
-      docCache.set(cacheKey, content, CACHE_TTLS.DEVDOCS);
-      void diskDocCache.set(cacheKey, content, CACHE_TTLS.DEVDOCS);
+      cacheDoc(cacheKey, content, CACHE_TTLS.DEVDOCS);
       return content;
     }
   }
@@ -1059,7 +1069,12 @@ export async function fetchSitemapUrls(docsUrl: string): Promise<string[]> {
   const cacheKey = `sitemap:${origin}`;
   const memCached = docCache.get(cacheKey);
   if (memCached) {
-    try { return JSON.parse(memCached) as string[]; } catch { /* invalid cache */ }
+    try {
+      const parsed: unknown = JSON.parse(memCached);
+      if (Array.isArray(parsed) && parsed.every((v): v is string => typeof v === "string")) {
+        return parsed;
+      }
+    } catch { /* invalid cache — fall through to re-fetch */ }
   }
 
   const sitemapUrl = `${origin}/sitemap.xml`;

@@ -102,7 +102,7 @@ const MAX_SANITIZE_LENGTH = 512_000; // 500KB cap before regex processing
  */
 function normalizeForInjectionScan(text: string): string {
   // 1. Strip zero-width / invisible chars
-  let normalized = text.replace(/[​-‏‪-‮⁠-⁩﻿­]/g, "");
+  let normalized = text.replace(/[\u200B-\u200F\u202A-\u202E\u2060-\u2069\uFEFF\u00AD\u180B-\u180E\uFE00-\uFE0F]|[\u{E0000}-\u{E007F}]/gu, "");
   // 2. NFKD normalize (handles fullwidth, some superscript)
   normalized = normalized.normalize("NFKD").replace(/[̀-ͯ]/g, "");
   // 3. Explicit small-caps homoglyph map (IPA extensions + modifier letters
@@ -138,7 +138,7 @@ export function sanitizeContent(content: string): string {
 
   // First strip zero-width / RTL-override chars from the actual content too —
   // these have no legitimate use in technical docs and only enable bypass.
-  sanitized = sanitized.replace(/[​-‏‪-‮⁠-⁩﻿]/g, "");
+  sanitized = sanitized.replace(/[\u200B-\u200F\u202A-\u202E\u2060-\u2069\uFEFF\u00AD\u180B-\u180E\uFE00-\uFE0E]|[\u{E0000}-\u{E007F}]/gu, "");
 
   // Strip nav/footer boilerplate first (before injection scan to reduce noise)
   for (const pattern of NAV_FOOTER_PATTERNS) {
