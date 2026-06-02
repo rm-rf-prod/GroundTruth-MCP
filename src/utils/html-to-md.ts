@@ -24,9 +24,9 @@ function stripNoisyElements(html: string): string {
 
   // Remove elements by class/id that are typically noise
   const noisePatterns = [
-    /<[^>]+class="[^"]*(?:sidebar|cookie|banner|newsletter|popup|modal|ad-|ads-|social|share|footer|nav|menu|breadcrumb|toc|table-of-contents)[^"]*"[^>]*>[\s\S]*?<\/\w+>/gi,
-    /<[^>]+id="[^"]*(?:sidebar|cookie|banner|newsletter|popup|modal|social|share|footer|nav|menu|breadcrumb|toc|table-of-contents)[^"]*"[^>]*>[\s\S]*?<\/\w+>/gi,
-    /<[^>]+role="(?:navigation|banner|contentinfo|complementary)"[^>]*>[\s\S]*?<\/\w+>/gi,
+    /<[^>]+class="[^"]*(?:sidebar|cookie|banner|newsletter|popup|modal|ad-|ads-|social|share|footer|nav|menu|breadcrumb|toc|table-of-contents)[^"]*"[^>]*>[\s\S]*?<\/[\w-]+>/gi,
+    /<[^>]+id="[^"]*(?:sidebar|cookie|banner|newsletter|popup|modal|social|share|footer|nav|menu|breadcrumb|toc|table-of-contents)[^"]*"[^>]*>[\s\S]*?<\/[\w-]+>/gi,
+    /<[^>]+role="(?:navigation|banner|contentinfo|complementary)"[^>]*>[\s\S]*?<\/[\w-]+>/gi,
   ];
 
   for (const pattern of noisePatterns) {

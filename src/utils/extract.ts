@@ -47,14 +47,19 @@ function bm25Score(
   queryTokens: string[],
   idf: Map<string, number>,
   avgDocLen: number,
+  tokenCache: Map<Section, { headingTokens: string[]; contentTokens: string[] }>,
 ): number {
   if (queryTokens.length === 0) return 0;
 
   const k1 = 1.5; // term saturation constant
   const b = 0.75; // length normalisation constant
 
-  const headingTokens = tokenize(section.heading);
-  const contentTokens = tokenize(section.content.slice(0, 3000));
+  // Reuse the per-section tokens computed once in extractRelevantContent —
+  // avoids O(N*Q) re-tokenization. Arrays are identical to inline tokenize()
+  // output, so BM25 scores are bit-for-bit unchanged.
+  const cached = tokenCache.get(section)!;
+  const headingTokens = cached.headingTokens;
+  const contentTokens = cached.contentTokens;
   const docLen = contentTokens.length;
   const lenNorm = 1 - b + b * (docLen / Math.max(avgDocLen, 1));
 
@@ -81,8 +86,15 @@ function bm25Score(
     }
   }
 
-  // Code block bonus — only if the code contains a query token (higher bar)
-  const codeBlocks = section.content.match(/```[\s\S]*?```/g) ?? [];
+  // Code block bonus — only if the code contains a query token (higher bar).
+  // Cap block count + per-block size so a section with dozens of large blocks
+  // cannot blow up tokenization cost; scoring is unchanged for the common case
+  // (the loop already breaks on the first query match).
+  const MAX_CODE_BLOCKS = 10;
+  const MAX_BLOCK_CHARS = 800;
+  const codeBlocks = (section.content.match(/```[\s\S]*?```/g) ?? [])
+    .slice(0, MAX_CODE_BLOCKS)
+    .map((blk) => blk.slice(0, MAX_BLOCK_CHARS));
   for (const block of codeBlocks) {
     const blockTokens = tokenize(block);
     const hasQueryMatch = queryTokens.some((qt) => blockTokens.includes(qt));
@@ -102,14 +114,21 @@ function bm25Score(
  * Build inverse document frequency map across all sections.
  * IDF = log((N - df + 0.5) / (df + 0.5) + 1)  [Robertson-Sparck Jones variant]
  */
-function buildIDF(sections: Section[], queryTokens: string[]): Map<string, number> {
+function buildIDF(
+  sections: Section[],
+  queryTokens: string[],
+  tokenCache: Map<Section, { headingTokens: string[]; contentTokens: string[] }>,
+): Map<string, number> {
   const N = sections.length;
   const df = new Map<string, number>();
 
   for (const qt of queryTokens) {
     let count = 0;
     for (const section of sections) {
-      const tokens = tokenize(section.heading + " " + section.content.slice(0, 3000));
+      const cached = tokenCache.get(section)!;
+      // tokenize(h + " " + c) === [...tokenize(h), ...tokenize(c)] because the
+      // explicit space forces a split boundary — combined list is identical.
+      const tokens = [...cached.headingTokens, ...cached.contentTokens];
       if (tokens.some((t) => t === qt || t.includes(qt))) count++;
     }
     df.set(qt, count);
@@ -219,17 +238,27 @@ export function extractRelevantContent(
 
   const sections = parseSections(content);
 
+  // Tokenize every section exactly once and reuse across avgDocLen, buildIDF and
+  // bm25Score — collapses O(N*Q) re-tokenization to O(N) with identical results.
+  const tokenCache = new Map<Section, { headingTokens: string[]; contentTokens: string[] }>();
+  for (const s of sections) {
+    tokenCache.set(s, {
+      headingTokens: tokenize(s.heading),
+      contentTokens: tokenize(s.content.slice(0, 3000)),
+    });
+  }
+
   // Compute average document length for BM25 length normalisation
   const avgDocLen =
-    sections.reduce((sum, s) => sum + tokenize(s.content.slice(0, 3000)).length, 0) /
+    sections.reduce((sum, s) => sum + (tokenCache.get(s)?.contentTokens.length ?? 0), 0) /
     Math.max(sections.length, 1);
 
   // Build IDF weights across all sections
-  const idf = buildIDF(sections, queryTokens);
+  const idf = buildIDF(sections, queryTokens, tokenCache);
 
   // Score all sections with BM25
   for (const section of sections) {
-    section.score = bm25Score(section, queryTokens, idf, avgDocLen);
+    section.score = bm25Score(section, queryTokens, idf, avgDocLen, tokenCache);
   }
 
   // Sort by score desc

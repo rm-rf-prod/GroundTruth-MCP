@@ -1,6 +1,7 @@
 import type { FetchResult } from "../types.js";
 import { tokenize } from "../utils/extract.js";
 import { fetchAsMarkdownRace, isIndexContent, rankIndexLinks, fetchSitemapUrls } from "./fetcher.js";
+import { log } from "../utils/logger.js";
 import {
   DEEP_FETCH_MAX_PAGES,
   DEEP_FETCH_RELEVANCE_THRESHOLD,
@@ -274,7 +275,7 @@ export async function deepFetchForTopic(
   const pipeline = async (): Promise<FetchResult> => {
     const topicUrls = buildTopicUrls(docsUrl, topic, urlPatterns);
     if (topicUrls.length > 0) {
-      const directHit = await fetchFirstSuccessful(topicUrls.slice(0, 12));
+      const directHit = await fetchFirstSuccessful(topicUrls.slice(0, 6));
       if (directHit) return directHit;
     }
 
@@ -337,7 +338,12 @@ export async function deepFetchForTopic(
         setTimeout(() => reject(new Error("deep-fetch timeout")), DEEP_FETCH_TIMEOUT_MS),
       ),
     ]);
-  } catch {
+  } catch (err) {
+    // Surface persistent timeouts so operators can see the deep-fetch budget is
+    // too low or upstreams are slow; other errors fall through silently.
+    if (err instanceof Error && err.message === "deep-fetch timeout") {
+      log({ level: "warn", msg: "deep-fetch-timeout", topic, docsUrl, timeoutMs: DEEP_FETCH_TIMEOUT_MS });
+    }
     return initialResult;
   }
 }
