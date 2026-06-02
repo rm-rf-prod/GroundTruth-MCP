@@ -26,7 +26,7 @@ import { fetchDocs } from "./services/fetcher.js";
 import { extractRelevantContent } from "./utils/extract.js";
 import { sanitizeContent } from "./utils/sanitize.js";
 import { withNotice } from "./utils/guard.js";
-import { DEFAULT_TOKEN_LIMIT } from "./constants.js";
+import { DEFAULT_TOKEN_LIMIT, TOOL_COUNT } from "./constants.js";
 import { log } from "./utils/logger.js";
 import { formatPrometheus, getUptimeSeconds } from "./services/metrics.js";
 import { getCircuitSummary } from "./services/circuit-breaker.js";
@@ -40,7 +40,7 @@ const server = new McpServer(
 
 Covers libraries, frameworks, web standards (MDN), security (OWASP), accessibility (WCAG), performance, HTTP, CSS, auth standards, databases, infrastructure. Content is fetched at request time from official sources, not from training data.
 
-# Tools (14)
+# Tools (${TOOL_COUNT})
 
 1. **gt_dispatch**. Routes a plain-text query ("use gt mcp", "find issues", "best practices for next.js") to the correct gt_* tool with the right args. Call it whenever the user's intent is ambiguous, or they say "use gt" without specifying a tool.
 2. **gt_resolve_library**. Resolves a library or framework name to its canonical ID and docs URL. Call before gt_get_docs unless you already have the ID.
@@ -279,7 +279,7 @@ async function main(): Promise<void> {
       name: SERVER_NAME,
       version: SERVER_VERSION,
       installId: getInstallId(),
-      tools: 14,
+      tools: TOOL_COUNT,
       registryEntries: LIBRARY_REGISTRY.length,
       node: process.version,
     }) + "\n");
@@ -324,6 +324,10 @@ async function main(): Promise<void> {
     const http = await import("http");
     const crypto = await import("crypto");
 
+    if (!process.env.GT_AUTH_TOKEN) {
+      log({ level: "warn", msg: "GT_HTTP_PORT is set but GT_AUTH_TOKEN is unset -- /mcp, /health and /metrics are exposed without authentication" });
+    }
+
     // Stateless mode by default — GT tools are independent doc fetches, no per-session state needed.
     // Set GT_HTTP_STATEFUL=1 to enable session-per-request via sessionIdGenerator.
     const transport = process.env.GT_HTTP_STATEFUL === "1"
@@ -338,12 +342,24 @@ async function main(): Promise<void> {
       res.setHeader("X-Content-Type-Options", "nosniff");
       res.setHeader("X-Frame-Options", "DENY");
       res.setHeader("Referrer-Policy", "no-referrer");
+      res.setHeader("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'");
+      res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
+      res.setHeader("Cross-Origin-Resource-Policy", "same-origin");
+      res.setHeader("X-DNS-Prefetch-Control", "off");
 
       const authToken = process.env.GT_AUTH_TOKEN;
-      if (authToken && req.headers.authorization !== `Bearer ${authToken}`) {
-        res.writeHead(401, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ error: "Unauthorized" }));
-        return;
+      if (authToken) {
+        // Constant-time comparison — avoids leaking the token via a response-time
+        // side channel (string !== short-circuits on the first differing byte).
+        const expected = Buffer.from(`Bearer ${authToken}`);
+        const provided = Buffer.from(req.headers.authorization ?? "");
+        const authorized =
+          provided.length === expected.length && crypto.timingSafeEqual(provided, expected);
+        if (!authorized) {
+          res.writeHead(401, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "Unauthorized" }));
+          return;
+        }
       }
 
       if (req.url === "/mcp" && (req.method === "POST" || req.method === "GET" || req.method === "DELETE")) {
@@ -356,7 +372,7 @@ async function main(): Promise<void> {
           status: "ok",
           uptime: getUptimeSeconds(),
           version: SERVER_VERSION,
-          tools: 14,
+          tools: TOOL_COUNT,
           registryEntries: LIBRARY_REGISTRY.length,
           cache: {
             memoryEntries: docCache.size(),
@@ -376,7 +392,7 @@ async function main(): Promise<void> {
 
     const port = parseInt(httpPort, 10);
     if (!Number.isFinite(port) || port < 1 || port > 65535) {
-      log({ level: "error", msg: `Invalid GT_HTTP_PORT: "${httpPort}" -- must be 1-65535` });
+      log({ level: "error", msg: "Invalid GT_HTTP_PORT -- must be 1-65535", value: httpPort });
       process.exit(1);
     }
     activeHttpServer = httpServer;

@@ -3,6 +3,7 @@ import { CACHE_TTL_MS, DISK_CACHE_DIR, SWR_STALE_TTL_MS } from "../constants.js"
 import { createHash, randomBytes } from "crypto";
 import { readFile, writeFile, mkdir, unlink, readdir, stat, rename } from "fs/promises";
 import { join } from "path";
+import { log } from "../utils/logger.js";
 
 class LRUCache<T> {
   private readonly store = new Map<string, CacheEntry<T>>();
@@ -97,6 +98,12 @@ export class DiskCache {
     try {
       const content = await readFile(filePath, "utf-8");
       const entry = JSON.parse(content) as DiskCacheFile;
+      // Validate the deserialized shape — a truncated/corrupt file can parse to
+      // a non-conforming object; don't serve it as if it were a valid entry.
+      if (typeof entry !== "object" || entry === null || typeof entry.data !== "string" || typeof entry.expiresAt !== "number") {
+        unlink(filePath).catch(() => void 0);
+        return undefined;
+      }
       const now = Date.now();
       if (now > entry.expiresAt) {
         if (now <= entry.expiresAt + SWR_STALE_TTL_MS) {
@@ -134,7 +141,11 @@ export class DiskCache {
     try {
       await writeFile(tmpPath, JSON.stringify(entry), "utf-8");
       await rename(tmpPath, filePath);
-    } catch {
+    } catch (err) {
+      // Surface the write failure (disk full, EACCES, mount loss) — every disk
+      // write funnels through here, so this is the single observability point
+      // for the otherwise fire-and-forget cache writes.
+      log({ level: "warn", msg: "DiskCache.atomicWrite.failed", error: err instanceof Error ? err.message : String(err) });
       // Best-effort cleanup of orphaned tmp file
       await unlink(tmpPath).catch(() => void 0);
     }
@@ -146,6 +157,9 @@ export class DiskCache {
     try {
       const content = await readFile(filePath, "utf-8");
       const entry = JSON.parse(content) as DiskCacheFile;
+      if (typeof entry !== "object" || entry === null || typeof entry.expiresAt !== "number") {
+        return false;
+      }
       const now = Date.now();
       return now <= entry.expiresAt + SWR_STALE_TTL_MS;
     } catch {
@@ -165,7 +179,9 @@ export class DiskCache {
         try {
           const content = await readFile(filePath, "utf-8");
           const entry = JSON.parse(content) as DiskCacheFile;
-          if (Date.now() > entry.expiresAt) {
+          // Match the serve-stale window used by get()/has(): only prune once the
+          // SWR stale window has also elapsed, else we discard still-serveable data.
+          if (Date.now() > entry.expiresAt + SWR_STALE_TTL_MS) {
             await unlink(filePath);
             removed++;
           }

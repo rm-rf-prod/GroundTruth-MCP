@@ -6,13 +6,18 @@ export const SERVER_VERSION = "7.0.1";
 // Known size of the full private registry (updated with each release that adds entries)
 export const REGISTRY_BADGE_SIZE = 445;
 
+// Number of MCP tools registered in index.ts — single source of truth for the
+// --health / `/health` payloads and the server-instructions header, so the count
+// cannot silently drift across those three call sites when a tool is added/removed.
+export const TOOL_COUNT = 14;
+
 export const CHARS_PER_TOKEN = 3.8;
 
 // Disk cache directory for persistent cross-invocation caching
 const _rawCacheDir =
   process.env.GT_CACHE_DIR ??
   (process.env.HOME ? `${process.env.HOME}/.gt-mcp-cache` : "/tmp/.gt-mcp-cache");
-const _SYSTEM_DIRS = ["/etc", "/proc", "/sys", "/dev", "/boot", "/root", "/bin", "/sbin", "/usr", "/var/run", "/run"];
+const _SYSTEM_DIRS = ["/etc", "/proc", "/sys", "/dev", "/boot", "/root", "/bin", "/sbin", "/usr", "/var/run", "/run", "/var/log"];
 if (_SYSTEM_DIRS.some((d) => _rawCacheDir === d || _rawCacheDir.startsWith(d + "/"))) {
   throw new Error(`GT_CACHE_DIR must not point to a system directory: ${_rawCacheDir}`);
 }

@@ -29,7 +29,9 @@ function computeVersionRelevance(content: string, versions: string[]): number {
   const head = content.slice(0, Math.max(400, Math.floor(content.length / 3)));
   let hits = 0;
   for (const v of norms) {
-    const esc = v.replace(/\./g, "\\.");
+    // Escape ALL regex metacharacters (not just dots) before building a dynamic
+    // RegExp from caller-supplied version text — prevents ReDoS / pattern injection.
+    const esc = v.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     // Boundary guards stop "15" matching inside "2015" or "150".
     if (new RegExp(`(?<![\\d.])${esc}(?![\\d])`).test(head)) hits += 1;
   }

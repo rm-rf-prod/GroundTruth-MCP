@@ -56,8 +56,11 @@ export const fetchSemaphore = new FetchSemaphore(MAX_CONCURRENT_FETCHES);
 
 export function isBlockedIP(address: string): boolean {
   if (isIPv4(address)) {
-    const parts = address.split(".").map(Number);
-    const int = ((parts[0]! << 24) | (parts[1]! << 16) | (parts[2]! << 8) | parts[3]!) >>> 0;
+    // Destructure with a fail-closed guard — if the octets are ever malformed
+    // (defense in depth beyond isIPv4) treat the address as blocked, not allowed.
+    const [a, b, c, d] = address.split(".").map(Number);
+    if (a === undefined || b === undefined || c === undefined || d === undefined) return true;
+    const int = ((a << 24) | (b << 16) | (c << 8) | d) >>> 0;
     // All masks use >>> 0 to stay in unsigned 32-bit space (JS bitwise & returns signed)
     return (
       ((int & 0xff000000) >>> 0) === 0x7f000000 || // 127.0.0.0/8 loopback
@@ -65,6 +68,7 @@ export function isBlockedIP(address: string): boolean {
       ((int & 0xff000000) >>> 0) === 0x0a000000 || // 10.0.0.0/8 private
       ((int & 0xfff00000) >>> 0) === 0xac100000 || // 172.16.0.0/12 private
       ((int & 0xffff0000) >>> 0) === 0xc0a80000 || // 192.168.0.0/16 private
+      ((int & 0xffc00000) >>> 0) === 0x64400000 || // 100.64.0.0/10 CGNAT (RFC6598 — Alibaba metadata 100.100.100.200)
       ((int & 0xffff0000) >>> 0) === 0xa9fe0000 || // 169.254.0.0/16 link-local (cloud metadata)
       ((int & 0xf0000000) >>> 0) === 0xe0000000    // 224.0.0.0/4 multicast
     );
@@ -167,6 +171,43 @@ export function githubAuthHeaders(): Record<string, string> {
   return { Authorization: `Bearer ${token}` };
 }
 
+/**
+ * Cap remote response bodies so a malicious or misconfigured upstream cannot
+ * exhaust memory by streaming gigabytes before truncation. Returns null when the
+ * body exceeds `max` (by declared Content-Length or by streamed byte count).
+ */
+const MAX_RESPONSE_BYTES = 5 * 1024 * 1024;
+
+async function readBodyCapped(res: Response, max = MAX_RESPONSE_BYTES): Promise<string | null> {
+  const headers = (res as { headers?: { get?: (k: string) => string | null } }).headers;
+  const declared = Number(headers?.get?.("content-length"));
+  if (Number.isFinite(declared) && declared > max) return null;
+  const body = (res as { body?: ReadableStream<Uint8Array> | null }).body;
+  if (!body || typeof body.getReader !== "function") {
+    const text = await res.text();
+    return text.length > max ? null : text;
+  }
+  const reader = body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value) continue;
+      total += value.length;
+      if (total > max) {
+        await reader.cancel();
+        return null;
+      }
+      chunks.push(value);
+    }
+  } catch {
+    return null;
+  }
+  return Buffer.concat(chunks).toString("utf-8");
+}
+
 export async function fetchWithTimeout(
   url: string,
   ms = FETCH_TIMEOUT_MS,
@@ -187,7 +228,10 @@ export async function fetchWithTimeout(
         const location = res.headers.get("location");
         if (!location) return res;
         currentUrl = new URL(location, currentUrl).href;
-        try { assertPublicUrl(currentUrl); } catch { return res; }
+        try { assertPublicUrl(currentUrl); } catch (err) {
+          log({ level: "warn", msg: "fetchWithTimeout.ssrf_redirect_blocked", url: currentUrl, error: err instanceof Error ? err.message : String(err) });
+          return res;
+        }
         continue;
       }
       return res;
@@ -229,7 +273,12 @@ async function tryFetch(url: string, retries = 1, extraHeaders?: Record<string, 
         log({ level: "debug", msg: "tryFetch.http_error", url, status: res.status });
         return null;
       }
-      const text = await res.text();
+      const text = await readBodyCapped(res);
+      if (text === null) {
+        recordFailure(domain);
+        log({ level: "warn", msg: "tryFetch.body_too_large", url, status: res.status });
+        return null;
+      }
       if (text.length > 50) {
         recordSuccess(domain);
         return text;
@@ -265,7 +314,8 @@ async function tryFetch(url: string, retries = 1, extraHeaders?: Record<string, 
 export async function fetchViaJina(url: string): Promise<string | null> {
   try {
     assertPublicUrl(url);
-  } catch {
+  } catch (err) {
+    log({ level: "warn", msg: "fetchViaJina.ssrf_blocked", url, error: err instanceof Error ? err.message : String(err) });
     return null;
   }
 
