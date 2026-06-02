@@ -179,4 +179,21 @@ describe("fuzzySearch", () => {
     const results = fuzzySearch("js");
     expect(results.length).toBeLessThanOrEqual(10);
   });
+
+  it("minScore=20 filters tag-only matches (score=10): fuzzySearch('build', 1, 20) returns empty", () => {
+    const results = fuzzySearch("build", 1, 20);
+    expect(results).toHaveLength(0);
+  });
+
+  it("minScore=20 accepts alias-exact matches (score=90): fuzzySearch('vite', 1, 20) returns Vite entry", () => {
+    const results = fuzzySearch("vite", 1, 20);
+    expect(results.length).toBeGreaterThanOrEqual(1);
+    expect(results[0]?.id).toBe("vitejs/vite");
+  });
+
+  it("default fuzzySearch('vite') unchanged: still returns Vite entry", () => {
+    const results = fuzzySearch("vite");
+    const ids = results.map((e) => e.id);
+    expect(ids).toContain("vitejs/vite");
+  });
 });

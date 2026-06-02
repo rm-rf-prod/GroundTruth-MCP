@@ -104,4 +104,20 @@ describe("SnippetStore", () => {
     expect(await store.has("react", null)).toBe(true);
     expect(await store.has("react", "19")).toBe(false);
   });
+
+  it("load returns null for corrupt cached data", async () => {
+    disk.store.set("snippets:react:latest", "{not valid json");
+    expect(await store.load("react", null)).toBeNull();
+  });
+
+  it("load returns null for wrong-shape cached data", async () => {
+    disk.store.set(
+      "snippets:react:latest",
+      JSON.stringify({ library: "react", sourceUrl: "x", builtAt: "y" }),
+    );
+    expect(await store.load("react", null)).toBeNull();
+
+    disk.store.set("snippets:react:latest", "42");
+    expect(await store.load("react", null)).toBeNull();
+  });
 });

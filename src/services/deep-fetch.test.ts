@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { mockFetchViaJina, mockFetchAsMarkdownRace, mockIsIndexContent, mockRankIndexLinks } = vi.hoisted(() => ({
+const { mockFetchViaJina, mockFetchAsMarkdownRace, mockIsIndexContent, mockRankIndexLinks, mockLog } = vi.hoisted(() => ({
   mockFetchViaJina: vi.fn<(url: string) => Promise<string | null>>(),
   mockFetchAsMarkdownRace: vi.fn<(url: string) => Promise<string | null>>(),
   mockIsIndexContent: vi.fn<(content: string) => boolean>(),
   mockRankIndexLinks: vi.fn<(content: string, topic: string) => string[]>(),
+  mockLog: vi.fn(),
 }));
 
 vi.mock("./fetcher.js", () => ({
@@ -12,6 +13,10 @@ vi.mock("./fetcher.js", () => ({
   fetchAsMarkdownRace: mockFetchAsMarkdownRace,
   isIndexContent: mockIsIndexContent,
   rankIndexLinks: mockRankIndexLinks,
+}));
+
+vi.mock("../utils/logger.js", () => ({
+  log: mockLog,
 }));
 
 import {
@@ -22,9 +27,11 @@ import {
   deepFetchForTopic,
 } from "./deep-fetch.js";
 import type { FetchResult } from "../types.js";
+import { DEEP_FETCH_TIMEOUT_MS } from "../constants.js";
 
 beforeEach(() => {
   vi.restoreAllMocks();
+  mockLog.mockReset();
   mockFetchViaJina.mockResolvedValue(null);
   mockFetchAsMarkdownRace.mockResolvedValue(null);
   mockIsIndexContent.mockReturnValue(false);
@@ -408,5 +415,49 @@ describe("deepFetchForTopic", () => {
     );
     expect(result.sourceType).toBe("deep-fetch");
     expect(result.content).toBe(deepContent);
+  });
+
+  it("fires at most 6 concurrent topicUrl fetches (PERF-006)", async () => {
+    // All fetches return null so no direct hit succeeds.
+    // After the 6-URL direct-hit phase, the index path is skipped (not index
+    // content), the internal-links path is skipped (no links in content), and
+    // fetchSitemapUrls (not mocked) throws, which is caught and returns the
+    // original result.  mockFetchAsMarkdownRace must therefore be called at
+    // most 6 times.
+    mockFetchAsMarkdownRace.mockClear();
+    mockFetchAsMarkdownRace.mockResolvedValue(null);
+    mockIsIndexContent.mockReturnValue(false);
+
+    await deepFetchForTopic(
+      baseResult,
+      "caching",
+      "https://docs.example.com",
+    );
+
+    expect(mockFetchAsMarkdownRace.mock.calls.length).toBeLessThanOrEqual(6);
+  });
+
+  it("logs level=warn msg=deep-fetch-timeout when pipeline times out (OBS-006)", async () => {
+    // Make every fetch hang so the pipeline never resolves.
+    mockFetchAsMarkdownRace.mockImplementation(() => new Promise(() => {}));
+    mockIsIndexContent.mockReturnValue(false);
+
+    vi.useFakeTimers();
+    try {
+      const promise = deepFetchForTopic(
+        baseResult,
+        "caching",
+        "https://docs.example.com",
+      );
+      // Advance past the deep-fetch timeout so the setTimeout rejection fires.
+      await vi.advanceTimersByTimeAsync(DEEP_FETCH_TIMEOUT_MS + 1);
+      await promise;
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(mockLog).toHaveBeenCalledWith(
+      expect.objectContaining({ level: "warn", msg: "deep-fetch-timeout" }),
+    );
   });
 });

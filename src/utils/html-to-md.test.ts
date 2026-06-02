@@ -133,6 +133,15 @@ describe("convertHtmlToMarkdown", () => {
     expect(result).toContain("/api/users");
   });
 
+  // PERF-004 — custom elements with hyphenated closing tags must be stripped when
+  // their class/id/role attributes match noise patterns.
+  it("strips custom elements with noisy class matching hyphenated closing tag", () => {
+    const html = `<html><body><my-sidebar class="sidebar">sidebar noise content that should not appear</my-sidebar><main><h1>Real Content</h1><p>This is the main documentation content with enough text to be extracted by the converter. It contains important information about the library and its usage patterns.</p></main></body></html>`;
+    const result = convertHtmlToMarkdown(html);
+    expect(result).not.toContain("sidebar noise content");
+    expect(result).toContain("Real Content");
+  });
+
   // Bug C-4 — when no <main>/<article>/content-div selector matches,
   // extractMainContent() previously fell through to return the entire HTML.
   // The DOCTYPE + <head> survived, polluting LLM output.

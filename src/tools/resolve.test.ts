@@ -141,6 +141,28 @@ describe("gt_resolve_library handler", () => {
       expect(fetchNpmPackage).not.toHaveBeenCalled();
       expect(fetchPypiPackage).not.toHaveBeenCalled();
     });
+
+    // CORR-002: exact alias path must propagate llmsFullTxtUrl from registry entry
+    it("carries llmsFullTxtUrl from registry entry on exact alias hit", async () => {
+      const svelteEntry = {
+        ...registryEntry,
+        id: "sveltejs/svelte",
+        name: "Svelte",
+        llmsFullTxtUrl: "https://svelte.dev/llms-full.txt",
+      };
+      vi.mocked(lookupByAlias).mockReturnValue(svelteEntry);
+      const result = await handler({ libraryName: "svelte" });
+      const matches = result.structuredContent!.matches as Array<{ llmsFullTxtUrl?: string }>;
+      expect(matches[0]!.llmsFullTxtUrl).toBe("https://svelte.dev/llms-full.txt");
+    });
+
+    it("does not set llmsFullTxtUrl when registry entry has none (exact hit)", async () => {
+      // registryEntry has no llmsFullTxtUrl
+      vi.mocked(lookupByAlias).mockReturnValue(registryEntry);
+      const result = await handler({ libraryName: "react" });
+      const matches = result.structuredContent!.matches as Array<{ llmsFullTxtUrl?: string }>;
+      expect(matches[0]!.llmsFullTxtUrl).toBeUndefined();
+    });
   });
 
   describe("fuzzy search fallback", () => {
@@ -166,6 +188,55 @@ describe("gt_resolve_library handler", () => {
       vi.mocked(fuzzySearch).mockReturnValue([registryEntry, registryEntry]);
       const result = await handler({ libraryName: "react" });
       expect(result.structuredContent!.matches).toHaveLength(1);
+    });
+
+    // CORR-002: fuzzy path must propagate llmsFullTxtUrl from registry entry
+    it("carries llmsFullTxtUrl from registry entry on fuzzy hit", async () => {
+      vi.mocked(lookupByAlias).mockReturnValue(null);
+      const svelteEntry = {
+        ...registryEntry,
+        id: "sveltejs/svelte",
+        name: "Svelte",
+        llmsFullTxtUrl: "https://svelte.dev/llms-full.txt",
+      };
+      vi.mocked(fuzzySearch).mockReturnValue([svelteEntry]);
+      const result = await handler({ libraryName: "svelt" });
+      const matches = result.structuredContent!.matches as Array<{ llmsFullTxtUrl?: string }>;
+      expect(matches[0]!.llmsFullTxtUrl).toBe("https://svelte.dev/llms-full.txt");
+    });
+
+    it("does not set llmsFullTxtUrl when fuzzy entry has none", async () => {
+      vi.mocked(lookupByAlias).mockReturnValue(null);
+      // registryEntry has no llmsFullTxtUrl
+      vi.mocked(fuzzySearch).mockReturnValue([registryEntry]);
+      const result = await handler({ libraryName: "reac" });
+      const matches = result.structuredContent!.matches as Array<{ llmsFullTxtUrl?: string }>;
+      expect(matches[0]!.llmsFullTxtUrl).toBeUndefined();
+    });
+
+    // CORR-003: 3+ fuzzy registry results must suppress npm/pypi fallback
+    it("does not call fetchNpmPackage when fuzzy returns 3 or more registry matches", async () => {
+      vi.mocked(lookupByAlias).mockReturnValue(null);
+      const entries = [
+        { ...registryEntry, id: "lib/a", name: "LibA" },
+        { ...registryEntry, id: "lib/b", name: "LibB" },
+        { ...registryEntry, id: "lib/c", name: "LibC" },
+      ];
+      vi.mocked(fuzzySearch).mockReturnValue(entries);
+      await handler({ libraryName: "lib" });
+      expect(fetchNpmPackage).not.toHaveBeenCalled();
+    });
+
+    it("does not call fetchPypiPackage when fuzzy returns 3 or more registry matches", async () => {
+      vi.mocked(lookupByAlias).mockReturnValue(null);
+      const entries = [
+        { ...registryEntry, id: "lib/a", name: "LibA" },
+        { ...registryEntry, id: "lib/b", name: "LibB" },
+        { ...registryEntry, id: "lib/c", name: "LibC" },
+      ];
+      vi.mocked(fuzzySearch).mockReturnValue(entries);
+      await handler({ libraryName: "lib" });
+      expect(fetchPypiPackage).not.toHaveBeenCalled();
     });
   });
 
@@ -352,6 +423,67 @@ describe("gt_resolve_library handler", () => {
       const result = await handler({ libraryName: "lib", query: "building" });
       const matches = result.structuredContent!.matches as Array<{ name: string }>;
       expect(matches[0]!.name).toBe("HighLib");
+    });
+
+    // CORR-005: multi-word query where tokens appear separately in description
+    it("boosts score by 5 when multi-word query tokens appear separately in description", async () => {
+      vi.mocked(lookupByAlias).mockReturnValue(null);
+      const asyncEntry = {
+        ...registryEntry,
+        id: "tokio/tokio",
+        name: "tokio",
+        description: "an async HTTP runtime for Node applications",
+      };
+      vi.mocked(fuzzySearch).mockReturnValue([asyncEntry]);
+      // query = "async runtime" — tokens "async" + "runtime" appear separately in description
+      const result = await handler({ libraryName: "tokio", query: "async runtime" });
+      const matches = result.structuredContent!.matches as Array<{ score: number }>;
+      expect(matches[0]!.score).toBe(85); // 80 + 5
+    });
+
+    it("does not boost score when no query token matches description", async () => {
+      vi.mocked(lookupByAlias).mockReturnValue(null);
+      vi.mocked(fuzzySearch).mockReturnValue([registryEntry]);
+      // registryEntry description: "A JavaScript library for building user interfaces"
+      // query tokens ("zzz", "xyz") do not appear in that description
+      const result = await handler({ libraryName: "react", query: "zzz xyz" });
+      const matches = result.structuredContent!.matches as Array<{ score: number }>;
+      expect(matches[0]!.score).toBe(80); // no boost
+    });
+  });
+
+  describe("CORR-004: crates/go dedup guard", () => {
+    it("does not push crates result when its id already exists in matches", async () => {
+      // Setup: npm returns a result with id "crates:serde" — same id crates would return.
+      // The crates path only fires when matches.length === 0 after npm/pypi, so we need
+      // a scenario where fuzzy gives 1 low-score hit (score 80, length < 3) to pass the
+      // external-fallback guard, then npm+pypi both null, so crates fires and tries to
+      // push a match with the same id as the fuzzy entry.
+      vi.mocked(lookupByAlias).mockReturnValue(null);
+      const fuzzyEntry = { ...registryEntry, id: "crates:serde", name: "serde" };
+      vi.mocked(fuzzySearch).mockReturnValue([fuzzyEntry]);
+      vi.mocked(fetchNpmPackage).mockResolvedValue(null);
+      vi.mocked(fetchPypiPackage).mockResolvedValue(null);
+      // fetchWithTimeout: crates.io returns a result with same id "crates:serde"
+      vi.mocked(fetchWithTimeout).mockImplementation(async (url: string) => {
+        if (url.startsWith("https://crates.io/api/v1/crates/")) {
+          return {
+            ok: true,
+            json: async () => ({
+              crate: {
+                name: "serde",
+                description: "A serialization framework for Rust",
+              },
+            }),
+          } as unknown as Response;
+        }
+        return { ok: false } as Response;
+      });
+      const result = await handler({ libraryName: "serde" });
+      const matches = result.structuredContent!.matches as Array<{ id: string }>;
+      // No duplicate: only one entry with id "crates:serde"
+      const ids = matches.map((m) => m.id);
+      expect(ids.filter((id) => id === "crates:serde")).toHaveLength(1);
     });
   });
 
