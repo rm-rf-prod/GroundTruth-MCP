@@ -21,6 +21,12 @@ describe("LIBRARY_REGISTRY", () => {
     }
   });
 
+  it("every entry has a non-empty language array", () => {
+    for (const entry of LIBRARY_REGISTRY) {
+      expect(entry.language.length, `${entry.id} empty language`).toBeGreaterThan(0);
+    }
+  });
+
   it("all docsUrls start with https://", () => {
     for (const entry of LIBRARY_REGISTRY) {
       expect(entry.docsUrl).toMatch(/^https:\/\//);
