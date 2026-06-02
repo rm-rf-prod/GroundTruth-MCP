@@ -157,6 +157,7 @@ export async function resolveFromPypi(packageName: string): Promise<LibraryMatch
     description: info.summary ?? "",
     docsUrl: homepage,
     llmsTxtUrl: llmsProbe.llmsTxtUrl,
+    ...(llmsProbe.llmsFullTxtUrl !== undefined && { llmsFullTxtUrl: llmsProbe.llmsFullTxtUrl }),
     githubUrl:
       info.project_urls?.["Source"] ??
       info.project_urls?.["Repository"] ??

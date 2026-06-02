@@ -79,7 +79,9 @@ function filterReleasesByVersion(raw: string, fromVersion?: string, toVersion?: 
   const fromMajor = parseMajor(fromVersion);
   const toMajor = parseMajor(toVersion);
   if (fromMajor === undefined && toMajor === undefined) return raw;
-  const low = fromMajor ?? toMajor ?? -Infinity;
+  // Open the lower bound when only toVersion is supplied — otherwise low===high
+  // and only the single exact-major release survives the band filter.
+  const low = fromMajor ?? -Infinity;
   const high = toMajor ?? Infinity;
   const parts = raw.split(/\n(?=###\s)/);
   const header = parts.length > 0 && !parts[0]!.startsWith("###") ? parts.shift()! : "";
@@ -238,7 +240,7 @@ Use this when the user asks HOW to upgrade their code from one version to anothe
 
       const safe = sanitizeContent(banded);
       const { text, truncated } = extractRelevantContent(safe, topic, tokens);
-      const targetVersions = [fromVersion, toVersion].filter(Boolean) as string[];
+      const targetVersions = [fromVersion, toVersion].filter((v): v is string => typeof v === "string" && v.length > 0);
       const { score: qualityScore, hints: qualityHints } = computeQualityScore(
         text,
         topic,

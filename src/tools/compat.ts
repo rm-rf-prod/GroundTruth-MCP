@@ -52,7 +52,7 @@ Use this when the question is specifically about which browsers or runtimes supp
       }
 
       const envFilter = environments?.map((e) => e.toLowerCase()).join(", ") ?? "";
-      const cacheKey = `compat:${feature}:${envFilter}`;
+      const cacheKey = `compat:${feature}:${envFilter}:${tokens}`;
       const cached = docCache.get(cacheKey);
       if (typeof cached === "string") {
         return { content: [{ type: "text", text: cached }] };
