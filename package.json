@@ -28,9 +28,9 @@
     "lint": "eslint src",
     "version": "node scripts/update-version.mjs && node scripts/update-changelog.mjs && npm run update-stats && git add src/constants.ts CHANGELOG.md README.md server.json package.json",
     "postversion": "git push && git push origin \"v$(node -p 'require(\"./package.json\").version')\" && node scripts/create-release.mjs",
-    "release": "npm version minor && npm publish --access public && mcp-publisher publish",
-    "release:patch": "npm version patch && npm publish --access public && mcp-publisher publish",
-    "release:major": "npm version major && npm publish --access public && mcp-publisher publish"
+    "release": "npm run typecheck && npm run test && npm version minor && npm publish --access public && mcp-publisher publish",
+    "release:patch": "npm run typecheck && npm run test && npm version patch && npm publish --access public && mcp-publisher publish",
+    "release:major": "npm run typecheck && npm run test && npm version major && npm publish --access public && mcp-publisher publish"
   },
   "engines": {
     "node": ">=22"
@@ -43,8 +43,6 @@
     "documentation-mcp",
     "code-audit",
     "code-audit-mcp",
-    "claude",
-    "claude-code",
     "cursor",
     "vscode",
     "best-practices",
