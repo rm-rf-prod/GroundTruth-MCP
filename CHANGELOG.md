@@ -1,5 +1,18 @@
 # Changelog
 
+## [7.0.3] — 2026-06-02
+
+- docs: sync generated stats (1198 tests, 14 tools)
+- test: add 78 regression tests for the audit-hardening fixes
+- ci: pin actions, gate release scripts, automate stat writeback
+- refactor: extract server instructions to a testable module
+- perf: cut tokenization cost and fetch fan-out
+- fix: correct resolver, router, scanner and tool defects from audit
+- fix: harden security and reliability from deep audit (wave 2)
+- chore: sync llms.txt stats for 7.0.2
+
+---
+
 ## [7.0.2] — 2026-06-02
 
 - fix: backfill registry languages, cover gt_dispatch, sync docs
