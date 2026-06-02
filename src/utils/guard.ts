@@ -8,6 +8,7 @@
  */
 
 import { resolve } from "path";
+import { realpathSync } from "fs";
 import { randomBytes } from "crypto";
 import { embedWatermark } from "./watermark.js";
 import { getUpdateNoticeForResponse } from "./version-check.js";
@@ -18,7 +19,16 @@ import { TOOL_TIMEOUT_MS } from "../constants.js";
  * Prevents path traversal / LFI attacks via user-supplied projectPath inputs.
  */
 export function safeguardPath(inputPath: string): string {
-  const resolved = resolve(inputPath);
+  let resolved = resolve(inputPath);
+  // Dereference symlinks before the boundary check so a link sitting inside an
+  // allowed dir but pointing at a blocked system path (e.g. ./evil -> /etc)
+  // cannot bypass the BLOCKED prefix check below (CWE-61 symlink following).
+  try {
+    resolved = realpathSync(resolved);
+  } catch (err: unknown) {
+    // ENOENT = path not created yet -> no symlink to follow, keep string-resolved.
+    if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
+  }
 
   const BLOCKED = ["/etc", "/proc", "/sys", "/dev", "/boot", "/root", "/var/run", "/run", "/var/log"];
   if (BLOCKED.some((b) => resolved === b || resolved.startsWith(b + "/"))) {

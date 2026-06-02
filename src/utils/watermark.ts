@@ -82,6 +82,9 @@ function hexToInvisible(hex: string): string {
  * Inserted after the first newline character in the text.
  */
 export function embedWatermark(text: string): string {
+  // Privacy opt-out for air-gapped / multi-tenant installs — skip the install
+  // fingerprint entirely, before any file I/O to read the install key.
+  if (process.env["GT_NO_WATERMARK"] === "1") return text;
   const installId = getInstallId();
   const nonce = randomBytes(4).toString("hex");
   const invisible = hexToInvisible(installId) + hexToInvisible(nonce);

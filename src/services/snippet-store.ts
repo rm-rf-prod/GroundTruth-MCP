@@ -26,7 +26,21 @@ export class SnippetStore {
     const raw = await this.disk.get(key);
     if (!raw) return null;
     try {
-      return JSON.parse(raw) as SnippetIndex;
+      const parsed: unknown = JSON.parse(raw);
+      // An old-schema or truncated cache file can parse to a non-conforming
+      // object; reject it as a cache-miss so query()/rankSnippets never receive
+      // a missing snippets array (mirrors the TS-004 guard in cache.ts).
+      if (
+        typeof parsed !== "object" ||
+        parsed === null ||
+        typeof (parsed as Record<string, unknown>)["library"] !== "string" ||
+        typeof (parsed as Record<string, unknown>)["sourceUrl"] !== "string" ||
+        typeof (parsed as Record<string, unknown>)["builtAt"] !== "string" ||
+        !Array.isArray((parsed as Record<string, unknown>)["snippets"])
+      ) {
+        return null;
+      }
+      return parsed as SnippetIndex;
     } catch {
       return null;
     }

@@ -179,6 +179,14 @@ export class DiskCache {
         try {
           const content = await readFile(filePath, "utf-8");
           const entry = JSON.parse(content) as DiskCacheFile;
+          // Corrupt-but-parseable file (e.g. {}) has no numeric expiresAt — the
+          // stale check below would compare against NaN and never prune it. Delete
+          // it, mirroring the shape guards already in get()/has().
+          if (typeof entry !== "object" || entry === null || typeof entry.expiresAt !== "number") {
+            unlink(filePath).catch(() => void 0);
+            removed++;
+            continue;
+          }
           // Match the serve-stale window used by get()/has(): only prune once the
           // SWR stale window has also elapsed, else we discard still-serveable data.
           if (Date.now() > entry.expiresAt + SWR_STALE_TTL_MS) {
@@ -191,11 +199,14 @@ export class DiskCache {
         }
       }
 
-      const remaining = jsonFiles.length - removed;
-      if (remaining > maxEntries) {
+      // Re-read the directory so the eviction guard reflects what is actually on
+      // disk — `removed` can be inflated by fail-silent unlinks above, deflating
+      // the count and skipping LRU eviction while the cache is still over cap.
+      const currentFiles = await readdir(this.dir);
+      const remainingJson = currentFiles.filter((f) => f.endsWith(".json"));
+      if (remainingJson.length > maxEntries) {
         const entries: Array<{ path: string; mtime: number }> = [];
-        const currentFiles = await readdir(this.dir);
-        for (const file of currentFiles.filter((f) => f.endsWith(".json"))) {
+        for (const file of remainingJson) {
           const filePath = join(this.dir, file);
           try {
             const s = await stat(filePath);
