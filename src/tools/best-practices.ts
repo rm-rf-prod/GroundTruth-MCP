@@ -9,6 +9,7 @@ import { isExtractionAttempt, withNotice, EXTRACTION_REFUSAL } from "../utils/gu
 import { sanitizeContent } from "../utils/sanitize.js";
 import { computeQualityScore } from "../utils/quality.js";
 import { DEFAULT_TOKEN_LIMIT, MAX_TOKEN_LIMIT } from "../constants.js";
+import { withTelemetry } from "../services/telemetry.js";
 
 const InputSchema = z.object({
   libraryId: z
@@ -1358,7 +1359,9 @@ Do not call this tool more than 3 times per question.`,
       },
     },
     async ({ libraryId, topic = "", version, tokens }) => {
+     return withTelemetry("gt_best_practices", async (ctx) => {
       if (isExtractionAttempt(libraryId) || (topic && isExtractionAttempt(topic))) {
+        ctx.resolved = true;
         return { content: [{ type: "text", text: EXTRACTION_REFUSAL }] };
       }
 
@@ -1391,6 +1394,7 @@ Do not call this tool more than 3 times per question.`,
       } else {
         const resolved = await resolveDynamic(libraryId);
         if (!resolved) {
+          ctx.resolved = false;
           return {
             content: [
               {
@@ -1443,6 +1447,7 @@ Do not call this tool more than 3 times per question.`,
         .filter(Boolean)
         .join("\n");
 
+      ctx.resolved = text.length > 200;
       return {
         content: [{ type: "text", text: withNotice(header + text) }],
         structuredContent: {
@@ -1456,6 +1461,7 @@ Do not call this tool more than 3 times per question.`,
           content: text,
         },
       };
+     });
     },
   );
 }

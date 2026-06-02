@@ -1539,8 +1539,8 @@ async function searchSearXNG(query: string): Promise<string[]> {
       const data = await res.json() as { results?: Array<{ url?: string; title?: string }> };
       if (!Array.isArray(data?.results) || data.results.length === 0) continue;
       return data.results
-        .filter((r) => r.url && r.url.startsWith("http"))
-        .map((r) => r.url!)
+        .filter((r): r is { url: string; title?: string } => typeof r.url === "string" && r.url.startsWith("http"))
+        .map((r) => r.url)
         .slice(0, 8);
     } catch {
       continue;

@@ -112,7 +112,10 @@ function detectLibrary(text: string): { id: string; name: string; alias: string 
     .filter((t) => t.length >= 3 && !["docs", "the", "for", "and", "from", "with"].includes(t))
     .sort((a, b) => b.length - a.length)[0];
   if (longest) {
-    const matches = fuzzySearch(longest, 1);
+    // minScore 20 = at least an alias-contains match; rejects tag-only (10) and
+    // npm-package-contains-only (15) hits that otherwise misroute generic queries
+    // ("how to build a rest api" -> a build-tool library).
+    const matches = fuzzySearch(longest, 1, 20);
     if (matches[0]) return { id: matches[0].id, name: matches[0].name, alias: longest };
   }
 
@@ -303,9 +306,35 @@ export function detectIntent({ query, projectPath }: IntentInput): IntentMatch {
           confidence: 0.8,
         };
       }
+      case "gt_batch_resolve": {
+        // text still contains verb tokens ("batch","lookup") but lookupByAlias
+        // filters them out since they are not registry aliases — batchTokens
+        // ends up holding only genuine library names.
+        const batchTokens = text
+          .split(/[\s,]+/)
+          .map((t) => t.replace(/[^\w@/.-]/g, ""))
+          .filter((t) => t.length >= 2 && t.length <= 60 && !!lookupByAlias(t));
+        if (batchTokens.length > 0) {
+          args["libraryNames"] = batchTokens;
+          return {
+            tool: "gt_batch_resolve",
+            args,
+            reason: `detected batch-resolve verb ("${top.word}") with ${batchTokens.length} library name(s)`,
+            confidence: 0.82,
+          };
+        }
+        // No parseable library names — gt_batch_resolve requires a non-empty
+        // libraryNames array (Zod .min(1)), so fall back to freeform search
+        // instead of emitting args that would fail validation.
+        return {
+          tool: "gt_search",
+          args: { query: raw },
+          reason: `batch-resolve verb detected but no library names parseable — fallback to search`,
+          confidence: 0.5,
+        };
+      }
       case "gt_search":
       case "gt_snippets":
-      case "gt_batch_resolve":
       default: {
         if (top.tool === "gt_search") args["query"] = topic ?? text;
         if (top.tool === "gt_snippets" && library) args["libraryId"] = library.id;

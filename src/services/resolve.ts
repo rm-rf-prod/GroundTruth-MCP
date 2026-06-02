@@ -3,6 +3,7 @@ import { CACHE_TTLS } from "../constants.js";
 import { resolveCache, llmsProbeCache } from "./cache.js";
 import type { LibraryMatch, NpmPackageInfo, PypiPackageInfo } from "../types.js";
 import { assertPublicUrl } from "../utils/guard.js";
+import { log } from "../utils/logger.js";
 
 export interface ResolvedLibrary {
   docsUrl: string;
@@ -105,6 +106,9 @@ export async function resolveFromNpm(packageName: string): Promise<LibraryMatch 
 
   const data = await fetchNpmPackage(packageName);
   if (!data || typeof data !== "object") return null;
+  // Verify the response actually carries a string name before trusting the cast
+  // (fetchNpmPackage returns unknown; a malformed API body must not slip through).
+  if (!("name" in data) || typeof (data as Record<string, unknown>).name !== "string") return null;
 
   const pkg = data as NpmPackageInfo;
   if (!pkg.name) return null;
@@ -137,6 +141,8 @@ export async function resolveFromPypi(packageName: string): Promise<LibraryMatch
 
   const data = await fetchPypiPackage(packageName);
   if (!data || typeof data !== "object") return null;
+  // Verify the response carries an info object before trusting the cast.
+  if (!("info" in data) || typeof (data as Record<string, unknown>).info !== "object" || (data as Record<string, unknown>).info === null) return null;
 
   const pkg = data as PypiPackageInfo;
   const info = pkg.info;
@@ -204,7 +210,8 @@ export async function resolveFromCrates(packageName: string): Promise<LibraryMat
 
     resolveCache.set(cacheKey, result, CACHE_TTLS.RESOLVE);
     return result;
-  } catch {
+  } catch (err) {
+    log({ level: "debug", msg: "resolve.external_lookup_failed", cacheKey, error: err instanceof Error ? err.message : String(err) });
     return null;
   }
 }
@@ -289,7 +296,8 @@ export async function searchNpm(query: string): Promise<LibraryMatch | null> {
 
     resolveCache.set(cacheKey, result, CACHE_TTLS.RESOLVE);
     return result;
-  } catch {
+  } catch (err) {
+    log({ level: "debug", msg: "resolve.external_lookup_failed", cacheKey, error: err instanceof Error ? err.message : String(err) });
     return null;
   }
 }
@@ -331,7 +339,8 @@ export async function searchGitHub(query: string): Promise<LibraryMatch | null> 
 
     resolveCache.set(cacheKey, result, CACHE_TTLS.RESOLVE);
     return result;
-  } catch {
+  } catch (err) {
+    log({ level: "debug", msg: "resolve.external_lookup_failed", cacheKey, error: err instanceof Error ? err.message : String(err) });
     return null;
   }
 }
