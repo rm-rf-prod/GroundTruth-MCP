@@ -109,6 +109,15 @@ describe("embedWatermark", () => {
     expect(countInvisible(result)).toBe(64);
     expect(stripInvisible(result)).toBe("\n");
   });
+
+  it("returns text unchanged with no invisible chars when GT_NO_WATERMARK=1", () => {
+    vi.stubEnv("GT_NO_WATERMARK", "1");
+    const input = "hello\nworld";
+    const result = embedWatermark(input);
+    expect(result).toBe(input);
+    expect(countInvisible(result)).toBe(0);
+    vi.unstubAllEnvs();
+  });
 });
 
 // ── detectWatermark ────────────────────────────────────────────────────────────

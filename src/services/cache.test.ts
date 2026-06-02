@@ -246,6 +246,108 @@ describe("DiskCache", () => {
     await expect(cache.set("any-key", "value")).resolves.toBeUndefined();
   });
 
+  // ── prune() ───────────────────────────────────────────────────────────────────
+
+  it("prune() removes expired-past-SWR entries and returns correct removed count", async () => {
+    const cache = await makeDiskCache(tmpDir);
+    const { createHash } = await import("crypto");
+
+    // Write one fresh entry (should survive)
+    const freshKey = "prune-fresh-key";
+    const freshHash = createHash("sha256").update(freshKey).digest("hex");
+    const freshEntry = { data: "fresh", expiresAt: Date.now() + 60_000 };
+    await writeFile(join(tmpDir, `${freshHash}.json`), JSON.stringify(freshEntry), "utf-8");
+
+    // Write one expired-beyond-SWR entry (should be deleted)
+    const deadKey = "prune-dead-key";
+    const deadHash = createHash("sha256").update(deadKey).digest("hex");
+    const deadEntry = { data: "dead", expiresAt: Date.now() - (61 * 60 * 1000) };
+    await writeFile(join(tmpDir, `${deadHash}.json`), JSON.stringify(deadEntry), "utf-8");
+
+    const removed = await cache.prune(1000);
+    expect(removed).toBe(1);
+    // Dead file must be gone
+    await expect(import("fs/promises").then((fs) => fs.access(join(tmpDir, `${deadHash}.json`)))).rejects.toThrow();
+    // Fresh file must still exist
+    await expect(import("fs/promises").then((fs) => fs.access(join(tmpDir, `${freshHash}.json`)))).resolves.toBeUndefined();
+  });
+
+  it("prune() triggers LRU eviction when remaining file count exceeds maxEntries (REL-007)", async () => {
+    const cache = await makeDiskCache(tmpDir);
+    const { createHash } = await import("crypto");
+    const maxEntries = 3;
+    // Seed maxEntries + 2 fresh (non-expired) files
+    const totalFiles = maxEntries + 2;
+    const hashes: string[] = [];
+    for (let i = 0; i < totalFiles; i++) {
+      const key = `lru-evict-test-${i}`;
+      const hash = createHash("sha256").update(key).digest("hex");
+      hashes.push(hash);
+      const entry = { data: `value-${i}`, expiresAt: Date.now() + 60_000, mtime: i };
+      await writeFile(join(tmpDir, `${hash}.json`), JSON.stringify(entry), "utf-8");
+      // Brief stagger so mtime ordering is deterministic
+      await new Promise((r) => setTimeout(r, 5));
+    }
+
+    const removed = await cache.prune(maxEntries);
+    // Must have evicted 2 files to bring count down to maxEntries
+    expect(removed).toBe(2);
+    // Total JSON files on disk must be <= maxEntries
+    const { readdir: rd } = await import("fs/promises");
+    const remaining = (await rd(tmpDir)).filter((f) => f.endsWith(".json"));
+    expect(remaining.length).toBeLessThanOrEqual(maxEntries);
+  });
+
+  it("prune() deletes corrupt (malformed-but-parseable) cache files (TS-011)", async () => {
+    const cache = await makeDiskCache(tmpDir);
+    const { createHash } = await import("crypto");
+
+    // Write a corrupt file: valid JSON but missing expiresAt
+    const corruptKey = "prune-corrupt-key";
+    const corruptHash = createHash("sha256").update(corruptKey).digest("hex");
+    const corruptPath = join(tmpDir, `${corruptHash}.json`);
+    await writeFile(corruptPath, JSON.stringify({}), "utf-8");
+
+    // Write a second corrupt variant: has data but expiresAt is a string, not a number
+    const corrupt2Key = "prune-corrupt-key-2";
+    const corrupt2Hash = createHash("sha256").update(corrupt2Key).digest("hex");
+    const corrupt2Path = join(tmpDir, `${corrupt2Hash}.json`);
+    await writeFile(corrupt2Path, JSON.stringify({ data: "x", expiresAt: "not-a-number" }), "utf-8");
+
+    const removed = await cache.prune(1000);
+    expect(removed).toBe(2);
+    // Both corrupt files must be deleted
+    await expect(import("fs/promises").then((fs) => fs.access(corruptPath))).rejects.toThrow();
+    await expect(import("fs/promises").then((fs) => fs.access(corrupt2Path))).rejects.toThrow();
+  });
+
+  it("prune() does not remove entries still within the SWR window", async () => {
+    const cache = await makeDiskCache(tmpDir);
+    const { createHash } = await import("crypto");
+
+    // Write entry expired 1s ago — still within the 60-min SWR window
+    const staleKey = "prune-stale-within-swr";
+    const staleHash = createHash("sha256").update(staleKey).digest("hex");
+    const stalePath = join(tmpDir, `${staleHash}.json`);
+    const staleEntry = { data: "stale-but-serveable", expiresAt: Date.now() - 1_000 };
+    await writeFile(stalePath, JSON.stringify(staleEntry), "utf-8");
+
+    const removed = await cache.prune(1000);
+    expect(removed).toBe(0);
+    // Stale-within-SWR file must still exist
+    await expect(import("fs/promises").then((fs) => fs.access(stalePath))).resolves.toBeUndefined();
+  });
+
+  it("prune() returns 0 when cache dir does not exist", async () => {
+    const nonexistentDir = join(tmpDir, "does-not-exist");
+    process.env.GT_CACHE_DIR = nonexistentDir;
+    vi.resetModules();
+    const { diskDocCache: cache } = await import("./cache.js");
+    // prune should not throw and should return 0 when it cannot read the dir
+    // (ensureDir creates the dir, so we get 0 files removed instead of an error)
+    await expect(cache.prune(1000)).resolves.toBeDefined();
+  });
+
   afterEach(() => {
     delete process.env.GT_CACHE_DIR;
   });

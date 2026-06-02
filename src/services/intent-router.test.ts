@@ -92,12 +92,38 @@ describe("intent-router", () => {
         "migrate next from 14 to 15",
         "compare zod vs valibot",
         "what is OWASP",
+        "batch lookup react next prisma",
+        "resolve multiple libraries",
       ];
       for (const q of samples) {
         const i = detectIntent({ query: q });
         expect(i.confidence).toBeGreaterThanOrEqual(0);
         expect(i.confidence).toBeLessThanOrEqual(1);
       }
+    });
+
+    // CORR-006: generic build-question must not misroute to a build-tool library
+    it("does not route 'how to build a rest api' to gt_best_practices for a build-tool library", () => {
+      const intent = detectIntent({ query: "how to build a rest api" });
+      expect(intent.tool).toBe("gt_search");
+    });
+
+    // CORR-007: batch with parseable library names routes to gt_batch_resolve
+    it("routes 'batch lookup react next prisma' to gt_batch_resolve with libraryNames", () => {
+      const intent = detectIntent({ query: "batch lookup react next prisma" });
+      expect(intent.tool).toBe("gt_batch_resolve");
+      const names = intent.args["libraryNames"];
+      expect(Array.isArray(names)).toBe(true);
+      const list = names as string[];
+      expect(list).toContain("react");
+      expect(list).toContain("next");
+      expect(list).toContain("prisma");
+    });
+
+    // CORR-007: batch with no resolvable library names falls back to gt_search
+    it("routes 'resolve multiple libraries' to gt_search when no library names are parseable", () => {
+      const intent = detectIntent({ query: "resolve multiple libraries" });
+      expect(intent.tool).toBe("gt_search");
     });
   });
 

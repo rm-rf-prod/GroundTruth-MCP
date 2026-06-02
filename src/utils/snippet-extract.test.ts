@@ -81,6 +81,31 @@ describe("extractSnippets", () => {
     const snippets = extractSnippets(doubled, "react", "url");
     expect(snippets.length).toBe(2);
   });
+
+  it("does not prematurely close a 3-backtick fence when a 4-backtick line with trailing content appears inside", () => {
+    // COR-010-snippet: CommonMark §4.5 — old code used startsWith(currentFence)
+    // which treated `````python` as a closer for a 3-backtick fence because
+    // "````python".startsWith("```") === true. The fix: closing requires the fence
+    // run to use ONLY the fence char (no trailing non-space content after the run).
+    // A line like ` ````python ` has "python" after the run → must NOT close.
+    const doc = `# Nested Fence Example
+
+Showing a nested fence opening tag as literal content:
+
+\`\`\`text
+This block documents fence syntax.
+\`\`\`\`python
+The above line is a 4-backtick opener — it must not close this block.
+The block closes below.
+\`\`\`
+`;
+    const snippets = extractSnippets(doc, "lib", "https://example.com");
+    expect(snippets.length).toBe(1);
+    const code = snippets[0]?.code ?? "";
+    // The 4-backtick+lang line must be captured as code content, not as a fence close.
+    expect(code).toContain("The above line is a 4-backtick opener");
+    expect(code).toContain("The block closes below.");
+  });
 });
 
 describe("rankSnippets", () => {

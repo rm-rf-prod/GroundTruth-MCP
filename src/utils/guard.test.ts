@@ -1,4 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import fs from "fs";
+import path from "path";
+import os from "os";
 import {
   isExtractionAttempt,
   withNotice,
@@ -52,6 +55,24 @@ describe("safeguardPath", () => {
 
   it("does not block /var/www (only /var/run is blocked)", () => {
     expect(() => safeguardPath("/var/www/html")).not.toThrow();
+  });
+
+  // SEC-007: symlink following (CWE-61)
+  it("blocks symlink pointing into /etc via an allowed directory", () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "gt-guard-test-"));
+    const symlinkPath = path.join(tmpDir, "evil");
+    fs.symlinkSync("/etc", symlinkPath);
+    try {
+      expect(() => safeguardPath(symlinkPath)).toThrow("Access to system path denied");
+    } finally {
+      fs.unlinkSync(symlinkPath);
+      fs.rmdirSync(tmpDir);
+    }
+  });
+
+  // SEC-007: ENOENT fallback — non-existent path must not throw
+  it("does not throw for a non-existent path (ENOENT fallback)", () => {
+    expect(() => safeguardPath("/home/user/nonexistent-project-xyz")).not.toThrow();
   });
 });
 

@@ -29,8 +29,8 @@ vi.mock("../utils/guard.js", () => ({
   assertPublicUrl: () => {},
 }));
 
-import { probeLlmsTxt } from "./resolve.js";
-import { fetchWithTimeout } from "./fetcher.js";
+import { probeLlmsTxt, resolveFromNpm, resolveFromPypi } from "./resolve.js";
+import { fetchWithTimeout, fetchNpmPackage, fetchPypiPackage } from "./fetcher.js";
 
 vi.mock("./fetcher.js", () => ({
   fetchWithTimeout: vi.fn(async () => ({ ok: false }) as Response),
@@ -41,14 +41,19 @@ vi.mock("./fetcher.js", () => ({
 }));
 
 const mockedFetch = vi.mocked(fetchWithTimeout);
+const mockedFetchNpm = vi.mocked(fetchNpmPackage);
+const mockedFetchPypi = vi.mocked(fetchPypiPackage);
 
 beforeEach(async () => {
   mockedFetch.mockReset();
   mockedFetch.mockResolvedValue({ ok: false } as Response);
+  mockedFetchNpm.mockReset();
+  mockedFetchPypi.mockReset();
   // Clear llmsProbeCache so each test starts from a clean slate — cache keys
   // are per-origin, so reusing example.com across tests otherwise hits cache.
-  const { llmsProbeCache } = await import("./cache.js");
+  const { llmsProbeCache, resolveCache } = await import("./cache.js");
   (llmsProbeCache as { clear: () => void }).clear();
+  (resolveCache as { clear: () => void }).clear();
 });
 
 describe("probeLlmsTxt — Bug C-3: URL fragment / query normalization", () => {
@@ -94,5 +99,62 @@ describe("probeLlmsTxt — Bug C-3: URL fragment / query normalization", () => {
     const result = await probeLlmsTxt("https://example.com/docs#section");
     expect(result.llmsTxtUrl).toBe("https://example.com/docs/llms.txt");
     expect(result.llmsTxtUrl).not.toContain("#section");
+  });
+});
+
+// TS-010: resolveFromNpm and resolveFromPypi return null on wrong-shape response
+describe("resolveFromNpm — TS-010: wrong-shape response returns null without throwing", () => {
+  it("returns null when fetchNpmPackage returns object with no name key", async () => {
+    mockedFetchNpm.mockResolvedValue({ wrongField: true } as unknown as null);
+    const result = await resolveFromNpm("no-name-pkg");
+    expect(result).toBeNull();
+  });
+
+  it("returns null when fetchNpmPackage returns object with name as non-string", async () => {
+    mockedFetchNpm.mockResolvedValue({ name: 42 } as unknown as null);
+    const result = await resolveFromNpm("numeric-name-pkg");
+    expect(result).toBeNull();
+  });
+
+  it("returns null when fetchNpmPackage returns null", async () => {
+    mockedFetchNpm.mockResolvedValue(null);
+    const result = await resolveFromNpm("null-pkg");
+    expect(result).toBeNull();
+  });
+
+  it("does not throw on wrong-shape response", async () => {
+    mockedFetchNpm.mockResolvedValue({ wrongField: true } as unknown as null);
+    await expect(resolveFromNpm("throw-pkg")).resolves.toBeNull();
+  });
+});
+
+describe("resolveFromPypi — TS-010: wrong-shape response returns null without throwing", () => {
+  it("returns null when fetchPypiPackage returns object with no info key", async () => {
+    mockedFetchPypi.mockResolvedValue({ wrongField: true } as unknown as null);
+    const result = await resolveFromPypi("no-info-pkg");
+    expect(result).toBeNull();
+  });
+
+  it("returns null when fetchPypiPackage returns object with info as non-object", async () => {
+    mockedFetchPypi.mockResolvedValue({ info: "string-not-object" } as unknown as null);
+    const result = await resolveFromPypi("bad-info-pkg");
+    expect(result).toBeNull();
+  });
+
+  it("returns null when fetchPypiPackage returns object with info as null", async () => {
+    mockedFetchPypi.mockResolvedValue({ info: null } as unknown as null);
+    const result = await resolveFromPypi("null-info-pkg");
+    expect(result).toBeNull();
+  });
+
+  it("returns null when fetchPypiPackage returns null", async () => {
+    mockedFetchPypi.mockResolvedValue(null);
+    const result = await resolveFromPypi("null-pkg");
+    expect(result).toBeNull();
+  });
+
+  it("does not throw on wrong-shape response", async () => {
+    mockedFetchPypi.mockResolvedValue({ wrongField: true } as unknown as null);
+    await expect(resolveFromPypi("throw-pkg")).resolves.toBeNull();
   });
 });

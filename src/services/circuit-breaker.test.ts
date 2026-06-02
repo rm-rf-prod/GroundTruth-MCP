@@ -98,6 +98,31 @@ describe("circuit breaker states", () => {
     }
     expect(getCircuitState("example.com")).toBe("closed");
   });
+
+  it("allows only one probe while half-open; subsequent callers are blocked", () => {
+    for (let i = 0; i < 3; i++) recordFailure("example.com");
+    vi.advanceTimersByTime(60_000);
+
+    expect(isCircuitOpen("example.com")).toBe(false); // probe caller
+    expect(getCircuitState("example.com")).toBe("half-open");
+    expect(isCircuitOpen("example.com")).toBe(true);  // blocked
+    expect(isCircuitOpen("example.com")).toBe(true);  // blocked
+
+    recordSuccess("example.com");
+    expect(getCircuitState("example.com")).toBe("closed");
+    expect(isCircuitOpen("example.com")).toBe(false);
+  });
+
+  it("resets probePending when failed probe re-opens circuit; next window allows new probe", () => {
+    for (let i = 0; i < 3; i++) recordFailure("example.com");
+    vi.advanceTimersByTime(60_000);
+    isCircuitOpen("example.com"); // trigger probe, sets probePending=true
+    recordFailure("example.com"); // probe fails → open, probePending=false
+    expect(getCircuitState("example.com")).toBe("open");
+    vi.advanceTimersByTime(60_000);
+    expect(isCircuitOpen("example.com")).toBe(false); // new probe allowed
+    expect(isCircuitOpen("example.com")).toBe(true);  // blocked again
+  });
 });
 
 describe("per-domain isolation", () => {

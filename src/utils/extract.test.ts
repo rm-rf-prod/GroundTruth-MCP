@@ -78,6 +78,25 @@ describe("extractRelevantContent", () => {
     expect(result.text).toContain("Implementation");
   });
 
+  it("awards BM25 code-block bonus when query token is in one of many code blocks (cap does not break bonus)", () => {
+    // Build a section with 20 code blocks; the query token appears in block #3
+    // (index 2), well within MAX_CODE_BLOCKS=10 cap. Bonus must still fire.
+    const matchingBlock = "```typescript\nconst result = greptag(key);\n```";
+    const plainBlock = "```typescript\nconst x = doSomethingElse();\n```";
+    // 2 plain blocks before the match, then match, then 17 more plain blocks = 20 total
+    const manyBlocks =
+      plainBlock + "\n" +
+      plainBlock + "\n" +
+      matchingBlock + "\n" +
+      Array(17).fill(plainBlock).join("\n");
+    const withCode = `# Implementation\n\nSee multiple code examples:\n${manyBlocks}\n`;
+    const filler = "# Filler\n\nGeneric content without the target term.\n".repeat(50);
+    const doc = withCode + filler;
+    const result = extractRelevantContent(doc, "greptag", 400);
+    // The Implementation section must rank first — proving bonus was awarded
+    expect(result.text).toContain("Implementation");
+  });
+
   it("includes at least one section even when it exceeds charLimit (forced-single-section path)", () => {
     // charLimit = floor(1 * 4) = 4 — smaller than any section.
     // The loop finds picked.length === 0 when first section > charLimit → forces inclusion.

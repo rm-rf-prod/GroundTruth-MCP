@@ -215,6 +215,65 @@ flask = "^2.3"
         },
       );
     });
+
+    it("reads Poetry [tool.poetry.dev-dependencies]", async () => {
+      await withTempDir(
+        {
+          "pyproject.toml": `
+[tool.poetry]
+name = "my-app"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+flask = "^2.3"
+
+[tool.poetry.dev-dependencies]
+pytest = "^7.0"
+black = "^23.0"
+`,
+        },
+        async (dir) => {
+          const result = await detectDependencies(dir);
+          const src = result.find((s) => s.file === "pyproject.toml");
+          expect(src).toBeDefined();
+          expect(src!.dependencies).toContain("pytest");
+          expect(src!.dependencies).toContain("black");
+          // python excluded, flask still present
+          expect(src!.dependencies).toContain("flask");
+          expect(src!.dependencies).not.toContain("python");
+        },
+      );
+    });
+
+    it("reads PEP 735 [dependency-groups]", async () => {
+      await withTempDir(
+        {
+          "pyproject.toml": `
+[project]
+name = "my-app"
+dependencies = ["httpx>=0.24"]
+
+[dependency-groups]
+dev = [
+  "pytest>=7.0",
+  "black>=23.0",
+]
+test = [
+  "coverage>=7.0",
+]
+`,
+        },
+        async (dir) => {
+          const result = await detectDependencies(dir);
+          const src = result.find((s) => s.file === "pyproject.toml");
+          expect(src).toBeDefined();
+          expect(src!.dependencies).toContain("pytest");
+          expect(src!.dependencies).toContain("black");
+          expect(src!.dependencies).toContain("coverage");
+          expect(src!.dependencies).toContain("httpx");
+        },
+      );
+    });
   });
 
   // ── Cargo.toml ───────────────────────────────────────────────────────────
@@ -307,6 +366,41 @@ require (
           const src = result.find((s) => s.file === "go.mod");
           // "errors" should be present, "//" comment should not be a dep
           expect(src!.dependencies).not.toContain("//");
+        },
+      );
+    });
+
+    it("reads single-line require directives alongside block form", async () => {
+      await withTempDir(
+        {
+          "go.mod": `
+module github.com/example/myapp
+
+go 1.21
+
+require (
+  github.com/gin-gonic/gin v1.9.1
+  github.com/go-gorm/gorm v1.25.0
+)
+
+require github.com/pkg/errors v0.9.1
+
+require golang.org/x/crypto v0.17.0
+`,
+        },
+        async (dir) => {
+          const result = await detectDependencies(dir);
+          const src = result.find((s) => s.file === "go.mod");
+          expect(src).toBeDefined();
+          // block-form deps
+          expect(src!.dependencies).toContain("gin");
+          expect(src!.dependencies).toContain("gorm");
+          // single-line form deps
+          expect(src!.dependencies).toContain("errors");
+          expect(src!.dependencies).toContain("crypto");
+          // deduplication: each name appears at most once
+          const ginCount = src!.dependencies.filter((d) => d === "gin").length;
+          expect(ginCount).toBe(1);
         },
       );
     });
