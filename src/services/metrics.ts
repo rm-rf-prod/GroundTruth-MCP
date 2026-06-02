@@ -77,8 +77,10 @@ export function formatPrometheus(): string {
 
   lines.push("# HELP gt_tool_errors_total Total errors per tool");
   lines.push("# TYPE gt_tool_errors_total counter");
-  for (const [tool, m] of Object.entries(summary)) {
-    lines.push(`gt_tool_errors_total{tool="${tool}"} ${Math.round(m.errorRate * (metricsStore.get(tool)?.invocations ?? 0))}`);
+  for (const tool of Object.keys(summary)) {
+    // Emit the raw integer error count — reconstructing it from the rounded
+    // errorRate introduced off-by-one drift at realistic invocation counts.
+    lines.push(`gt_tool_errors_total{tool="${tool}"} ${metricsStore.get(tool)?.errors ?? 0}`);
   }
 
   lines.push("# HELP gt_tool_latency_p50_ms Median latency per tool");
