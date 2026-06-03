@@ -1,5 +1,12 @@
 # Changelog
 
+## [7.0.4] — 2026-06-03
+
+- fix: eliminate documentation noise across all MCP tools
+- chore: sync llms.txt to 7.0.3 and auto-stage it on version bump
+
+---
+
 ## [7.0.3] — 2026-06-02
 
 - docs: sync generated stats (1198 tests, 14 tools)
