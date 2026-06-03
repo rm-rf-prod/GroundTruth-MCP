@@ -1,4 +1,5 @@
 import { INJECTION_PATTERNS } from "../constants.js";
+import { decodeHtmlEntities, decodeCloudflareEmails, stripCloudflareEmailMarkdown } from "./decode-entities.js";
 
 // Navigation/footer patterns from Jina Reader output — strip these to save 15-25% tokens
 const NAV_FOOTER_PATTERNS: RegExp[] = [
@@ -78,6 +79,26 @@ const NAV_FOOTER_PATTERNS: RegExp[] = [
 
   // Changelog-style dates without content
   /^#{2,4}\s*v?\d+\.\d+[\.\d]*\s*[-\u2014]\s*\d{4}-\d{2}-\d{2}\s*$/gm,
+
+  // Cloudflare cdn-cgi internal links (email-protection, etc.) \u2014 never legitimate
+  // documentation content. decodeCloudflareEmails() recovers real addresses first;
+  // this clears any remaining wrapper link (incl. the Jina "[[email protected]](...)" form).
+  /\[[^\]]*\]\(\s*(?:https?:\/\/[^)]*)?\/cdn-cgi\/l\/[^)]+\)/gi,
+
+  // Orphan HTML comment markers left after the balanced <!-- --> strip in
+  // INJECTION_PATTERNS \u2014 a line that is ONLY a closing/opening marker is noise.
+  /^[ \t]*-->[ \t]*$/gm,
+  /^[ \t]*<!--[^\n]*$/gm,
+
+  // Classic / versioned-docs navigation chrome (PostgreSQL, Read the Docs, devdocs):
+  // version switcher bars and "Prev Up Home Next" pager rows on their own line.
+  /^\[Current\][^\n]*(?:\/[^\n]*)+$/gm,
+  /^[ \t]*(?:Prev(?:ious)?|Next|Up|Home)(?:[ \t]+(?:Prev(?:ious)?|Next|Up|Home)){2,}[ \t]*$/gim,
+  /^[ \t]*v?\d+(?:\.\d+)*[ \t]*(?:\|[ \t]*v?\d+(?:\.\d+)*[ \t]*){2,}$/gm,
+
+  // Event/conference nav headings (heading line only \u2014 never eats following prose,
+  // so a legitimate "## Community" section with real content is untouched).
+  /^#{2,4}[ \t]*(?:Upcoming(?:[ \t]+\w+){0,3}[ \t]+Events?|Global[ \t]+Events?|Upcoming[ \t]+Conferences?|Webinars?)[ \t]*$/gim,
 ];
 
 /**
@@ -136,9 +157,21 @@ export function sanitizeContent(content: string): string {
     ? content.slice(0, MAX_SANITIZE_LENGTH)
     : content;
 
+  // Normalise line endings FIRST. Windows-authored doc sources (OWASP cheatsheets,
+  // webaim.org, some GitHub-raw files) arrive as CRLF; the carriage returns split
+  // the \n runs so neither the /\n{4,}/ collapse nor the line-anchored
+  // NAV_FOOTER_PATTERNS below would fire — leaving visible blank-line spam.
+  sanitized = sanitized.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+
   // First strip zero-width / RTL-override chars from the actual content too —
   // these have no legitimate use in technical docs and only enable bypass.
   sanitized = sanitized.replace(/[\u200B-\u200F\u202A-\u202E\u2060-\u2069\uFEFF\u00AD\u180B-\u180E\uFE00-\uFE0E]|[\u{E0000}-\u{E007F}]/gu, "");
+
+  // Cloudflare email-protection: recover the real address when a #hex payload
+  // survives (data-cfemail / href fragment), otherwise the placeholder links are
+  // cleared by the cdn-cgi NAV_FOOTER_PATTERN below.
+  sanitized = decodeCloudflareEmails(sanitized);
+  sanitized = stripCloudflareEmailMarkdown(sanitized);
 
   // Strip nav/footer boilerplate first (before injection scan to reduce noise)
   for (const pattern of NAV_FOOTER_PATTERNS) {
@@ -189,6 +222,17 @@ export function sanitizeContent(content: string): string {
   sanitized = sanitized.replace(/<\/?body\b[^>]*>/gi, "");
   // <meta>, <link>, <base> are self-closing structural tags
   sanitized = sanitized.replace(/<(?:meta|link|base)\b[^>]*\/?>/gi, "");
+
+  // Decode HTML entities LAST — after the surgical tag strips above. This order is
+  // mandatory: a doc that wrote `&lt;div&gt;` to SHOW a tag keeps `<div>` as faithful
+  // text (sanitize only strips script/style/structural tags, never generic ones),
+  // while any real `<script>`/`<head>` revealed by decoding was already removed.
+  // Jina Reader, llms.txt and GitHub-raw markdown bypass html-to-md, so this is the
+  // only place their `&para;`/`&rarr;`/`&copy;` entities get decoded.
+  sanitized = decodeHtmlEntities(sanitized);
+  // Numeric NBSP (&#160; / &#xA0;) decodes to U+00A0 — fold to a normal space so the
+  // whitespace collapse below behaves and downstream tokenisation isn't polluted.
+  sanitized = sanitized.replace(/\u00A0/g, " ");
 
   // Collapse excessive whitespace
   sanitized = sanitized.replace(/\n{4,}/g, "\n\n\n");

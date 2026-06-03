@@ -1098,7 +1098,7 @@ const TOPIC_URL_MAP: Array<{ patterns: string[]; urls: string[]; name: string }>
   // Database Topics
   {
     patterns: ["sql", "sql query", "sql optimization", "sql performance", "database query"],
-    urls: ["https://www.postgresql.org/docs/current/sql-select.html"],
+    urls: ["https://www.postgresql.org/docs/current/tutorial-sql.html"],
     name: "SQL",
   },
   {
@@ -1220,7 +1220,13 @@ export function findTopicUrls(query: string): Array<{ urls: string[]; name: stri
   }
 
   matches.sort((a, b) => b.score - a.score);
-  return matches.slice(0, 3);
+  // Specificity gate: when a multi-word / specific topic matched (score >= 2), drop
+  // single-word generic co-matches (score 1). This is what kept "OWASP SQL injection
+  // prevention" from also returning the generic PostgreSQL "sql" reference page.
+  // When the best match is itself only score 1 (e.g. the bare query "sql"), keep all.
+  const maxScore = matches[0]?.score ?? 0;
+  const gated = maxScore >= 2 ? matches.filter((m) => m.score >= 2) : matches;
+  return gated.slice(0, 3);
 }
 
 async function fetchTopicContent(url: string, query: string, tokens: number): Promise<string> {
@@ -1708,6 +1714,10 @@ Examples:
       // 2. Topic map — curated official docs URLs for non-library topics
       const topicMatches = findTopicUrls(query);
       for (const topic of topicMatches) {
+        // Cap the topic-map contribution and check BEFORE fetching: two high-quality
+        // sources beat three where the third is a weak co-match. Combined with the
+        // specificity gate in findTopicUrls this stops nav-only pages being fetched.
+        if (results.length >= 2) break;
         for (const url of topic.urls.slice(0, 2)) {
           const content = await fetchTopicContent(url, query, Math.floor(tokens / (topicMatches.length + 1)));
           if (content.length > 200) {
@@ -1715,7 +1725,6 @@ Examples:
             break;
           }
         }
-        if (results.length >= 3) break;
       }
 
       // 3. Try direct URL construction for common documentation sites
