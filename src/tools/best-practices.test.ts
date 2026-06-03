@@ -410,4 +410,32 @@ describe("gt_best_practices handler", () => {
       expect(result.content[0]!.text).toContain("truncated");
     });
   });
+
+  describe("topic-relevance gate (FIX-7)", () => {
+    it("defers known BP URLs when the topic matches none of them (tailwind v4 migration)", async () => {
+      // tailwindlabs/tailwindcss has known BP URLs: utility-first, reusing-styles,
+      // optimizing-for-production — none contain 'v4' or 'migration'. With every fetch
+      // succeeding, the OLD code returned utility-first; the gate must instead fall
+      // through to a topic-slug URL so the off-topic page is never served.
+      const entry = makeEntry({ id: "tailwindlabs/tailwindcss", docsUrl: "https://tailwindcss.com/docs", githubUrl: undefined });
+      vi.mocked(lookupById).mockReturnValue(entry);
+      vi.mocked(fetchAsMarkdownRace).mockResolvedValue(BP_CONTENT);
+      const result = await handler({ libraryId: "tailwindlabs/tailwindcss", topic: "v4 migration" });
+      const sourceUrl = String(result.structuredContent?.sourceUrl ?? "");
+      expect(sourceUrl).not.toContain("utility-first");
+      expect(sourceUrl).not.toContain("optimizing-for-production");
+      expect(sourceUrl).not.toContain("reusing-styles");
+      expect(sourceUrl).toContain("migration");
+    });
+
+    it("still returns the known BP URL immediately when the topic matches it (no regression)", async () => {
+      // 'optimizing-for-production' contains 'production' → score > 0 → not deferred.
+      const entry = makeEntry({ id: "tailwindlabs/tailwindcss", docsUrl: "https://tailwindcss.com/docs", githubUrl: undefined });
+      vi.mocked(lookupById).mockReturnValue(entry);
+      vi.mocked(fetchAsMarkdownRace).mockResolvedValue(BP_CONTENT);
+      const result = await handler({ libraryId: "tailwindlabs/tailwindcss", topic: "production" });
+      const sourceUrl = String(result.structuredContent?.sourceUrl ?? "");
+      expect(sourceUrl).toContain("optimizing-for-production");
+    });
+  });
 });

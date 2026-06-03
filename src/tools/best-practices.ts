@@ -1181,29 +1181,45 @@ async function fetchBestPracticesContent(
   // 1. Race known best-practices URLs in parallel
   const knownUrls = [...(BEST_PRACTICES_URLS[libraryId] ?? []), ...registryUrls]
     .filter((u, i, arr) => arr.indexOf(u) === i);
+  // When a topic matches NONE of the known URLs, those canonical pages are unlikely
+  // to be on-topic (e.g. tailwind "v4 migration" -> utility-first/optimizing-for-
+  // production). In that case we DEFER them: try the topic-slug / sitemap / deep-fetch
+  // paths below first, and fall back to the known URLs only as a last resort, so we
+  // never serve an off-topic page when a real one exists — but also never regress to
+  // an empty result when no topic-specific page is found.
+  let knownUrlsDeferred = false;
   if (knownUrls && knownUrls.length > 0) {
-    const targetUrls = topic
-      ? (() => {
-          const words = topic.toLowerCase().split(/\s+/).filter((w) => w.length > 2);
-          const scored = knownUrls.map((u) => {
-            const lower = u.toLowerCase();
-            const score = words.filter((w) => lower.includes(w)).length;
-            return { url: u, score };
-          });
-          scored.sort((a, b) => b.score - a.score);
-          return scored.map((s) => s.url).filter((u, i, arr) => arr.indexOf(u) === i);
-        })()
-      : knownUrls;
+    let targetUrls: string[];
+    if (topic) {
+      // Keep short version tokens ("v4", "v3") that the >2-char filter would drop —
+      // they are exactly the signal that distinguishes a migration/version page.
+      const words = topic
+        .toLowerCase()
+        .split(/\s+/)
+        .filter((w) => (/^v?\d+(?:\.\d+)*$/.test(w) ? w.length >= 1 : w.length > 2));
+      const scored = knownUrls.map((u) => {
+        const lower = u.toLowerCase();
+        const score = words.filter((w) => lower.includes(w)).length;
+        return { url: u, score };
+      });
+      scored.sort((a, b) => b.score - a.score);
+      targetUrls = scored.map((s) => s.url).filter((u, i, arr) => arr.indexOf(u) === i);
+      knownUrlsDeferred = (scored[0]?.score ?? 0) === 0;
+    } else {
+      targetUrls = knownUrls;
+    }
 
-    const hit = await raceUrls(targetUrls.slice(0, 5));
-    if (hit) {
-      const safe = sanitizeContent(hit.content);
-      const { text: extracted, truncated } = extractRelevantContent(
-        safe,
-        topic || "best practices patterns guide",
-        tokens,
-      );
-      return { text: extracted, sourceUrl: hit.url, truncated };
+    if (!knownUrlsDeferred) {
+      const hit = await raceUrls(targetUrls.slice(0, 5));
+      if (hit) {
+        const safe = sanitizeContent(hit.content);
+        const { text: extracted, truncated } = extractRelevantContent(
+          safe,
+          topic || "best practices patterns guide",
+          tokens,
+        );
+        return { text: extracted, sourceUrl: hit.url, truncated };
+      }
     }
   }
 
@@ -1330,6 +1346,23 @@ async function fetchBestPracticesContent(
         const { text: extracted, truncated } = extractRelevantContent(safe, topic, tokens);
         return { text: extracted, sourceUrl: ghResult.url, truncated };
       }
+    }
+  }
+
+  // Last resort: the topic matched no known best-practices URL and every
+  // topic-specific source above failed — fall back to the canonical known pages
+  // now rather than returning nothing. Only fires when those URLs were deferred,
+  // so the success and no-topic paths are byte-for-byte unchanged.
+  if (knownUrlsDeferred && knownUrls.length > 0) {
+    const hit = await raceUrls(knownUrls.slice(0, 5));
+    if (hit) {
+      const safe = sanitizeContent(hit.content);
+      const { text: extracted, truncated } = extractRelevantContent(
+        safe,
+        topic || "best practices patterns guide",
+        tokens,
+      );
+      return { text: extracted, sourceUrl: hit.url, truncated };
     }
   }
 

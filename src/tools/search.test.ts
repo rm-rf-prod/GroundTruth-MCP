@@ -591,4 +591,18 @@ describe("findTopicUrls", () => {
     const matches = findTopicUrls("best practices building new website");
     expect(matches.length).toBeGreaterThan(0);
   });
+
+  it("specificity gate: drops the generic SQL entry for an OWASP injection query (FIX-5)", () => {
+    const matches = findTopicUrls("OWASP SQL injection prevention");
+    const names = matches.map((m) => m.name);
+    expect(names).toContain("OWASP SQL Injection");
+    expect(names).not.toContain("SQL"); // generic score-1 co-match dropped
+    expect(matches[0]!.name).toBe("OWASP SQL Injection");
+  });
+
+  it("specificity gate does NOT fire for a single-word query (FIX-5 boundary)", () => {
+    const matches = findTopicUrls("sql");
+    const names = matches.map((m) => m.name);
+    expect(names).toContain("SQL"); // maxScore===1 → all matches kept
+  });
 });

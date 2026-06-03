@@ -60,6 +60,9 @@ Source: open-source GitHub repositories (not the library's own docs). Use this w
       queryParts.push(searchTerm);
       if (language) queryParts.push(`language:${language}`);
       queryParts.push("-path:test -path:__test__ -path:spec -path:node_modules -path:.next");
+      // Exclude documentation/markdown files — gt_examples is for real code, not
+      // READMEs/API.md (which GitHub code search otherwise returns as top hits).
+      queryParts.push("-extension:md -extension:mdx -extension:markdown -extension:rst -extension:txt");
 
       const query = queryParts.join(" ");
       const cacheKey = `gh-code-examples:${query}:${maxResults}`;

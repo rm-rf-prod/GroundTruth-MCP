@@ -61,7 +61,7 @@ function resolveLibraryEntry(libraryId: string) {
   return lookupById(libraryId) ?? lookupByAlias(libraryId);
 }
 
-async function buildIndex(
+export async function buildIndex(
   library: string,
   version: string | undefined,
   docsUrl: string,
@@ -96,13 +96,28 @@ async function buildIndex(
 
   if (!fetchResult) return null;
 
-  const safe = sanitizeContent(fetchResult.content);
-  const snippets = extractSnippets(safe, library, fetchResult.url, version);
+  let snippets = extractSnippets(sanitizeContent(fetchResult.content), library, fetchResult.url, version);
+  let sourceUrl = fetchResult.url;
+
+  // Reliability fallback: landing-page-only docs (e.g. expressjs.com) carry no
+  // fenced code, so the index comes back empty. The GitHub README almost always
+  // has usage examples — retry there before giving up, unless it was already the
+  // source. This is why gt_snippets("expressjs/express") returned "No snippets".
+  if (snippets.length === 0 && githubUrl && fetchResult.sourceType !== "github-readme") {
+    const gh = await fetchGitHubContent(githubUrl).catch(() => null);
+    if (gh?.content) {
+      const ghSnippets = extractSnippets(sanitizeContent(gh.content), library, gh.url, version);
+      if (ghSnippets.length > 0) {
+        snippets = ghSnippets;
+        sourceUrl = gh.url;
+      }
+    }
+  }
 
   return {
     library,
     version: version ?? null,
-    sourceUrl: fetchResult.url,
+    sourceUrl,
     snippets,
     builtAt: new Date().toISOString(),
   };
@@ -209,6 +224,7 @@ IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library 
                   "",
                   "**What to try next:**",
                   "- Run gt_resolve_library to confirm the library ID",
+                  "- Try gt_examples for real-world usage examples from GitHub repositories",
                   "- Try gt_get_docs for prose-style content",
                   "- Re-run with refresh:true if the cache may be stale",
                 ].join("\n"),

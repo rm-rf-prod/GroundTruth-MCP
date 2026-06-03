@@ -7,6 +7,8 @@
  * slow, or down, this extracts useful content from raw HTML.
  */
 
+import { decodeHtmlEntities } from "./decode-entities.js";
+
 /** Remove elements that add noise: nav, footer, sidebar, scripts, styles, ads */
 function stripNoisyElements(html: string): string {
   // Remove script and style blocks entirely (including content)
@@ -151,28 +153,6 @@ function htmlToMarkdown(html: string): string {
 
 function stripTags(html: string): string {
   return html.replace(/<[^>]+>/g, "");
-}
-
-function decodeHtmlEntities(text: string): string {
-  return text
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&apos;/g, "'")
-    .replace(/&#x([0-9a-f]+);/gi, (_, hex: string) => String.fromCodePoint(parseInt(hex, 16)))
-    .replace(/&#(\d+);/g, (_, dec: string) => String.fromCodePoint(parseInt(dec, 10)))
-    .replace(/&nbsp;/g, " ")
-    .replace(/&mdash;/g, " -- ")
-    .replace(/&ndash;/g, " - ")
-    .replace(/&hellip;/g, "...")
-    .replace(/&laquo;/g, '"')
-    .replace(/&raquo;/g, '"')
-    .replace(/&ldquo;/g, '"')
-    .replace(/&rdquo;/g, '"')
-    .replace(/&lsquo;/g, "'")
-    .replace(/&rsquo;/g, "'");
 }
 
 // Schemes safe to render as links in extracted markdown. Allowlist beats denylist:

@@ -231,4 +231,14 @@ describe("gt_examples handler", () => {
     const result = await handler({ library: "react", pattern: "useMutation", maxResults: 5 });
     expect(result.content[0]!.text).toContain("useMutation");
   });
+
+  it("excludes documentation/markdown files from the code search query", async () => {
+    mockFetchWithTimeout.mockResolvedValueOnce(
+      makeRes(JSON.stringify({ total_count: 0, items: [] }), 200),
+    );
+    await handler({ library: "express", pattern: "middleware", maxResults: 5 });
+    const url = decodeURIComponent(mockFetchWithTimeout.mock.calls[0]![0] as string);
+    expect(url).toContain("-extension:md");
+    expect(url).toContain("-extension:rst");
+  });
 });
