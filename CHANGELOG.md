@@ -1,5 +1,11 @@
 # Changelog
 
+## [7.1.0] — 2026-06-12
+
+- feat: evidence engine — verified topic coverage, no generic answers
+
+---
+
 ## [7.0.4] — 2026-06-03
 
 - fix: eliminate documentation noise across all MCP tools
