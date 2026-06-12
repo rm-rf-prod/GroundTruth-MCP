@@ -6,6 +6,7 @@ import { fetchDocs, fetchGitHubContent, fetchAsMarkdownRace } from "../services/
 import { probeLlmsTxt } from "../services/resolve.js";
 import { deepFetchForTopic, splitTopics } from "../services/deep-fetch.js";
 import { extractRelevantContent } from "../utils/extract.js";
+import { checkEvidence, buildEvidenceBlock, buildHonestMiss, extractHeadingOutline } from "../utils/evidence.js";
 import { isExtractionAttempt, withNotice, EXTRACTION_REFUSAL, assertPublicUrl } from "../utils/guard.js";
 import { sanitizeContent } from "../utils/sanitize.js";
 import { computeQualityScore } from "../utils/quality.js";
@@ -300,15 +301,83 @@ Do not call this tool more than 3 times per question.`,
         }
       }
 
-      const safe = sanitizeContent(fetchResult.content);
-      const { text, truncated } = extractRelevantContent(safe, topic, tokens);
+      let safe = sanitizeContent(fetchResult.content);
+      let { text, truncated } = extractRelevantContent(safe, topic, tokens);
+
+      // Evidence gate — the "never generic" guarantee. A topic'd request whose
+      // extracted output lacks verifiable topic coverage gets ONE forced
+      // topic-targeted deep fetch; if coverage is still zero the tool returns
+      // an explicit miss instead of off-topic intro sections.
+      let evidence = checkEvidence(text, topic);
+      let escalated = false;
+      const sourcesTried: Array<{ url: string; sourceType?: string; fetchedAt?: string }> = [
+        { url: fetchResult.url, sourceType: fetchResult.sourceType, ...(fetchResult.fetchedAt ? { fetchedAt: fetchResult.fetchedAt } : {}) },
+      ];
+
+      if (topic && !evidence.ok) {
+        const deeper = await deepFetchForTopic(fetchResult, topic, docsUrl, entry?.urlPatterns, undefined, true);
+        escalated = true;
+        if (deeper.url !== fetchResult.url) {
+          sourcesTried.push({ url: deeper.url, sourceType: deeper.sourceType });
+        }
+        const deeperSafe = sanitizeContent(deeper.content);
+        const reExtract = extractRelevantContent(deeperSafe, topic, tokens);
+        const reCheck = checkEvidence(reExtract.text, topic);
+        if (reCheck.ok || reCheck.occurrences > evidence.occurrences) {
+          fetchResult = deeper;
+          safe = deeperSafe;
+          text = reExtract.text;
+          truncated = reExtract.truncated;
+          evidence = reCheck;
+        }
+      }
+
       const { score: qualityScore, hints: qualityHints } = computeQualityScore(text, topic, fetchResult.sourceType);
+      const evidenceSummary = {
+        ok: evidence.ok,
+        matchRatio: evidence.matchRatio,
+        occurrences: evidence.occurrences,
+        matchedTokens: evidence.matchedTokens,
+        missingTokens: evidence.missingTokens,
+        escalated,
+        verdict: !topic ? "untargeted" : evidence.ok ? "strong" : evidence.matchRatio > 0 ? "weak" : "miss",
+      };
+
+      // Hard miss: the topic never appears in anything fetched. Returning the
+      // doc's intro here would be exactly the "generic answer" failure mode.
+      if (topic && evidence.matchRatio === 0) {
+        const missText = buildHonestMiss({
+          subject: displayName,
+          topic,
+          tried: sourcesTried.map((s) => s.url),
+          outline: extractHeadingOutline(safe),
+        });
+        ctx.resolved = false;
+        return {
+          content: [{ type: "text", text: withNotice(missText) }],
+          structuredContent: {
+            libraryId,
+            displayName,
+            topic,
+            version: version ?? null,
+            sourceUrl: fetchResult.url,
+            sourceType: fetchResult.sourceType,
+            truncated: false,
+            qualityScore: 0,
+            qualityHints: ["No topic-specific evidence found in any fetched source"],
+            evidence: evidenceSummary,
+            sourcesTried: sourcesTried.map((s) => s.url),
+            content: missText,
+          },
+        };
+      }
 
       const header = [
         `# ${displayName} Documentation`,
         `> Source: ${fetchResult.sourceType} — ${fetchResult.url}`,
         topic ? `> Topic: ${topic}` : "",
         truncated ? "> Note: Response truncated. Use a more specific topic or increase tokens." : "",
+        topic && !evidence.ok ? `> Evidence: Weak — topic terms appear only sparsely (${evidence.occurrences} occurrence${evidence.occurrences === 1 ? "" : "s"}). Verify against the source before relying on this.` : "",
         qualityScore < 0.4 ? `> Quality: Low — ${qualityHints.join("; ") || "try a more specific topic or different library ID."}` : "",
         "",
         "---",
@@ -317,9 +386,16 @@ Do not call this tool more than 3 times per question.`,
         .filter(Boolean)
         .join("\n");
 
+      const evidenceBlock = buildEvidenceBlock({
+        sources: sourcesTried,
+        topic,
+        ...(topic ? { check: evidence } : {}),
+        escalated,
+      });
+
       ctx.resolved = text.length > 200;
       return {
-        content: [{ type: "text", text: withNotice(header + text) }],
+        content: [{ type: "text", text: withNotice(header + text + evidenceBlock) }],
         structuredContent: {
           libraryId,
           displayName,
@@ -332,6 +408,7 @@ Do not call this tool more than 3 times per question.`,
           truncated,
           qualityScore,
           qualityHints,
+          evidence: evidenceSummary,
           content: text,
         },
       };

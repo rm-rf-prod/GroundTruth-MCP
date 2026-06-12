@@ -4,8 +4,9 @@ import { readdir, readFile, stat } from "fs/promises";
 import { join, extname, relative } from "path";
 import { lookupById } from "../sources/registry.js";
 import { safeguardPath, withToolTimeout } from "../utils/guard.js";
-import { fetchDocs, fetchGitHubExamples, fetchGitHubReleases, fetchAsMarkdownRace, isIndexContent, rankIndexLinks } from "../services/fetcher.js";
+import { fetchDocs, fetchGitHubReleases, fetchAsMarkdownRace, isIndexContent, rankIndexLinks } from "../services/fetcher.js";
 import { extractRelevantContent } from "../utils/extract.js";
+import { checkEvidence } from "../utils/evidence.js";
 import { sanitizeContent } from "../utils/sanitize.js";
 import { withTelemetry } from "../services/telemetry.js";
 
@@ -75,7 +76,7 @@ interface AuditPattern {
   detail: string;
   fix: string;
   docsQuery?: string;
-  test: (line: string, fileContent: string, charOffset: number, lines: string[], lineIndex: number) => string | null;
+  test: (line: string, fileContent: string, charOffset: number, lines: string[], lineIndex: number, filePath?: string) => string | null;
 }
 
 // Build security-pattern identifiers at runtime so static scanners
@@ -1331,12 +1332,13 @@ export const AUDIT_PATTERNS: AuditPattern[] = [
     detail: "Next.js App Router pages without generateMetadata have no SEO meta tags",
     fix: "Export generateMetadata: export async function generateMetadata() { return { title, description } }",
     docsQuery: "Next.js generateMetadata App Router SEO",
-    test: (line, content) => {
-      if (!content.includes("export default") || !line.includes("export default")) return null;
-      if (!content.includes("page.tsx") && !line.includes("page.tsx")) {
-        return !content.includes("generateMetadata") && !content.includes("metadata =") ? line : null;
-      }
-      return null;
+    test: (line, content, _offset, _lines, _i, filePath) => {
+      if (!line.includes("export default")) return null;
+      // Page-level metadata only applies to App Router page files. When the
+      // file path is known, anything that is not page.* is skipped — flagging
+      // components/layouts/configs here was a false-positive factory.
+      if (filePath !== undefined && !/(^|\/)page\.(tsx|jsx|ts|js)$/.test(filePath)) return null;
+      return !content.includes("generateMetadata") && !content.includes("metadata =") ? line : null;
     },
   },
   {
@@ -1557,7 +1559,7 @@ function runPatterns(
 
       for (const pattern of AUDIT_PATTERNS) {
         if (!checkAll && !categories.includes(pattern.category)) continue;
-        if (pattern.test(line, file.content, charOffset, lines, i)) {
+        if (pattern.test(line, file.content, charOffset, lines, i, file.path)) {
           const issue: Issue = {
             file: file.path,
             line: i + 1,
@@ -1608,7 +1610,11 @@ async function fetchBestPractice(query: string, tokens: number): Promise<string>
           }
           const safe = sanitizeContent(result.content);
           const { text } = extractRelevantContent(safe, query, tokens);
-          if (text.length > 200) return text;
+          // Evidence gate: docs that never mention the finding's terms are
+          // generic filler — reject and keep hunting instead of returning them.
+          if (text.length > 200 && checkEvidence(text, query).matchRatio > 0) {
+            return `_Source: ${result.url} (fetched live)_\n\n${text}`;
+          }
         } catch {
           // continue to fallback
         }
@@ -1616,68 +1622,139 @@ async function fetchBestPractice(query: string, tokens: number): Promise<string>
           const releases = await fetchGitHubReleases(entry.githubUrl);
           if (releases) {
             const { text } = extractRelevantContent(sanitizeContent(releases), query, Math.floor(tokens / 2));
-            if (text.length > 100) return text;
+            if (text.length > 100 && checkEvidence(text, query).matchRatio > 0) {
+              return `_Source: ${entry.githubUrl}/releases — release notes for context, not a how-to guide_\n\n${text}`;
+            }
           }
         }
       }
     }
   }
 
+  // Fetch + evidence-gate a guidance page. Index pages, search results and
+  // off-topic articles fail checkEvidence (zero topic-term coverage) and are
+  // dropped — the pattern's built-in fix text stands instead of generic filler.
   const jinaFetch = async (url: string): Promise<string> => {
     const raw = await fetchAsMarkdownRace(url);
     if (!raw) return "";
     const { text } = extractRelevantContent(sanitizeContent(raw), query, tokens);
-    return text;
+    if (text.length <= 200) return "";
+    if (checkEvidence(text, query).matchRatio === 0) return "";
+    return `_Source: ${url} (fetched live)_\n\n${text}`;
+  };
+
+  /** Try the first keyword-matched URL, then an optional branch fallback. */
+  const tryTargets = async (targets: Array<[RegExp, string]>, fallbackUrl?: string): Promise<string> => {
+    for (const [re, url] of targets) {
+      if (re.test(query)) {
+        const t = await jinaFetch(url);
+        if (t.length > 0) return t;
+        break;
+      }
+    }
+    if (fallbackUrl) {
+      const t = await jinaFetch(fallbackUrl);
+      if (t.length > 0) return t;
+    }
+    return "";
   };
 
   if (/typescript|ts-ignore|floating|promise|require\(\)|assertion|return type|any\b/i.test(query)) {
-    const t = await jinaFetch("https://typescript-eslint.io/rules/");
-    if (t.length > 200) return t;
+    // Deep-link to the specific typescript-eslint rule — the rules INDEX page
+    // is a link list with no remediation content.
+    const t = await tryTargets(
+      [
+        [/floating.?promis/i, "https://typescript-eslint.io/rules/no-floating-promises/"],
+        [/ts-ignore|ts-expect/i, "https://typescript-eslint.io/rules/ban-ts-comment/"],
+        [/require\(\)/i, "https://typescript-eslint.io/rules/no-require-imports/"],
+        [/return.?type/i, "https://typescript-eslint.io/rules/explicit-function-return-type/"],
+        [/assertion/i, "https://typescript-eslint.io/rules/consistent-type-assertions/"],
+        [/\bany\b/i, "https://typescript-eslint.io/rules/no-explicit-any/"],
+      ],
+      "https://www.typescriptlang.org/docs/handbook/2/everyday-types.html",
+    );
+    if (t.length > 0) return t;
   }
 
   if (/node\.js|event loop|readfile|writefile|process\.exit|callback|pino|winston/i.test(query)) {
     const t = await jinaFetch(
       "https://cheatsheetseries.owasp.org/cheatsheets/Nodejs_Security_Cheat_Sheet.html",
     );
-    if (t.length > 200) return t;
+    if (t.length > 0) return t;
   }
 
   if (/css|html|dom|aria|wcag|a11y|outline|font|viewport|flexbox|grid|focus|keyboard|lang\b|reduced-motion/i.test(query)) {
-    const t = await jinaFetch(`https://developer.mozilla.org/en-US/search?q=${encodeURIComponent(query)}`);
-    if (t.length > 200) return t;
+    // Canonical MDN pages per concern — the MDN search results page is a link
+    // list, kept only as the very last resort and still evidence-gated.
+    const t = await tryTargets(
+      [
+        [/aria/i, "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA"],
+        [/focus|keyboard|outline/i, "https://developer.mozilla.org/en-US/docs/Web/Accessibility/Guides/Understanding_WCAG/Keyboard"],
+        [/reduced-?motion/i, "https://developer.mozilla.org/en-US/docs/Web/CSS/@media/prefers-reduced-motion"],
+        [/viewport/i, "https://developer.mozilla.org/en-US/docs/Web/HTML/Guides/Viewport_meta_element"],
+        [/\balt\b|img|image/i, "https://developer.mozilla.org/en-US/docs/Web/API/HTMLImageElement/alt"],
+        [/\blang\b/i, "https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Global_attributes/lang"],
+        [/wcag|a11y|accessib/i, "https://developer.mozilla.org/en-US/docs/Web/Accessibility"],
+      ],
+      `https://developer.mozilla.org/en-US/search?q=${encodeURIComponent(query)}`,
+    );
+    if (t.length > 0) return t;
   }
 
   if (/xss|sql.inject|command.inject|ssrf|csrf|csp|cors|secret|sanitize|security|rce|path.travers/i.test(query)) {
-    const t = await jinaFetch("https://cheatsheetseries.owasp.org/IndexAlphabetical.html");
-    if (t.length > 200) return t;
+    // Specific OWASP cheat sheet per vulnerability class — the alphabetical
+    // index page carried zero remediation content.
+    const OWASP = "https://cheatsheetseries.owasp.org/cheatsheets";
+    const t = await tryTargets(
+      [
+        [/xss|innerhtml|dangerously/i, `${OWASP}/Cross_Site_Scripting_Prevention_Cheat_Sheet.html`],
+        [/sql.?inject/i, `${OWASP}/SQL_Injection_Prevention_Cheat_Sheet.html`],
+        [/command.?inject|rce|exec|spawn/i, `${OWASP}/OS_Command_Injection_Defense_Cheat_Sheet.html`],
+        [/ssrf/i, `${OWASP}/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html`],
+        [/csrf/i, `${OWASP}/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html`],
+        [/csp|content.?security/i, `${OWASP}/Content_Security_Policy_Cheat_Sheet.html`],
+        [/secret|credential|api.?key|token/i, `${OWASP}/Secrets_Management_Cheat_Sheet.html`],
+        [/path.?travers|file.?upload/i, `${OWASP}/File_Upload_Cheat_Sheet.html`],
+        [/cors/i, `${OWASP}/HTML5_Security_Cheat_Sheet.html`],
+        [/sanitiz|validat/i, `${OWASP}/Input_Validation_Cheat_Sheet.html`],
+      ],
+      `${OWASP}/Injection_Prevention_Cheat_Sheet.html`,
+    );
+    if (t.length > 0) return t;
   }
 
   if (/performance|lcp|cls|inp|lazy|vitals|bundle|load|fetchpriority|render.blocking/i.test(query)) {
-    const t = await jinaFetch("https://web.dev/articles/optimize-lcp");
-    if (t.length > 200) return t;
+    // Metric-specific web.dev article — previously EVERY perf finding (CLS,
+    // INP, bundle size, ...) was answered with the LCP article.
+    const t = await tryTargets(
+      [
+        [/cls|layout.?shift|dimension|aspect/i, "https://web.dev/articles/optimize-cls"],
+        [/inp|interaction|long.?task/i, "https://web.dev/articles/optimize-inp"],
+        [/bundle|code.?split|chunk|tree.?shak/i, "https://web.dev/articles/reduce-javascript-payloads-with-code-splitting"],
+        [/lazy|offscreen/i, "https://web.dev/articles/lazy-loading-images"],
+        [/render.?blocking|critical/i, "https://developer.chrome.com/docs/lighthouse/performance/render-blocking-resources"],
+        [/font/i, "https://web.dev/articles/font-best-practices"],
+        [/lcp|largest|fetchpriority|preload|hero/i, "https://web.dev/articles/optimize-lcp"],
+      ],
+      "https://web.dev/articles/vitals",
+    );
+    if (t.length > 0) return t;
   }
 
   if (/react.rules|hooks|conditional|reconcil|forwardRef|useActionState/i.test(query)) {
     const t = await jinaFetch("https://react.dev/reference/rules");
-    if (t.length > 200) return t;
+    if (t.length > 0) return t;
   }
 
   if (/python|pickle|subprocess|f-string|sql.inject|argon2|bcrypt|bare.except|mutable.default|requests.verify/i.test(query)) {
     const [owasp, pySec] = await Promise.allSettled([
       jinaFetch("https://cheatsheetseries.owasp.org/cheatsheets/Python_Security_Cheat_Sheet.html"),
-      jinaFetch("https://python.org/dev/peps/pep-0008/"),
+      jinaFetch("https://peps.python.org/pep-0008/"),
     ]);
     const owaspText = owasp.status === "fulfilled" ? owasp.value : "";
-    if (owaspText.length > 200) return owaspText;
+    if (owaspText.length > 0) return owaspText;
     const pySecText = pySec.status === "fulfilled" ? pySec.value : "";
-    if (pySecText.length > 200) return pySecText;
-
-    // Fallback to GitHub examples from popular Python security libs
-    const examples = await fetchGitHubExamples("https://github.com/pyupio/safety");
-    if (examples && examples.length > 200) {
-      const { text } = extractRelevantContent(sanitizeContent(examples), query, tokens);
-      if (text.length > 100) return text;
-    }
+    if (pySecText.length > 0) return pySecText;
   }
 
   return "";
@@ -1777,7 +1854,7 @@ If doc fetches fail with empty results, the user likely needs to set GT_GITHUB_T
       if (allIssues.length === 0) {
         return {
           content: [{ type: "text", text: header + `No issues found for: ${categories.join(", ")}.\n` }],
-          structuredContent: { projectPath: resolvedPath, filesScanned: files.length, totalIssues: 0 },
+          structuredContent: { projectPath: resolvedPath, filesScanned: files.length, totalIssues: 0, uniqueIssueTypes: 0, issues: [] },
         };
       }
 
@@ -1789,6 +1866,12 @@ If doc fetches fail with empty results, the user likely needs to set GT_GITHUB_T
           .join("\n");
         const overflow = issues.length > 10 ? `  - ...and ${issues.length - 10} more` : "";
         const bp = bpMap.get(title) ?? "";
+        const bpAttempted = bpMap.has(title);
+        const bpLine = bp.length > 0
+          ? `**Live best practice (official docs):**\n\n${bp}`
+          : bpAttempted
+            ? `**Live best practice:** no on-topic official guidance verified for this finding (generic/off-topic pages were rejected by the evidence gate). The Fix above is the canonical remediation.`
+            : "";
 
         return [
           `## ${BADGE[first.severity] ?? "[?]"} ${title}`,
@@ -1802,7 +1885,7 @@ If doc fetches fail with empty results, the user likely needs to set GT_GITHUB_T
           locations,
           overflow,
           "",
-          bp.length > 0 ? `**Live best practice (official docs):**\n\n${bp}` : "",
+          bpLine,
           "",
           "---",
           "",

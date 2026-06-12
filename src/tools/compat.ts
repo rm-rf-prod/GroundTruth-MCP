@@ -2,10 +2,11 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { fetchAsMarkdownRace } from "../services/fetcher.js";
 import { extractRelevantContent } from "../utils/extract.js";
+import { checkEvidence, buildEvidenceBlock } from "../utils/evidence.js";
 import { sanitizeContent } from "../utils/sanitize.js";
 import { isExtractionAttempt, withNotice, EXTRACTION_REFUSAL } from "../utils/guard.js";
 import { docCache } from "../services/cache.js";
-import { findTopicUrls } from "./search.js";
+import { findTopicUrls, searchMDN } from "./search.js";
 import { DEFAULT_TOKEN_LIMIT, MAX_TOKEN_LIMIT } from "../constants.js";
 
 const InputSchema = z.object({
@@ -60,23 +61,36 @@ Use this when the question is specifically about which browsers or runtimes supp
 
       const featureEncoded = encodeURIComponent(feature);
       const results: string[] = [];
+      const sources: Array<{ url: string; sourceType?: string }> = [];
+      let weakEvidence = false;
       const searchTopic = envFilter
         ? `${feature} ${envFilter} compatibility`
         : `${feature} browser support compatibility`;
 
-      // 1. Check topic map for a direct MDN URL
+      // 1. Resolve a REAL MDN document for the feature: topic map first, then
+      // MDN's official search JSON API. Fetching actual doc pages (which carry
+      // the browser-compat tables) replaces the old fallback of scraping the
+      // MDN search RESULTS page — a link list with no compat data.
       const topicMatches = findTopicUrls(feature);
-      const mdnUrl =
-        topicMatches
-          .flatMap((t) => t.urls)
-          .find((u) => u.includes("mozilla.org")) ??
-        `https://developer.mozilla.org/en-US/search?q=${featureEncoded}+browser+compatibility`;
+      const mdnCandidates: string[] = topicMatches
+        .flatMap((t) => t.urls)
+        .filter((u) => u.includes("mozilla.org"));
+      if (mdnCandidates.length === 0) {
+        const apiHits = await searchMDN(feature);
+        mdnCandidates.push(...apiHits.slice(0, 2).map((h) => h.url));
+      }
 
-      const mdnContent = await fetchAsMarkdownRace(mdnUrl);
-      if (mdnContent && mdnContent.length > 200) {
-        const safe = sanitizeContent(mdnContent);
-        const { text } = extractRelevantContent(safe, searchTopic, Math.floor(tokens * 0.6));
-        if (text.length > 100) results.push(`## MDN Web Docs\n\n${text}`);
+      for (const candidateUrl of mdnCandidates.slice(0, 2)) {
+        const mdnContent = await fetchAsMarkdownRace(candidateUrl);
+        if (mdnContent && mdnContent.length > 200) {
+          const safe = sanitizeContent(mdnContent);
+          const { text } = extractRelevantContent(safe, searchTopic, Math.floor(tokens * 0.6));
+          if (text.length > 100 && checkEvidence(text, feature).matchRatio > 0) {
+            results.push(`## MDN Web Docs\n\n${text}`);
+            sources.push({ url: candidateUrl, sourceType: "mdn" });
+            break;
+          }
+        }
       }
 
       // 2. caniuse.com — especially useful for CSS and browser-specific APIs
@@ -84,30 +98,61 @@ Use this when the question is specifically about which browsers or runtimes supp
         feature,
       );
       if (results.length === 0 || isCssOrBrowser) {
-        const caniuseContent = await fetchAsMarkdownRace(`https://caniuse.com/?search=${featureEncoded}`);
+        const caniuseUrl = `https://caniuse.com/?search=${featureEncoded}`;
+        const caniuseContent = await fetchAsMarkdownRace(caniuseUrl);
         if (caniuseContent && caniuseContent.length > 200) {
           const safe = sanitizeContent(caniuseContent);
           const { text } = extractRelevantContent(safe, `${feature} browser support`, Math.floor(tokens * 0.4));
-          if (text.length > 100) results.push(`## Can I Use\n\n${text}`);
+          if (text.length > 100 && checkEvidence(text, feature).matchRatio > 0) {
+            results.push(`## Can I Use\n\n${text}`);
+            sources.push({ url: caniuseUrl, sourceType: "caniuse" });
+          }
+        }
+      }
+
+      // 3. Last resort: MDN search results page — explicitly labeled as weak
+      // evidence (it is a link list, not a compat table).
+      if (results.length === 0) {
+        const searchUrl = `https://developer.mozilla.org/en-US/search?q=${featureEncoded}+browser+compatibility`;
+        const searchContent = await fetchAsMarkdownRace(searchUrl);
+        if (searchContent && searchContent.length > 200) {
+          const safe = sanitizeContent(searchContent);
+          const { text } = extractRelevantContent(safe, searchTopic, Math.floor(tokens * 0.4));
+          if (text.length > 100 && checkEvidence(text, feature).matchRatio > 0) {
+            weakEvidence = true;
+            results.push(`## MDN search results (weak evidence — follow the links for compat tables)\n\n${text}`);
+            sources.push({ url: searchUrl, sourceType: "mdn-search" });
+          }
         }
       }
 
       if (results.length === 0) {
         const text = withNotice(
-          `No compatibility data found for **${feature}**.\n\nCheck manually:\n- https://developer.mozilla.org/en-US/search?q=${featureEncoded}\n- https://caniuse.com/?search=${featureEncoded}`,
+          [
+            `# ${feature} — no compatibility evidence found`,
+            "",
+            `No MDN document or caniuse entry with verifiable data for "${feature}" could be fetched. Rather than guess, check directly:`,
+            `- https://developer.mozilla.org/en-US/search?q=${featureEncoded}`,
+            `- https://caniuse.com/?search=${featureEncoded}`,
+            "",
+            "Tip: use the exact feature name (e.g. 'container queries', 'Array.prototype.at') — marketing names often miss.",
+          ].join("\n"),
         );
-        return { content: [{ type: "text", text }] };
+        return { content: [{ type: "text", text }], structuredContent: { feature, environments: environments ?? [], sources: [], evidence: { ok: false, verdict: "miss" } } };
       }
 
+      const evidenceCheck = checkEvidence(results.join("\n\n"), feature);
       const header = [
         `# Browser Compatibility: ${feature}`,
         envFilter ? `Focused on: ${envFilter}` : "",
+        weakEvidence ? `> Evidence: Weak — only search results matched; verify in the linked pages.` : "",
         "",
       ]
         .filter(Boolean)
         .join("\n");
 
-      const response = withNotice(`${header}\n\n${results.join("\n\n---\n\n")}`);
+      const evidenceBlock = buildEvidenceBlock({ sources, topic: feature, check: evidenceCheck });
+      const response = withNotice(`${header}\n\n${results.join("\n\n---\n\n")}${evidenceBlock}`);
       docCache.set(cacheKey, response);
 
       return {
@@ -115,7 +160,13 @@ Use this when the question is specifically about which browsers or runtimes supp
         structuredContent: {
           feature,
           environments: environments ?? [],
-          sources: results.map((r) => r.split("\n")[0]?.replace(/^#+\s*/, "") ?? ""),
+          sources: sources.map((s) => s.url),
+          evidence: {
+            ok: evidenceCheck.ok && !weakEvidence,
+            matchRatio: evidenceCheck.matchRatio,
+            occurrences: evidenceCheck.occurrences,
+            verdict: weakEvidence ? "weak" : evidenceCheck.ok ? "strong" : "weak",
+          },
         },
       };
     },

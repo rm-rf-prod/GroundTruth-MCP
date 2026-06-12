@@ -8,7 +8,8 @@ vi.mock("../services/fetcher.js", () => ({
   fetchAsMarkdownRace: vi.fn(),
 }));
 
-vi.mock("../utils/extract.js", () => ({
+vi.mock("../utils/extract.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../utils/extract.js")>()),
   extractRelevantContent: vi.fn((content: string, _topic: string, _tokens: number) => ({
     text: content,
     truncated: false,
@@ -31,6 +32,7 @@ vi.mock("../services/cache.js", () => ({
 
 vi.mock("./search.js", () => ({
   findTopicUrls: vi.fn(() => []),
+  searchMDN: vi.fn(async () => []),
   registerSearchTool: vi.fn(),
 }));
 
@@ -138,13 +140,13 @@ describe("gt_compat handler", () => {
   describe("response format", () => {
     it("includes feature name in response header", async () => {
       vi.mocked(fetchAsMarkdownRace).mockResolvedValue(MDN_CONTENT);
-      const result = await handler({ feature: "AbortController" });
-      expect(result.content[0]!.text).toContain("AbortController");
+      const result = await handler({ feature: "container queries" });
+      expect(result.content[0]!.text).toContain("container queries");
     });
 
     it("wraps response in withNotice", async () => {
       vi.mocked(fetchAsMarkdownRace).mockResolvedValue(MDN_CONTENT);
-      const result = await handler({ feature: "AbortController" });
+      const result = await handler({ feature: "container queries" });
       expect(result.content[0]!.text).toMatch(/^NOTICE/);
     });
 
@@ -167,7 +169,7 @@ describe("gt_compat handler", () => {
   describe("environments filter header", () => {
     it("includes environment filter in output header when environments provided", async () => {
       vi.mocked(fetchAsMarkdownRace).mockResolvedValue(MDN_CONTENT);
-      const result = await handler({ feature: "fetch API", environments: ["chrome", "firefox"] });
+      const result = await handler({ feature: "container queries", environments: ["chrome", "firefox"] });
       expect(result.content[0]!.text).toContain("Focused on:");
       expect(result.content[0]!.text).toContain("chrome");
       expect(result.content[0]!.text).toContain("firefox");
@@ -178,13 +180,13 @@ describe("gt_compat handler", () => {
     it("returns no-data message when all fetches return empty", async () => {
       vi.mocked(fetchAsMarkdownRace).mockResolvedValue(null);
       const result = await handler({ feature: "obscure-feature-xyz" });
-      expect(result.content[0]!.text).toContain("No compatibility data found");
+      expect(result.content[0]!.text).toContain("no compatibility evidence found");
     });
 
     it("returns no-data message when fetched content is too short", async () => {
       vi.mocked(fetchAsMarkdownRace).mockResolvedValue("hi");
       const result = await handler({ feature: "obscure-feature-xyz" });
-      expect(result.content[0]!.text).toContain("No compatibility data found");
+      expect(result.content[0]!.text).toContain("no compatibility evidence found");
     });
   });
 
@@ -202,7 +204,7 @@ describe("gt_compat handler", () => {
   describe("caches result", () => {
     it("sets cache after successful fetch", async () => {
       vi.mocked(fetchAsMarkdownRace).mockResolvedValue(MDN_CONTENT);
-      await handler({ feature: "AbortController" });
+      await handler({ feature: "container queries" });
       expect(docCache.set).toHaveBeenCalled();
     });
   });

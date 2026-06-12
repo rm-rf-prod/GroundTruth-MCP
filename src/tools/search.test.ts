@@ -20,7 +20,8 @@ vi.mock("../services/fetcher.js", () => ({
   isErrorPage: vi.fn().mockReturnValue(false),
 }));
 
-vi.mock("../utils/extract.js", () => ({
+vi.mock("../utils/extract.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../utils/extract.js")>()),
   extractRelevantContent: vi.fn((content: string, _topic: string, _tokens: number) => ({
     text: content,
     truncated: false,
@@ -85,7 +86,7 @@ registerSearchTool(mockServer);
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
-const LONG_CONTENT = "This is detailed web development content. ".repeat(10);
+const LONG_CONTENT = "OWASP vulnerabilities, WCAG accessibility guidelines, Core Web Vitals optimization, JWT security, authentication sessions. This is detailed web development content. ".repeat(10);
 
 const makeFetchResult = (content = LONG_CONTENT) => ({
   content,
@@ -395,11 +396,11 @@ describe("gt_search handler", () => {
       vi.mocked(fetchWithTimeout).mockRejectedValue(new Error("all search failed"));
       // Return null for everything EXCEPT MDN search URL
       vi.mocked(fetchAsMarkdownRace).mockImplementation(async (url: string) => {
-        if (url.includes("developer.mozilla.org/en-US/search")) return LONG_CONTENT;
+        if (url.includes("developer.mozilla.org/en-US/search")) return `Obscure xyz000 topic guide. ${LONG_CONTENT}`;
         return null;
       });
       const result = await handler({ query: "unknown obscure xyz000 topic" });
-      const mdnSource = result.structuredContent?.sources.find((s: { name: string }) => s.name === "MDN Web Docs");
+      const mdnSource = result.structuredContent?.sources.find((s: { name: string }) => s.name.includes("MDN search results"));
       expect(mdnSource).toBeDefined();
     });
   });
@@ -488,11 +489,11 @@ describe("gt_search handler", () => {
       vi.mocked(fetchWithTimeout).mockRejectedValue(new Error("all search failed"));
       // Return null for everything EXCEPT MDN search URL
       vi.mocked(fetchAsMarkdownRace).mockImplementation(async (url: string) => {
-        if (url.includes("developer.mozilla.org/en-US/search")) return LONG_CONTENT;
+        if (url.includes("developer.mozilla.org/en-US/search")) return `Obscure xyz000 topic guide. ${LONG_CONTENT}`;
         return null;
       });
       const result = await handler({ query: "unknown obscure xyz000 topic" });
-      const mdnSource = result.structuredContent?.sources.find((s: { name: string }) => s.name === "MDN Web Docs");
+      const mdnSource = result.structuredContent?.sources.find((s: { name: string }) => s.name.includes("MDN search results"));
       expect(mdnSource).toBeDefined();
     });
 

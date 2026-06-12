@@ -3,6 +3,8 @@ import { z } from "zod";
 import { lookupById, lookupByAlias } from "../sources/registry.js";
 import { fetchGitHubReleases, fetchGitHubContent, fetchAsMarkdownRace } from "../services/fetcher.js";
 import { extractRelevantContent, sliceVersionBand } from "../utils/extract.js";
+import { checkEvidence, buildEvidenceBlock } from "../utils/evidence.js";
+import { computeQualityScore } from "../utils/quality.js";
 import { sanitizeContent } from "../utils/sanitize.js";
 import { isExtractionAttempt, withNotice, EXTRACTION_REFUSAL } from "../utils/guard.js";
 import { docCache } from "../services/cache.js";
@@ -132,17 +134,31 @@ Use this for "what changed in version X" questions. For "how do I upgrade my cod
         tokens,
       );
 
+      const { score: qualityScore, hints: qualityHints } = computeQualityScore(
+        text,
+        version ? `release ${version} changes` : "releases changes",
+        "github-readme",
+        version ? [version] : undefined,
+      );
+      const evidence = version ? checkEvidence(text, `v${version.replace(/^v/, "")} release`) : checkEvidence(text, "");
+
       const header = [
         `# ${displayName} Changelog`,
         version ? `Filtered to: **${version}**` : "",
         `Source: ${sourceUrl}`,
         truncated ? "\n> Content truncated — use a specific version to narrow results." : "",
+        version && qualityScore < 0.4 ? `\n> Quality: Low — ${qualityHints.join("; ") || "the fetched changelog may not cover this version."}` : "",
         "",
       ]
         .filter(Boolean)
         .join("\n");
 
-      const response = withNotice(`${header}\n\n${text}`);
+      const evidenceBlock = buildEvidenceBlock({
+        sources: [{ url: sourceUrl, sourceType: "changelog" }],
+        ...(version ? { topic: `v${version.replace(/^v/, "")} release`, check: evidence } : {}),
+      });
+
+      const response = withNotice(`${header}\n\n${text}${evidenceBlock}`);
       docCache.set(cacheKey, response);
 
       return {
@@ -153,6 +169,9 @@ Use this for "what changed in version X" questions. For "how do I upgrade my cod
           version: version ?? null,
           sourceUrl,
           truncated,
+          qualityScore,
+          qualityHints,
+          content: text,
         },
       };
     },

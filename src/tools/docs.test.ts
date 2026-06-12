@@ -21,7 +21,8 @@ vi.mock("../services/deep-fetch.js", () => ({
   splitTopics: vi.fn((topic: string) => [topic]),
 }));
 
-vi.mock("../utils/extract.js", () => ({
+vi.mock("../utils/extract.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../utils/extract.js")>()),
   extractRelevantContent: vi.fn((content: string, _topic: string, _tokens: number) => ({
     text: content,
     truncated: false,
@@ -483,5 +484,79 @@ describe("gt_get_docs handler", () => {
       const result = await handler({ libraryId: "pypi:django" });
       expect(result.content[0]!.text).toContain("django");
     });
+  });
+});
+
+describe("evidence gate (never-generic guarantee)", () => {
+  it("returns an honest miss when the topic never appears in any fetched source", async () => {
+    vi.mocked(lookupById).mockReturnValue(makeEntry());
+    vi.mocked(fetchDocs).mockResolvedValue(makeFetchResult());
+    const result = await handler({ libraryId: "facebook/react", topic: "webhooks retry policy" });
+    expect(result.content[0]!.text).toContain("no topic-specific evidence found");
+    expect(result.content[0]!.text).toContain("Sources checked:");
+    const sc = result.structuredContent!;
+    expect((sc.evidence as { verdict: string }).verdict).toBe("miss");
+    expect(sc.qualityScore).toBe(0);
+    expect(sc).toMatchObject({
+      libraryId: "facebook/react",
+      displayName: "React",
+      topic: "webhooks retry policy",
+      sourceUrl: "https://react.dev/llms.txt",
+    });
+  });
+
+  it("escalates with a forced deep fetch when initial output lacks evidence, then serves the on-topic result", async () => {
+    vi.mocked(lookupById).mockReturnValue(makeEntry());
+    vi.mocked(fetchDocs).mockResolvedValue(makeFetchResult());
+    const onTopic = {
+      content: "# Webhooks\n\nConfigure webhooks retry policy. Webhooks retry uses backoff. Webhooks signing keys.",
+      url: "https://react.dev/docs/webhooks",
+      sourceType: "deep-fetch" as const,
+    };
+    vi.mocked(deepFetchForTopic)
+      .mockResolvedValueOnce(makeFetchResult())
+      .mockResolvedValueOnce(onTopic);
+
+    const result = await handler({ libraryId: "facebook/react", topic: "webhooks" });
+
+    const calls = vi.mocked(deepFetchForTopic).mock.calls;
+    expect(calls.length).toBe(2);
+    expect(calls[1]![5]).toBe(true);
+    expect(result.content[0]!.text).toContain("Configure webhooks retry policy");
+    const sc = result.structuredContent!;
+    expect((sc.evidence as { verdict: string; escalated: boolean }).verdict).toBe("strong");
+    expect((sc.evidence as { escalated: boolean }).escalated).toBe(true);
+  });
+
+  it("appends an Evidence block with source attribution on success", async () => {
+    vi.mocked(lookupById).mockReturnValue(makeEntry());
+    vi.mocked(fetchDocs).mockResolvedValue(
+      makeFetchResult("# Hooks\n\nHooks let you use state. Custom hooks compose hooks."),
+    );
+    const result = await handler({ libraryId: "facebook/react", topic: "hooks" });
+    const text = result.content[0]!.text;
+    expect(text).toContain("## Evidence");
+    expect(text).toContain("Topic coverage:");
+    expect(text).toContain("https://react.dev/llms.txt");
+  });
+
+  it("marks sparse coverage with a weak-evidence banner instead of pretending", async () => {
+    vi.mocked(lookupById).mockReturnValue(makeEntry());
+    const sparse = "The library also supports caching somewhere. ".concat("Unrelated prose. ".repeat(20));
+    vi.mocked(fetchDocs).mockResolvedValue(makeFetchResult(sparse));
+    vi.mocked(deepFetchForTopic).mockImplementation(async (result) => result);
+    const result = await handler({ libraryId: "facebook/react", topic: "caching" });
+    expect(result.content[0]!.text).toContain("Evidence: Weak");
+    const sc = result.structuredContent!;
+    expect((sc.evidence as { verdict: string }).verdict).toBe("weak");
+  });
+
+  it("does not gate untargeted requests (no topic)", async () => {
+    vi.mocked(lookupById).mockReturnValue(makeEntry());
+    vi.mocked(fetchDocs).mockResolvedValue(makeFetchResult());
+    const result = await handler({ libraryId: "facebook/react" });
+    expect(result.content[0]!.text).not.toContain("no topic-specific evidence found");
+    const sc = result.structuredContent!;
+    expect((sc.evidence as { verdict: string }).verdict).toBe("untargeted");
   });
 });

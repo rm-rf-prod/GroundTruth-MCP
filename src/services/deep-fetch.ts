@@ -266,11 +266,18 @@ export async function deepFetchForTopic(
   docsUrl: string,
   urlPatterns?: string[],
   maxPages = DEEP_FETCH_MAX_PAGES,
+  force = false,
 ): Promise<FetchResult> {
   if (!topic || topic.trim().length === 0) return initialResult;
 
-  const relevance = scoreTopicRelevance(initialResult.content, topic);
-  if (relevance >= DEEP_FETCH_RELEVANCE_THRESHOLD) return initialResult;
+  // force=true bypasses the cheap relevance early-exit. Used by the evidence
+  // gate: scoreTopicRelevance accepts a single passing mention (per its test
+  // contract), but when the FINAL extracted output fails the stricter
+  // checkEvidence bar, tools re-run the pipeline here to hunt topic pages.
+  if (!force) {
+    const relevance = scoreTopicRelevance(initialResult.content, topic);
+    if (relevance >= DEEP_FETCH_RELEVANCE_THRESHOLD) return initialResult;
+  }
 
   const pipeline = async (): Promise<FetchResult> => {
     const topicUrls = buildTopicUrls(docsUrl, topic, urlPatterns);
