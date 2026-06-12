@@ -3,6 +3,7 @@ import { z } from "zod";
 import { lookupById, lookupByAlias } from "../sources/registry.js";
 import { fetchGitHubContent, fetchGitHubReleases, fetchAsMarkdownRace } from "../services/fetcher.js";
 import { extractRelevantContent, sliceVersionBand, parseMajor } from "../utils/extract.js";
+import { checkEvidence, buildEvidenceBlock } from "../utils/evidence.js";
 import { sanitizeContent } from "../utils/sanitize.js";
 import { computeQualityScore } from "../utils/quality.js";
 import { isExtractionAttempt, withNotice, EXTRACTION_REFUSAL } from "../utils/guard.js";
@@ -248,6 +249,7 @@ Use this when the user asks HOW to upgrade their code from one version to anothe
         targetVersions,
       );
 
+      const evidence = checkEvidence(text, topic);
       const header = [
         `# ${displayName} — Migration Guide`,
         fromVersion || toVersion
@@ -255,13 +257,20 @@ Use this when the user asks HOW to upgrade their code from one version to anothe
           : "",
         `> Sources: ${sections.map((s) => s.source).join(", ")}`,
         truncated ? "> Note: Response truncated. Specify fromVersion/toVersion for focused results." : "",
+        qualityScore < 0.4 ? `> Quality: Low — ${qualityHints.join("; ") || "verify against the official upgrade guide."}` : "",
         "",
         "---",
         "",
       ].filter(Boolean).join("\n");
 
+      const evidenceBlock = buildEvidenceBlock({
+        sources: sections.map((s) => ({ url: s.source })),
+        topic,
+        check: evidence,
+      });
+
       return {
-        content: [{ type: "text", text: withNotice(header + text) }],
+        content: [{ type: "text", text: withNotice(header + text + evidenceBlock) }],
         structuredContent: {
           libraryId: resolvedId,
           displayName,
@@ -271,6 +280,12 @@ Use this when the user asks HOW to upgrade their code from one version to anothe
           truncated,
           qualityScore,
           qualityHints,
+          evidence: {
+            ok: evidence.ok,
+            matchRatio: evidence.matchRatio,
+            occurrences: evidence.occurrences,
+            verdict: evidence.ok ? "strong" : evidence.matchRatio > 0 ? "weak" : "miss",
+          },
           content: text,
         },
       };

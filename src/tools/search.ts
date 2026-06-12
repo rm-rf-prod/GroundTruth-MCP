@@ -3,6 +3,7 @@ import { z } from "zod";
 import { fuzzySearch, lookupById } from "../sources/registry.js";
 import { fetchDocs, fetchWithTimeout, fetchDevDocs, fetchAsMarkdownRace, isErrorPage } from "../services/fetcher.js";
 import { extractRelevantContent, normalizeQueryYear } from "../utils/extract.js";
+import { checkEvidence, buildEvidenceBlock } from "../utils/evidence.js";
 import { sanitizeContent } from "../utils/sanitize.js";
 import { docCache } from "../services/cache.js";
 import { DEFAULT_TOKEN_LIMIT, MAX_TOKEN_LIMIT, CACHE_TTLS } from "../constants.js";
@@ -1198,6 +1199,7 @@ function matchesPattern(query: string, pattern: string): boolean {
   if (!re) {
     const escaped = pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     re = new RegExp(`(?:^|[\\s,;:()\\[\\]/])${escaped}(?:$|[\\s,;:()\\[\\]/])`, "i");
+    if (patternRegexCache.size >= 500) patternRegexCache.clear();
     patternRegexCache.set(pattern, re);
   }
   return re.test(query);
@@ -1239,6 +1241,10 @@ async function fetchTopicContent(url: string, query: string, tokens: number): Pr
   if (!raw || raw.length < 200 || isErrorPage(raw)) return "";
   const safe = sanitizeContent(raw);
   const { text } = extractRelevantContent(safe, query, tokens);
+  // Evidence gate: pages whose extracted text never mentions a single query
+  // term (soft-404s, search-results shells, off-topic landing pages) are
+  // dropped instead of being served as answers. Only verified text is cached.
+  if (checkEvidence(text, query).matchRatio === 0) return "";
   docCache.set(cacheKey, text, CACHE_TTLS.SEARCH_RESULT);
   return text;
 }
@@ -1409,7 +1415,7 @@ function buildJinaFallbackUrls(query: string): Array<{ url: string; name: string
  * Search MDN Web Docs via their free JSON API (no auth, no rate limit issues).
  * Returns doc page URLs sorted by relevance. Ideal for web standards, CSS, HTML, JS, HTTP.
  */
-async function searchMDN(query: string): Promise<Array<{ url: string; title: string }>> {
+export async function searchMDN(query: string): Promise<Array<{ url: string; title: string }>> {
   try {
     const res = await fetchWithTimeout(
       `https://developer.mozilla.org/api/v1/search?q=${encodeURIComponent(query)}&locale=en-US&size=5`,
@@ -1732,7 +1738,7 @@ Examples:
         const directUrls = buildDirectDocsUrls(query);
         if (directUrls.length > 0) {
           const directResults = await Promise.allSettled(
-            directUrls.slice(0, 4).map(async (candidate) => {
+            directUrls.slice(0, 6).map(async (candidate) => {
               const content = await fetchTopicContent(candidate.url, query, Math.floor(tokens / 2));
               if (content.length > 200) {
                 return { source: candidate.name, url: candidate.url, content };
@@ -1844,7 +1850,7 @@ Examples:
         for (const candidate of jinaDirectUrls.slice(0, 2)) {
           const content = await fetchTopicContent(candidate.url, query, tokens);
           if (content.length > 200) {
-            results.push({ source: candidate.name, url: candidate.url, content });
+            results.push({ source: `${candidate.name} (search results — weak evidence, follow links)`, url: candidate.url, content });
             break;
           }
         }
@@ -1855,7 +1861,7 @@ Examples:
         const mdnSearch = `https://developer.mozilla.org/en-US/search?q=${encodeURIComponent(query)}`;
         const content = await fetchTopicContent(mdnSearch, query, tokens);
         if (content.length > 200) {
-          results.push({ source: "MDN Web Docs", url: mdnSearch, content });
+          results.push({ source: "MDN search results (weak evidence — follow links)", url: mdnSearch, content });
         }
       }
 
@@ -1890,12 +1896,25 @@ Examples:
         .map((r) => `## ${r.source}\n> Source: ${r.url}\n\n${r.content}\n\n---\n`)
         .join("\n");
 
+      const combinedCheck = checkEvidence(results.map((r) => r.content).join("\n\n"), query);
+      const evidenceBlock = buildEvidenceBlock({
+        sources: results.map((r) => ({ url: r.url })),
+        topic: query,
+        check: combinedCheck,
+      });
+
       ctx.resolved = results.length > 0;
       return {
-        content: [{ type: "text", text: header + body }],
+        content: [{ type: "text", text: header + body + evidenceBlock }],
         structuredContent: {
           query,
           sources: results.map((r) => ({ name: r.source, url: r.url, content: r.content })),
+          evidence: {
+            ok: combinedCheck.ok,
+            matchRatio: combinedCheck.matchRatio,
+            occurrences: combinedCheck.occurrences,
+            verdict: combinedCheck.ok ? "strong" : combinedCheck.matchRatio > 0 ? "weak" : "miss",
+          },
         },
       };
      });

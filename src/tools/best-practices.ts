@@ -5,6 +5,7 @@ import { fetchDocs, fetchGitHubContent, fetchGitHubExamples, fetchAsMarkdownRace
 import { resolveDynamic, probeLlmsTxt } from "../services/resolve.js";
 import { deepFetchForTopic } from "../services/deep-fetch.js";
 import { extractRelevantContent } from "../utils/extract.js";
+import { checkEvidence, buildEvidenceBlock, buildHonestMiss, extractHeadingOutline } from "../utils/evidence.js";
 import { isExtractionAttempt, withNotice, EXTRACTION_REFUSAL } from "../utils/guard.js";
 import { sanitizeContent } from "../utils/sanitize.js";
 import { computeQualityScore } from "../utils/quality.js";
@@ -1454,7 +1455,7 @@ Do not call this tool more than 3 times per question.`,
 
       const effectiveTopic = version ? `${topic ? `${topic} ` : ""}v${version.replace(/^v/, "")}`.trim() : topic;
 
-      const { text, sourceUrl, truncated } = await fetchBestPracticesContent(
+      let { text, sourceUrl, truncated } = await fetchBestPracticesContent(
         resolvedId,
         docsUrl,
         llmsTxtUrl,
@@ -1465,13 +1466,84 @@ Do not call this tool more than 3 times per question.`,
         bestPracticesPaths,
       );
 
+      // Evidence gate — verify the extracted output actually covers the topic.
+      // One forced topic-targeted deep fetch when it does not; an explicit miss
+      // when the topic never appears at all. Never serve off-topic pages as if
+      // they were the requested best practices.
+      let evidence = checkEvidence(text, effectiveTopic);
+      let escalated = false;
+      const sourcesTried: Array<{ url: string; sourceType?: string }> = [{ url: sourceUrl }];
+
+      if (effectiveTopic && !evidence.ok) {
+        const deeper = await deepFetchForTopic(
+          { content: text, url: sourceUrl, sourceType: "deep-fetch" },
+          effectiveTopic,
+          docsUrl,
+          bestPracticesPaths,
+          undefined,
+          true,
+        );
+        escalated = true;
+        if (deeper.url !== sourceUrl) {
+          sourcesTried.push({ url: deeper.url, sourceType: deeper.sourceType });
+        }
+        const reExtract = extractRelevantContent(sanitizeContent(deeper.content), effectiveTopic, tokens);
+        const reCheck = checkEvidence(reExtract.text, effectiveTopic);
+        if (reCheck.ok || reCheck.occurrences > evidence.occurrences) {
+          text = reExtract.text;
+          sourceUrl = deeper.url;
+          truncated = reExtract.truncated;
+          evidence = reCheck;
+        }
+      }
+
       const { score: qualityScore, hints: qualityHints } = computeQualityScore(text, effectiveTopic, "jina");
+      const evidenceSummary = {
+        ok: evidence.ok,
+        matchRatio: evidence.matchRatio,
+        occurrences: evidence.occurrences,
+        matchedTokens: evidence.matchedTokens,
+        missingTokens: evidence.missingTokens,
+        escalated,
+        verdict: !effectiveTopic ? "untargeted" : evidence.ok ? "strong" : evidence.matchRatio > 0 ? "weak" : "miss",
+      };
+
+      if (effectiveTopic && evidence.matchRatio === 0) {
+        const missText = buildHonestMiss({
+          subject: `${displayName} best practices`,
+          topic: effectiveTopic,
+          tried: sourcesTried.map((s) => s.url),
+          outline: extractHeadingOutline(text),
+          nextSteps: [
+            "Re-run with a broader or differently-worded topic",
+            `Try gt_search with "${displayName} ${effectiveTopic}" as a freeform query`,
+            "Try gt_get_docs with the same topic for reference documentation",
+          ],
+        });
+        ctx.resolved = false;
+        return {
+          content: [{ type: "text", text: withNotice(missText) }],
+          structuredContent: {
+            libraryId: resolvedId,
+            displayName,
+            topic: effectiveTopic,
+            sourceUrl,
+            truncated: false,
+            qualityScore: 0,
+            qualityHints: ["No topic-specific evidence found in any fetched source"],
+            evidence: evidenceSummary,
+            sourcesTried: sourcesTried.map((s) => s.url),
+            content: missText,
+          },
+        };
+      }
 
       const header = [
         `# ${displayName} — Best Practices`,
         effectiveTopic ? `> Topic: ${effectiveTopic}` : "",
         `> Source: ${sourceUrl}`,
         truncated ? "> Note: Response truncated. Use a more specific topic or increase tokens." : "",
+        effectiveTopic && !evidence.ok ? `> Evidence: Weak — topic terms appear only sparsely (${evidence.occurrences} occurrence${evidence.occurrences === 1 ? "" : "s"}). Verify against the source before relying on this.` : "",
         qualityScore < 0.4 ? `> Quality: Low — ${qualityHints.join("; ") || "try a more specific topic."}` : "",
         "",
         "---",
@@ -1480,9 +1552,16 @@ Do not call this tool more than 3 times per question.`,
         .filter(Boolean)
         .join("\n");
 
+      const evidenceBlock = buildEvidenceBlock({
+        sources: sourcesTried,
+        topic: effectiveTopic,
+        ...(effectiveTopic ? { check: evidence } : {}),
+        escalated,
+      });
+
       ctx.resolved = text.length > 200;
       return {
-        content: [{ type: "text", text: withNotice(header + text) }],
+        content: [{ type: "text", text: withNotice(header + text + evidenceBlock) }],
         structuredContent: {
           libraryId: resolvedId,
           displayName,
@@ -1491,6 +1570,7 @@ Do not call this tool more than 3 times per question.`,
           truncated,
           qualityScore,
           qualityHints,
+          evidence: evidenceSummary,
           content: text,
         },
       };

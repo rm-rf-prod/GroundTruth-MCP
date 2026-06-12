@@ -24,7 +24,8 @@ vi.mock("../sources/registry.js", () => ({
   fuzzySearch: vi.fn(() => []),
 }));
 
-vi.mock("../utils/extract.js", () => ({
+vi.mock("../utils/extract.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../utils/extract.js")>()),
   extractRelevantContent: vi.fn((content: string) => ({ text: content, truncated: false })),
 }));
 

@@ -236,6 +236,45 @@ IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library 
         snippets = rankSnippets(index.snippets, topic, language, maxSnippets);
         sourceUrl = index.sourceUrl;
         builtAt = index.builtAt;
+
+        // Topic matched nothing in a non-empty index: say so explicitly and
+        // show what IS available instead of returning an empty shell.
+        if (snippets.length === 0) {
+          const available = index.snippets
+            .slice(0, 10)
+            .map((s) => `- ${s.title}${s.language ? ` (${s.language})` : ""}`)
+            .join("\n");
+          return {
+            content: [
+              {
+                type: "text",
+                text: [
+                  `# ${displayName} — no snippets match "${topic}"${language ? ` in ${language}` : ""}`,
+                  "",
+                  `The snippet index for ${displayName} (${index.snippets.length} snippets from ${index.sourceUrl}) contains no code matching that topic. Closest available snippets:`,
+                  "",
+                  available,
+                  "",
+                  "**What to try next:**",
+                  "- Re-run with one of the topics listed above, or without a topic to see everything",
+                  `- Try gt_get_docs with topic "${topic}" for prose documentation`,
+                  "- Try gt_examples for real-world GitHub usage of this pattern",
+                ].join("\n"),
+              },
+            ],
+            structuredContent: {
+              library,
+              displayName,
+              topic,
+              version: version ?? null,
+              language: language ?? null,
+              sourceUrl: index.sourceUrl,
+              totalSnippets: 0,
+              indexedSnippets: index.snippets.length,
+              snippets: [],
+            },
+          };
+        }
       }
 
       const body = renderSnippets(snippets);

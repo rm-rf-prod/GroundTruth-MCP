@@ -9,6 +9,8 @@ export function buildServerInstructions(toolCount: number): string {
 
 Covers libraries, frameworks, web standards (MDN), security (OWASP), accessibility (WCAG), performance, HTTP, CSS, auth standards, databases, infrastructure. Content is fetched at request time from official sources, not from training data.
 
+Evidence guarantee: every topic-targeted response is verified against the request before it is returned. Responses carry an "## Evidence" footer (source URLs, fetch date, topic-coverage stats). When no fetched source actually covers the topic, the tool says so explicitly and lists what was checked — it never substitutes generic or off-topic content. Treat a "no topic-specific evidence found" response as a true negative, not a failure: follow its suggested next steps.
+
 # Tools (${toolCount})
 
 1. **gt_dispatch**. Routes a plain-text query ("use gt mcp", "find issues", "best practices for next.js") to the correct gt_* tool with the right args. Call it whenever the user's intent is ambiguous, or they say "use gt" without specifying a tool.

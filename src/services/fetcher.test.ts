@@ -1064,3 +1064,32 @@ describe("TS-005: corrupt sitemap cache type guard", () => {
     expect(mockFetch).not.toHaveBeenCalled();
   });
 });
+
+describe("docsifyToRaw", () => {
+  it("rewrites a docsify hash route to the raw markdown path", async () => {
+    const { docsifyToRaw } = await import("./fetcher.js");
+    expect(docsifyToRaw("https://getpino.io/#/docs/web")).toBe("https://getpino.io/docs/web.md");
+  });
+
+  it("preserves a base path before the hash", async () => {
+    const { docsifyToRaw } = await import("./fetcher.js");
+    expect(docsifyToRaw("https://site.dev/docs/#/guide/setup")).toBe("https://site.dev/docs/guide/setup.md");
+  });
+
+  it("keeps an explicit .md extension", async () => {
+    const { docsifyToRaw } = await import("./fetcher.js");
+    expect(docsifyToRaw("https://site.dev/#/README.md")).toBe("https://site.dev/README.md");
+  });
+
+  it("strips query strings and trailing slashes from the fragment", async () => {
+    const { docsifyToRaw } = await import("./fetcher.js");
+    expect(docsifyToRaw("https://site.dev/#/docs/web/?id=intro")).toBe("https://site.dev/docs/web.md");
+  });
+
+  it("returns null for non-hash URLs and empty fragments", async () => {
+    const { docsifyToRaw } = await import("./fetcher.js");
+    expect(docsifyToRaw("https://example.com/docs/web")).toBeNull();
+    expect(docsifyToRaw("https://example.com/#/")).toBeNull();
+    expect(docsifyToRaw("not a url")).toBeNull();
+  });
+});
