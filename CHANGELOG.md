@@ -1,5 +1,15 @@
 # Changelog
 
+## [7.2.0] — 2026-07-10
+
+- feat: multi-source retrieval, Jina 404 gate, prose-only evidence
+- feat: topic-synonym discovery (migration/upgrade, performance/optimization), index-first deep-fetch, link-list guard
+- feat: weekly URL-health CI workflow; 73 rotted curated URLs replaced with live-verified pages
+- fix: query-meta words no longer count as topic evidence; shared web-search helper in gt_search
+- chore: undici 8.7.0 + hono 4.12.28 (clears 2 high-severity production advisories)
+
+---
+
 ## [7.1.0] — 2026-06-12
 
 - feat: evidence engine — verified topic coverage, no generic answers

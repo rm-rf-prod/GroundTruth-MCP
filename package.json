@@ -1,7 +1,7 @@
 {
   "name": "@groundtruth-mcp/gt-mcp",
   "mcpName": "io.github.rm-rf-prod/groundtruth",
-  "version": "7.1.0",
+  "version": "7.2.0",
   "description": "Enterprise-grade MCP server for live docs, best practices, code audit. Context7 alternative — 445+ libraries, smart dispatch (use gt mcp), plain-text intent routing, telemetry, SSRF-hardened multi-source fetcher, atomic disk cache, IPv6 + Unicode-homoglyph defenses.",
   "type": "module",
   "main": "dist/index.js",
