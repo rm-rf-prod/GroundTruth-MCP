@@ -195,7 +195,7 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "tailwindcss",
     language: ["css"],
     tags: ["css", "styling", "utility"],
-    bestPracticesPaths: ["/docs/utility-first", "/docs/responsive-design"],
+    bestPracticesPaths: ["/docs/utility-first", "/docs/upgrade-guide", "/docs/responsive-design"],
     urlPatterns: ["/docs/{slug}"],
   },
   {

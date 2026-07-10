@@ -31,6 +31,62 @@ export function tokenize(text: string): string[] {
     .filter((w) => (VERSION_TOKEN.test(w) ? w.length >= 1 : w.length > 2) && !STOP_WORDS.has(w));
 }
 
+// Documentation sites rarely use the same word the caller does: an upgrade
+// guide answers a "migration" query, an "optimization" page answers
+// "performance". Expansion is used for LINK/URL DISCOVERY only — evidence
+// verification stays literal so verdicts never inflate.
+const TOPIC_SYNONYMS: Record<string, readonly string[]> = {
+  migration: ["upgrade", "upgrading", "migrate", "migrating"],
+  migrate: ["upgrade", "migration", "upgrading"],
+  upgrade: ["migration", "upgrading", "migrate"],
+  upgrading: ["migration", "upgrade"],
+  performance: ["optimization", "optimizing", "optimize", "profiling"],
+  optimization: ["performance", "optimizing"],
+  auth: ["authentication"],
+  authentication: ["auth"],
+  caching: ["cache"],
+  cache: ["caching"],
+  config: ["configuration", "configuring"],
+  configuration: ["config"],
+  deploy: ["deployment", "deploying"],
+  deployment: ["deploy", "deploying"],
+  routing: ["router", "routes", "route", "navigation"],
+  router: ["routing", "routes"],
+  notifications: ["notification", "push"],
+  notification: ["notifications"],
+  worklets: ["worklet"],
+  worklet: ["worklets"],
+  testing: ["test", "tests"],
+  errors: ["error"],
+  error: ["errors"],
+};
+
+/** Expand topic tokens with documentation-vocabulary synonyms (discovery only). */
+export function expandTopicTokens(tokens: string[]): string[] {
+  const out = new Set(tokens);
+  for (const t of tokens) {
+    for (const s of TOPIC_SYNONYMS[t] ?? []) out.add(s);
+  }
+  return [...out];
+}
+
+// Query-meta words describe the KIND of answer wanted, not its subject — they
+// appear on virtually every docs page, so counting them as topic coverage lets
+// entirely off-topic content pass ("Postgres RLS best practices" matching a
+// web-perf page on "best practices"). Filtered from evidence/quality scoring;
+// kept when they are ALL the caller gave us.
+const META_TOKENS = new Set([
+  "best", "practices", "practice", "latest", "guide", "guides", "tips",
+  "docs", "documentation", "pattern", "patterns", "overview", "current",
+]);
+
+/** Topic tokens that carry subject meaning — meta words dropped unless nothing else remains. */
+export function substantiveTokens(topic: string): string[] {
+  const raw = [...new Set(tokenize(topic))];
+  const substantive = raw.filter((t) => !META_TOKENS.has(t));
+  return substantive.length > 0 ? substantive : raw;
+}
+
 /**
  * BM25-inspired section scoring.
  *

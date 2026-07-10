@@ -1,0 +1,23 @@
+name: URL Health
+
+on:
+  schedule:
+    # Mondays 06:00 UTC — catch docs restructures before users hit dead links
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check-urls:
+    name: Check curated documentation URLs
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version-file: ".node-version"
+      - name: Check curated URLs
+        run: node scripts/check-urls.mjs

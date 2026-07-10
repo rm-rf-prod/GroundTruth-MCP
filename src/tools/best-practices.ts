@@ -1,10 +1,10 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { lookupById, lookupByAlias } from "../sources/registry.js";
-import { fetchDocs, fetchGitHubContent, fetchGitHubExamples, fetchAsMarkdownRace, fetchSitemapUrls } from "../services/fetcher.js";
+import { fetchDocs, fetchGitHubContent, fetchGitHubExamples, fetchAsMarkdownRace, fetchSitemapUrls, isIndexContent } from "../services/fetcher.js";
 import { resolveDynamic, probeLlmsTxt } from "../services/resolve.js";
 import { deepFetchForTopic } from "../services/deep-fetch.js";
-import { extractRelevantContent, tokenize } from "../utils/extract.js";
+import { extractRelevantContent, tokenize, expandTopicTokens } from "../utils/extract.js";
 import { checkEvidence, buildEvidenceBlock, buildHonestMiss, extractHeadingOutline } from "../utils/evidence.js";
 import { isExtractionAttempt, withNotice, EXTRACTION_REFUSAL } from "../utils/guard.js";
 import { sanitizeContent } from "../utils/sanitize.js";
@@ -95,6 +95,7 @@ const BEST_PRACTICES_URLS: Record<string, string[]> = {
   // ─── CSS / Styling ───────────────────────────────────────────────────────
   "tailwindlabs/tailwindcss": [
     "https://tailwindcss.com/docs/utility-first",
+    "https://tailwindcss.com/docs/upgrade-guide",
     "https://tailwindcss.com/docs/reusing-styles",
     "https://tailwindcss.com/docs/optimizing-for-production",
   ],
@@ -763,7 +764,7 @@ const BEST_PRACTICES_URLS: Record<string, string[]> = {
   "pulumi/pulumi": ["https://www.pulumi.com/docs/concepts/", "https://www.pulumi.com/docs/using-pulumi/testing/"],
   "hashicorp/terraform": [
     "https://developer.hashicorp.com/terraform/language",
-    "https://developer.hashicorp.com/terraform/language/best-practices",
+    "https://developer.hashicorp.com/terraform/language/style",
   ],
   "helm/helm": ["https://helm.sh/docs/chart_best_practices/", "https://helm.sh/docs/topics/charts/"],
   "grafana/grafana": ["https://grafana.com/docs/grafana/latest/dashboards/", "https://grafana.com/docs/grafana/latest/alerting/"],
@@ -772,7 +773,7 @@ const BEST_PRACTICES_URLS: Record<string, string[]> = {
   // ─── Databases (additional) ───────────────────────────────────────────────
   "cockroachdb/cockroach": ["https://www.cockroachlabs.com/docs/stable/performance-best-practices-overview.html"],
   "ClickHouse/ClickHouse": ["https://clickhouse.com/docs/en/best-practices", "https://clickhouse.com/docs/en/guides"],
-  "meilisearch/meilisearch": ["https://www.meilisearch.com/docs/learn/getting_started", "https://www.meilisearch.com/docs/learn/fine_tuning_results"],
+  "meilisearch/meilisearch": ["https://www.meilisearch.com/docs/learn/getting_started", "https://www.meilisearch.com/docs/learn/relevancy/relevancy"],
   "typesense/typesense": ["https://typesense.org/docs/guide/", "https://typesense.org/docs/guide/ranking-and-relevance.html"],
 
   // ─── AI / ML ──────────────────────────────────────────────────────────────
@@ -796,11 +797,11 @@ const BEST_PRACTICES_URLS: Record<string, string[]> = {
   "preactjs/preact": ["https://preactjs.com/guide/v10/getting-started", "https://preactjs.com/guide/v10/hooks"],
 
   // ─── Desktop / Mobile (additional) ────────────────────────────────────────
-  "tauri-apps/tauri": ["https://v2.tauri.app/develop/", "https://v2.tauri.app/develop/security/"],
+  "tauri-apps/tauri": ["https://v2.tauri.app/develop/", "https://v2.tauri.app/security/"],
   "electron/electron": ["https://www.electronjs.org/docs/latest/tutorial/security", "https://www.electronjs.org/docs/latest/tutorial/performance"],
 
   // ─── Cloud ────────────────────────────────────────────────────────────────
-  "netlify/cli": ["https://docs.netlify.com/frameworks/next-js/", "https://docs.netlify.com/functions/overview/"],
+  "netlify/cli": ["https://docs.netlify.com/build/frameworks/framework-setup-guides/nextjs/overview/", "https://docs.netlify.com/functions/overview/"],
 
   // ─── Messaging / Workflows ────────────────────────────────────────────────
   "temporalio/sdk-typescript": ["https://docs.temporal.io/develop/typescript", "https://docs.temporal.io/develop/typescript/core-application"],
@@ -956,7 +957,7 @@ const BEST_PRACTICES_URLS: Record<string, string[]> = {
     "https://docs.cohere.com/docs/the-cohere-platform",
     "https://docs.cohere.com/docs/chat-api",
     "https://docs.cohere.com/docs/embed-api",
-    "https://docs.cohere.com/docs/rerank-api",
+    "https://docs.cohere.com/reference/rerank",
   ],
   "groq/groq-typescript": [
     "https://console.groq.com/docs/quickstart",
@@ -986,7 +987,7 @@ const BEST_PRACTICES_URLS: Record<string, string[]> = {
   "chroma-core/chromadb": [
     "https://docs.trychroma.com/docs/overview/getting-started",
     "https://docs.trychroma.com/docs/collections/add-data",
-    "https://docs.trychroma.com/docs/collections/query-data",
+    "https://docs.trychroma.com/docs/querying-collections/query-and-get",
   ],
   "weaviate/typescript-client": [
     "https://weaviate.io/developers/weaviate/starter-guides",
@@ -1005,12 +1006,12 @@ const BEST_PRACTICES_URLS: Record<string, string[]> = {
     "https://elevenlabs.io/docs/api-reference/text-to-speech",
   ],
   "deepgram/deepgram-js-sdk": [
-    "https://developers.deepgram.com/docs/getting-started",
-    "https://developers.deepgram.com/docs/speech-to-text",
+    "https://developers.deepgram.com/docs/stt/getting-started",
+    "https://developers.deepgram.com/docs/stt-pre-recorded-feature-overview",
   ],
   "AssemblyAI/assemblyai-node-sdk": [
     "https://www.assemblyai.com/docs/getting-started",
-    "https://www.assemblyai.com/docs/speech-to-text/pre-recorded",
+    "https://www.assemblyai.com/docs/speech-to-text",
   ],
 
   // ─── AI Image / Video ─────────────────────────────────────────────────
@@ -1018,13 +1019,13 @@ const BEST_PRACTICES_URLS: Record<string, string[]> = {
     "https://platform.stability.ai/docs/getting-started",
   ],
   "fal-ai/fal-js": [
-    "https://fal.ai/docs/quickstart",
+    "https://docs.fal.ai/model-apis/quickstart",
   ],
 
   // ─── Hugging Face ─────────────────────────────────────────────────────
   "huggingface/huggingface.js": [
-    "https://huggingface.co/docs/huggingface.js/inference/overview",
-    "https://huggingface.co/docs/huggingface.js/hub/overview",
+    "https://huggingface.co/docs/huggingface.js/en/inference/README",
+    "https://huggingface.co/docs/huggingface.js/en/hub/README",
   ],
   "huggingface/transformers.js": [
     "https://huggingface.co/docs/transformers.js/index",
@@ -1207,10 +1208,12 @@ async function fetchBestPracticesContent(
     if (topic) {
       // Keep short version tokens ("v4", "v3") that the >2-char filter would drop —
       // they are exactly the signal that distinguishes a migration/version page.
-      const words = topic
-        .toLowerCase()
-        .split(/\s+/)
-        .filter((w) => (/^v?\d+(?:\.\d+)*$/.test(w) ? w.length >= 1 : w.length > 2));
+      const words = expandTopicTokens(
+        topic
+          .toLowerCase()
+          .split(/\s+/)
+          .filter((w) => (/^v?\d+(?:\.\d+)*$/.test(w) ? w.length >= 1 : w.length > 2)),
+      );
       const scored = knownUrls.map((u) => {
         const lower = u.toLowerCase();
         const score = words.filter((w) => lower.includes(w)).length;
@@ -1332,7 +1335,10 @@ async function fetchBestPracticesContent(
           : "best practices patterns guide tips";
         const safe = sanitizeContent(raw);
         const { text: extracted, truncated } = extractRelevantContent(safe, enrichedTopic, tokens);
-        if (extracted.length > 200) {
+        // llms.txt is a directory of links — a link list is a pointer to the
+        // answer, never the answer itself. Fall through to deep-fetch, which
+        // traverses the index to the actual pages.
+        if (extracted.length > 200 && !isIndexContent(extracted)) {
           return { text: extracted, sourceUrl: url, truncated, extraSources: [] };
         }
       }
@@ -1500,7 +1506,10 @@ Do not call this tool more than 3 times per question.`,
         ...extraSources.map((url) => ({ url })),
       ];
 
-      if (effectiveTopic && !evidence.ok) {
+      // Escalate when evidence is weak OR when the "content" is still a link
+      // index — a directory page can pass token checks via link text while
+      // answering nothing.
+      if (effectiveTopic && (!evidence.ok || isIndexContent(text))) {
         const deeper = await deepFetchForTopic(
           { content: text, url: sourceUrl, sourceType: "deep-fetch" },
           effectiveTopic,
@@ -1515,7 +1524,11 @@ Do not call this tool more than 3 times per question.`,
         }
         const reExtract = extractRelevantContent(sanitizeContent(deeper.content), effectiveTopic, tokens);
         const reCheck = checkEvidence(reExtract.text, effectiveTopic);
-        if (reCheck.ok || reCheck.occurrences > evidence.occurrences) {
+        const wasIndex = isIndexContent(text);
+        if (
+          (reCheck.ok || reCheck.occurrences > evidence.occurrences || (wasIndex && !isIndexContent(reExtract.text))) &&
+          !(isIndexContent(reExtract.text) && !wasIndex)
+        ) {
           text = reExtract.text;
           sourceUrl = deeper.url;
           truncated = reExtract.truncated;

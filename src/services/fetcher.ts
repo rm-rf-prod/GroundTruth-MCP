@@ -8,6 +8,7 @@ import { extractDomain, isCircuitOpen, recordSuccess, recordFailure } from "./ci
 import type { FetchResult } from "../types.js";
 import { docCache, diskDocCache } from "./cache.js";
 import { assertPublicUrl } from "../utils/guard.js";
+import { tokenize, expandTopicTokens } from "../utils/extract.js";
 import { convertHtmlToMarkdown } from "../utils/html-to-md.js";
 import { sanitizeContent } from "../utils/sanitize.js";
 import { log } from "../utils/logger.js";
@@ -629,10 +630,8 @@ export function rankIndexLinks(content: string, topic: string): string[] {
 
   if (!topic || links.length === 0) return links.slice(0, 5).map((l) => l.url);
 
-  const queryWords = topic
-    .toLowerCase()
-    .split(/[\s,]+/)
-    .filter((w) => w.length > 2);
+  // Synonym-expanded so "migration" queries match "Upgrade guide" links.
+  const queryWords = expandTopicTokens(tokenize(topic));
 
   for (const link of links) {
     const combined = link.text + " " + link.url.toLowerCase();
