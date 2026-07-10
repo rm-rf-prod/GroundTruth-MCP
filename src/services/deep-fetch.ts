@@ -95,6 +95,9 @@ export function rankLinksForTopic(
     for (const token of topicTokens) {
       if (combined.includes(token)) score += 10;
     }
+    // Archived version trees (…/2.x/…, /v1/, /legacy/) must not outrank the
+    // current docs, which sites serve at the unversioned canonical path.
+    if (/\/(?:v?\d+(?:\.x|\.\d+)?|legacy|previous|old|archive)(?:\/|$)/i.test(link.url)) score -= 5;
     return { ...link, score };
   });
 
@@ -205,7 +208,7 @@ async function fetchFirstSuccessful(
   }
 }
 
-async function fetchMultiplePages(
+export async function fetchMultiplePages(
   urls: string[],
   maxPages: number,
 ): Promise<Array<{ content: string; url: string }>> {
@@ -286,7 +289,7 @@ export async function deepFetchForTopic(
     // them FIRST. Guessed slugs mostly 404 and used to burn the deep-fetch
     // time budget before the reliable path ever ran.
     if (isIndexContent(initialResult.content)) {
-      const ranked = rankIndexLinks(initialResult.content, topic);
+      const ranked = rankIndexLinks(initialResult.content, topic, initialResult.url || docsUrl);
       const pages = await fetchMultiplePages(ranked, maxPages);
       if (pages.length > 0) {
         return {

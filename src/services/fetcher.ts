@@ -610,7 +610,9 @@ export function isHtmlBlob(content: string): boolean {
 export function isIndexContent(content: string): boolean {
   const lines = content.split("\n").filter((l) => l.trim().length > 0);
   if (lines.length < 5) return false;
-  const linkLines = lines.filter((l) => /^\s*-?\s*\[.+\]\(https?:\/\/.+\)/.test(l));
+  // Root-relative links count too — many llms.txt indexes (zustand, vitepress
+  // sites) link their pages as [title](/path) rather than absolute URLs.
+  const linkLines = lines.filter((l) => /^\s*-?\s*\[.+\]\((?:https?:\/\/|\/)[^)]+\)/.test(l));
   return linkLines.length / lines.length > 0.5;
 }
 
@@ -618,13 +620,22 @@ export function isIndexContent(content: string): boolean {
  * Extract URLs from an index/TOC page and score them against a topic query.
  * Returns the best-matching URLs sorted by relevance.
  */
-export function rankIndexLinks(content: string, topic: string): string[] {
+export function rankIndexLinks(content: string, topic: string, baseUrl?: string): string[] {
   const links: Array<{ url: string; text: string; score: number }> = [];
-  const re = /\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g;
+  const re = /\[([^\]]+)\]\((https?:\/\/[^)]+|\/[^)\s]+)\)/g;
   let match;
   while ((match = re.exec(content)) !== null) {
     if (match[1] && match[2]) {
-      links.push({ url: match[2], text: match[1].toLowerCase(), score: 0 });
+      let url = match[2];
+      if (url.startsWith("/")) {
+        if (!baseUrl) continue;
+        try {
+          url = new URL(url, baseUrl).href;
+        } catch {
+          continue;
+        }
+      }
+      links.push({ url, text: match[1].toLowerCase(), score: 0 });
     }
   }
 
@@ -648,6 +659,45 @@ export function rankIndexLinks(content: string, topic: string): string[] {
 }
 
 /** Try llms.txt, then llms-full.txt, then Jina, then direct HTML */
+/**
+ * Pointer-style llms.txt files (e.g. nextjs.org/llms.txt) hold no index
+ * themselves — they link to the real index one level down
+ * (nextjs.org/docs/llms.txt). Follow same-host llms.txt links exactly one hop,
+ * preferring the non-full variant (llms-full.txt can be megabytes). Without
+ * this, index-link ranking sees two useless links and every downstream
+ * traversal (docs, best-practices, snippets, search) comes up empty.
+ */
+async function followNestedLlmsIndex(
+  content: string,
+  fetchedUrl: string,
+): Promise<{ content: string; url: string } | null> {
+  if (content.length > 20_000) return null;
+  const links = [...content.matchAll(/\]\((https?:\/\/[^)\s]+llms(?:-full)?\.txt)\)/g)]
+    .map((m) => m[1])
+    .filter((u): u is string => typeof u === "string");
+  if (links.length === 0) return null;
+  let host: string;
+  try {
+    host = new URL(fetchedUrl).hostname;
+  } catch {
+    return null;
+  }
+  const target = links.find((u) => {
+    try {
+      return new URL(u).hostname === host && u !== fetchedUrl && !u.includes("llms-full");
+    } catch {
+      return false;
+    }
+  });
+  if (!target) return null;
+  const nested = await tryFetch(target);
+  if (nested && nested.length > content.length) {
+    log({ level: "info", msg: "fetchDocs.nested_llms_index", from: fetchedUrl, to: target });
+    return { content: nested, url: target };
+  }
+  return null;
+}
+
 export async function fetchDocs(
   docsUrl: string,
   llmsTxtUrl?: string,
@@ -684,6 +734,13 @@ export async function fetchDocs(
     // Prefer llms-full.txt > llms.txt
     for (const r of results) {
       if (r.content) {
+        if (r.sourceType === "llms-txt") {
+          const nested = await followNestedLlmsIndex(r.content, r.url);
+          if (nested) {
+            cacheDoc(cacheKey, nested.content, CACHE_TTLS.LLMS_TXT);
+            return stamp({ content: nested.content, url: nested.url, sourceType: "llms-txt" });
+          }
+        }
         cacheDoc(cacheKey, r.content, CACHE_TTLS.LLMS_TXT);
         return stamp({ content: r.content, url: r.url, sourceType: r.sourceType });
       }
@@ -693,10 +750,13 @@ export async function fetchDocs(
     if (llmsTxtUrl) {
       try {
         const origin = new URL(llmsTxtUrl).origin;
-        const autoDiscovered = await tryFetch(`${origin}/llms.txt`);
+        const autoUrl = `${origin}/llms.txt`;
+        const autoDiscovered = await tryFetch(autoUrl);
         if (autoDiscovered) {
-          cacheDoc(cacheKey, autoDiscovered, CACHE_TTLS.LLMS_TXT);
-          return stamp({ content: autoDiscovered, url: `${origin}/llms.txt`, sourceType: "llms-txt" });
+          const nested = await followNestedLlmsIndex(autoDiscovered, autoUrl);
+          const final = nested ?? { content: autoDiscovered, url: autoUrl };
+          cacheDoc(cacheKey, final.content, CACHE_TTLS.LLMS_TXT);
+          return stamp({ content: final.content, url: final.url, sourceType: "llms-txt" });
         }
       } catch { /* invalid URL */ }
     }
@@ -1130,14 +1190,23 @@ export function isGarbageContent(content: string): { garbage: boolean; reason: s
 
 /** Fetch and parse sitemap.xml to discover all doc page URLs */
 export async function fetchSitemapUrls(docsUrl: string): Promise<string[]> {
-  let origin: string;
+  let parsedUrl: URL;
   try {
-    origin = new URL(docsUrl).origin;
+    parsedUrl = new URL(docsUrl);
   } catch {
     return [];
   }
+  const origin = parsedUrl.origin;
 
-  const cacheKey = `sitemap:${origin}`;
+  // Path-hosted docs (docs.swmansion.com/react-native-reanimated/) publish
+  // their sitemap under the project path, not the domain root — try the
+  // path-scoped location first, then fall back to the root.
+  const firstSegment = parsedUrl.pathname.split("/").filter(Boolean)[0];
+  const sitemapCandidates = firstSegment
+    ? [`${origin}/${firstSegment}/sitemap.xml`, `${origin}/sitemap.xml`]
+    : [`${origin}/sitemap.xml`];
+
+  const cacheKey = `sitemap:${origin}:${firstSegment ?? ""}`;
   const memCached = docCache.get(cacheKey);
   if (memCached) {
     try {
@@ -1148,18 +1217,20 @@ export async function fetchSitemapUrls(docsUrl: string): Promise<string[]> {
     } catch { /* invalid cache — fall through to re-fetch */ }
   }
 
-  const sitemapUrl = `${origin}/sitemap.xml`;
-  const content = await tryFetch(sitemapUrl, 0);
-  if (!content) return [];
-
   const locRegex = /<loc>\s*(https?:\/\/[^<]+)\s*<\/loc>/g;
   const urls: string[] = [];
-  let match;
-  while ((match = locRegex.exec(content)) !== null && urls.length < 500) {
-    const url = match[1]?.trim();
-    if (url && /\/(docs?|guide|api|reference|learn|tutorial)\//i.test(url)) {
-      urls.push(url);
+  for (const sitemapUrl of sitemapCandidates) {
+    const content = await tryFetch(sitemapUrl, 0);
+    if (!content) continue;
+    let match;
+    while ((match = locRegex.exec(content)) !== null && urls.length < 500) {
+      const url = match[1]?.trim();
+      if (url && /\/(docs?|guide|api|reference|learn|tutorial)\//i.test(url)) {
+        urls.push(url);
+      }
     }
+    if (urls.length > 0) break;
+    locRegex.lastIndex = 0;
   }
 
   if (urls.length > 0) {

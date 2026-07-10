@@ -4,6 +4,48 @@ import { fetchWithTimeout, githubAuthHeaders } from "../services/fetcher.js";
 import { docCache, diskDocCache } from "../services/cache.js";
 import { isExtractionAttempt, withNotice, EXTRACTION_REFUSAL } from "../utils/guard.js";
 import { sanitizeContent } from "../utils/sanitize.js";
+import { lookupById, lookupByAlias } from "../sources/registry.js";
+import { buildIndex } from "./snippets.js";
+import { rankSnippets, renderSnippets } from "../utils/snippet-extract.js";
+
+/**
+ * GitHub code search is auth-only — without GT_GITHUB_TOKEN it always returns
+ * 401. Instead of dead-ending, serve ranked code examples from the library's
+ * official documentation and say so.
+ */
+async function docsExamplesFallback(
+  library: string,
+  pattern: string | undefined,
+  maxResults: number,
+  reason: string,
+): Promise<{ text: string; sourceUrl: string; count: number } | null> {
+  const entry = lookupById(library) ?? lookupByAlias(library);
+  if (!entry) return null;
+  const index = await buildIndex(
+    entry.id,
+    undefined,
+    entry.docsUrl,
+    entry.llmsTxtUrl,
+    entry.llmsFullTxtUrl,
+    entry.githubUrl,
+    pattern ?? "",
+  ).catch(() => null);
+  if (!index || index.snippets.length === 0) return null;
+  const ranked = rankSnippets(index.snippets, pattern ?? "", undefined, maxResults);
+  if (ranked.length === 0) return null;
+  const text = withNotice(
+    [
+      `# Code Examples: ${library}${pattern ? ` — ${pattern}` : ""}`,
+      `> ${reason} Showing examples from the official documentation instead.`,
+      `> Source: ${index.sourceUrl}`,
+      "",
+      "---",
+      "",
+      renderSnippets(ranked),
+    ].join("\n"),
+  );
+  return { text, sourceUrl: index.sourceUrl, count: ranked.length };
+}
 
 const InputSchema = z.object({
   library: z.string().min(1).max(200)
@@ -87,20 +129,29 @@ Source: open-source GitHub repositories (not the library's own docs). Use this w
 
         const res = await fetchWithTimeout(searchUrl, 15_000, headers);
 
-        if (res.status === 403 || res.status === 429) {
-          return {
-            content: [{
-              type: "text",
-              text: "GitHub API rate limit reached. Set GT_GITHUB_TOKEN env var for higher limits (5000 req/hr).",
-            }],
-          };
-        }
-
         if (!res.ok) {
+          const reason =
+            res.status === 403 || res.status === 429
+              ? "GitHub API rate limit reached (set GT_GITHUB_TOKEN for 5000 req/hr)."
+              : `GitHub code search unavailable (HTTP ${res.status} — it requires GT_GITHUB_TOKEN).`;
+          const fallback = await docsExamplesFallback(library, pattern, maxResults, reason);
+          if (fallback) {
+            return {
+              content: [{ type: "text", text: fallback.text }],
+              structuredContent: {
+                library,
+                pattern,
+                language,
+                totalCount: fallback.count,
+                source: "official-docs-fallback",
+                sourceUrl: fallback.sourceUrl,
+              },
+            };
+          }
           return {
             content: [{
               type: "text",
-              text: `GitHub Code Search returned ${res.status}. Ensure GT_GITHUB_TOKEN is set.`,
+              text: `${reason} No documentation-based examples found either — try gt_snippets with a registry libraryId, or set GT_GITHUB_TOKEN.`,
             }],
           };
         }
@@ -111,6 +162,25 @@ Source: open-source GitHub repositories (not the library's own docs). Use this w
         };
 
         if (!data.items || data.items.length === 0) {
+          const fallback = await docsExamplesFallback(
+            library,
+            pattern,
+            maxResults,
+            "GitHub code search returned no results.",
+          );
+          if (fallback) {
+            return {
+              content: [{ type: "text", text: fallback.text }],
+              structuredContent: {
+                library,
+                pattern,
+                language,
+                totalCount: fallback.count,
+                source: "official-docs-fallback",
+                sourceUrl: fallback.sourceUrl,
+              },
+            };
+          }
           return {
             content: [{
               type: "text",
@@ -172,6 +242,25 @@ Source: open-source GitHub repositories (not the library's own docs). Use this w
           },
         };
       } catch {
+        const fallback = await docsExamplesFallback(
+          library,
+          pattern,
+          maxResults,
+          "GitHub code search failed (network error).",
+        ).catch(() => null);
+        if (fallback) {
+          return {
+            content: [{ type: "text", text: fallback.text }],
+            structuredContent: {
+              library,
+              pattern,
+              language,
+              totalCount: fallback.count,
+              source: "official-docs-fallback",
+              sourceUrl: fallback.sourceUrl,
+            },
+          };
+        }
         return {
           content: [{
             type: "text",

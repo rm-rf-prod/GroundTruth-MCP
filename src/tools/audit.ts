@@ -1599,7 +1599,7 @@ async function fetchBestPractice(query: string, tokens: number): Promise<string>
         try {
           let result = await fetchDocs(entry.docsUrl, entry.llmsTxtUrl, entry.llmsFullTxtUrl, query);
           if (isIndexContent(result.content)) {
-            const deepLinks = rankIndexLinks(result.content, query);
+            const deepLinks = rankIndexLinks(result.content, query, result.url || entry.docsUrl);
             for (const deepUrl of deepLinks) {
               const deepContent = await fetchAsMarkdownRace(deepUrl);
               if (deepContent && deepContent.length > 300) {

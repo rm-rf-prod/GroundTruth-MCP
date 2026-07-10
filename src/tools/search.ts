@@ -3,7 +3,7 @@ import { z } from "zod";
 import { fuzzySearch, lookupById } from "../sources/registry.js";
 import { fetchDocs, fetchWithTimeout, fetchDevDocs, fetchAsMarkdownRace, isErrorPage } from "../services/fetcher.js";
 import { deepFetchForTopic } from "../services/deep-fetch.js";
-import { extractRelevantContent, normalizeQueryYear } from "../utils/extract.js";
+import { extractRelevantContent, normalizeQueryYear, substantiveTokens } from "../utils/extract.js";
 import { checkEvidence, buildEvidenceBlock } from "../utils/evidence.js";
 import { sanitizeContent } from "../utils/sanitize.js";
 import { docCache } from "../services/cache.js";
@@ -115,6 +115,7 @@ const TOPIC_URL_MAP: Array<{ patterns: string[]; urls: string[]; name: string }>
   {
     patterns: ["wcag", "accessibility", "a11y", "aria", "screen reader"],
     urls: [
+      "https://www.w3.org/WAI/WCAG22/quickref/",
       "https://webaim.org/standards/wcag/checklist",
       "https://developer.mozilla.org/en-US/docs/Learn/Accessibility/WAI-ARIA_basics",
     ],
@@ -314,6 +315,14 @@ const TOPIC_URL_MAP: Array<{ patterns: string[]; urls: string[]; name: string }>
     name: "Terraform",
   },
   // Databases
+  {
+    patterns: ["row level security", "rls", "postgres policies"],
+    urls: [
+      "https://www.postgresql.org/docs/current/ddl-rowsecurity.html",
+      "https://supabase.com/docs/guides/database/postgres/row-level-security",
+    ],
+    name: "Postgres Row Level Security",
+  },
   {
     patterns: ["postgresql", "postgres", "psql", "pg"],
     urls: ["https://www.postgresql.org/docs/current/"],
@@ -1245,7 +1254,11 @@ async function fetchTopicContent(url: string, query: string, tokens: number): Pr
   // Evidence gate: pages whose extracted text never mentions a single query
   // term (soft-404s, search-results shells, off-topic landing pages) are
   // dropped instead of being served as answers. Only verified text is cached.
-  if (checkEvidence(text, query).matchRatio === 0) return "";
+  // Specific queries (3+ substantive tokens) demand the full coverage bar —
+  // a "performance" match alone must not let a Web-Vitals page answer a
+  // Postgres row-level-security question.
+  const check = checkEvidence(text, query);
+  if (substantiveTokens(query).length >= 3 ? !check.ok : check.matchRatio === 0) return "";
   docCache.set(cacheKey, text, CACHE_TTLS.SEARCH_RESULT);
   return text;
 }
@@ -1497,10 +1510,26 @@ function extractDDGUrls(html: string): string[] {
   return urls;
 }
 
+/** Hostname is on the curated authoritative-source list (official docs, standards bodies). */
+export function isAuthoritativeUrl(url: string): boolean {
+  try {
+    const hostname = new URL(url).hostname;
+    return AUTHORITATIVE_DOMAINS.split("|").some(
+      (d) => hostname === d || hostname.endsWith(`.${d}`),
+    );
+  } catch {
+    return false;
+  }
+}
+
 /** Score URLs for documentation relevance — higher score = more likely to be useful docs */
 function scoreDocUrl(url: string, query: string): number {
   const lower = url.toLowerCase();
   let score = 0;
+
+  // Official docs and standards bodies outrank everything else — a dev.to
+  // post with a keyword-stuffed slug must never beat postgresql.org.
+  if (isAuthoritativeUrl(url)) score += 20;
 
   if (/\/docs?\//i.test(lower)) score += 10;
   if (/\/api\//i.test(lower)) score += 10;
@@ -1512,17 +1541,21 @@ function scoreDocUrl(url: string, query: string): number {
   if (/readthedocs\.(io|org)/i.test(lower)) score += 8;
   if (/github\.io/i.test(lower)) score += 3;
 
-  // Penalize non-doc content
+  // Penalize non-doc content and SEO content farms
   if (/stackoverflow\.com/i.test(lower)) score -= 5;
   if (/reddit\.com/i.test(lower)) score -= 8;
-  if (/medium\.com/i.test(lower)) score -= 3;
+  if (/medium\.com/i.test(lower)) score -= 8;
   if (/youtube\.com/i.test(lower)) score -= 10;
+  if (/(dev\.to|hashnode\.(dev|com)|dzone\.com|tutorialspoint\.com|geeksforgeeks\.org|javatpoint\.com|blog\.logrocket\.com)/i.test(lower)) score -= 12;
 
-  // Bonus if URL contains query terms
+  // Bonus if URL contains query terms — capped so slug keyword-stuffing
+  // cannot outweigh the authority signal.
   const queryWords = query.toLowerCase().split(/\s+/).filter((w) => w.length > 2);
+  let termBonus = 0;
   for (const word of queryWords) {
-    if (lower.includes(word)) score += 5;
+    if (lower.includes(word)) termBonus += 5;
   }
+  score += Math.min(termBonus, 15);
 
   return score;
 }
@@ -1574,7 +1607,7 @@ async function searchSearXNG(query: string): Promise<string[]> {
  * - Bing returns Cloudflare PoW challenges for server-side requests
  * - Brave uses SvelteKit CSR — no results in SSR HTML
  */
-async function webSearch(query: string): Promise<string[]> {
+export async function webSearch(query: string): Promise<string[]> {
   const docsHint = "official docs documentation guide reference";
   const searchQuery = `${query} ${docsHint}`;
   const encoded = encodeURIComponent(searchQuery);

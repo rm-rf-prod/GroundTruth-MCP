@@ -1091,7 +1091,7 @@ describe("TS-005: corrupt sitemap cache type guard", () => {
   it("returns correct URLs when cache is a valid string[]", async () => {
     const { docCache } = await import("./cache.js");
     const urls = ["https://example.com/docs/guide", "https://example.com/docs/api"];
-    docCache.set("sitemap:https://example.com", JSON.stringify(urls));
+    docCache.set("sitemap:https://example.com:docs", JSON.stringify(urls));
     const result = await fetchSitemapUrls("https://example.com/docs");
     expect(result).toEqual(urls);
     // Cache hit — no network request needed.
@@ -1160,5 +1160,110 @@ describe("isErrorPage strong signals", () => {
     ].join("\n");
     expect(content.length).toBeGreaterThan(3000);
     expect(isErrorPage(content)).toBe(false);
+  });
+});
+
+// ── Nested llms.txt index + relative index links (v7.3 discovery fixes) ─────
+
+describe("fetchDocs nested llms.txt pointer", () => {
+  const POINTER = [
+    "# Next.js",
+    "",
+    "> The React Framework for the Web",
+    "",
+    "For comprehensive documentation see the index:",
+    "",
+    "- [Documentation Index](https://example.com/docs/llms.txt): Complete docs for LLMs",
+    "- [Full Documentation](https://example.com/docs/llms-full.txt): Everything",
+    "",
+  ].join("\n");
+  const NESTED = "- [Guide A](https://example.com/docs/a)\n".repeat(30);
+
+  it("follows a pointer llms.txt one hop to the real index", async () => {
+    mockFetch.mockImplementation((url: RequestInfo | URL) => {
+      const u = url.toString();
+      if (u === "https://example.com/llms.txt") return Promise.resolve(makeRes(POINTER));
+      if (u === "https://example.com/docs/llms.txt") return Promise.resolve(makeRes(NESTED));
+      return Promise.resolve(makeRes("", 404));
+    });
+    const result = await fetchDocs("https://example.com/docs", "https://example.com/llms.txt");
+    expect(result.url).toBe("https://example.com/docs/llms.txt");
+    expect(result.content).toBe(NESTED);
+  });
+
+  it("keeps the original when the nested index is smaller or missing", async () => {
+    mockFetch.mockImplementation((url: RequestInfo | URL) => {
+      const u = url.toString();
+      if (u === "https://example.com/llms.txt") return Promise.resolve(makeRes(POINTER));
+      return Promise.resolve(makeRes("", 404));
+    });
+    const result = await fetchDocs("https://example.com/docs", "https://example.com/llms.txt");
+    expect(result.url).toBe("https://example.com/llms.txt");
+    expect(result.content).toBe(POINTER);
+  });
+
+  it("never hops cross-host", async () => {
+    const evil = POINTER.replace(/https:\/\/example\.com\/docs\/llms\.txt/g, "https://evil.example.net/llms.txt");
+    mockFetch.mockImplementation((url: RequestInfo | URL) => {
+      const u = url.toString();
+      if (u === "https://example.com/llms.txt") return Promise.resolve(makeRes(evil));
+      if (u.includes("evil")) return Promise.resolve(makeRes("- [x](https://evil.example.net/a)\n".repeat(50)));
+      return Promise.resolve(makeRes("", 404));
+    });
+    const result = await fetchDocs("https://example.com/docs", "https://example.com/llms.txt");
+    expect(result.url).toBe("https://example.com/llms.txt");
+  });
+});
+
+describe("relative links in index handling", () => {
+  const RELATIVE_INDEX = [
+    "# Zustand",
+    "",
+    "- [Updating state](/learn/guides/updating-state)",
+    "- [persist](/reference/middlewares/persist): How to persist a store",
+    "- [devtools](/reference/middlewares/devtools)",
+    "- [create](/reference/apis/create)",
+    "- [useStore](/reference/hooks/use-store)",
+    "- [Testing](/learn/guides/testing)",
+  ].join("\n");
+
+  it("isIndexContent recognizes relative-link TOCs", () => {
+    expect(isIndexContent(RELATIVE_INDEX)).toBe(true);
+  });
+
+  it("rankIndexLinks resolves relative links against baseUrl", () => {
+    const ranked = rankIndexLinks(RELATIVE_INDEX, "persist middleware", "https://zustand.docs.pmnd.rs/llms.txt");
+    expect(ranked[0]).toBe("https://zustand.docs.pmnd.rs/reference/middlewares/persist");
+  });
+
+  it("rankIndexLinks skips relative links when no baseUrl is provided", () => {
+    const ranked = rankIndexLinks(RELATIVE_INDEX, "persist middleware");
+    expect(ranked).toEqual([]);
+  });
+});
+
+describe("fetchSitemapUrls path-scoped discovery", () => {
+  it("tries the project-path sitemap before the domain root", async () => {
+    const XML = "<urlset><url><loc>https://docs.example.com/proj/docs/core/useThing</loc></url></urlset>";
+    mockFetch.mockImplementation((url: RequestInfo | URL) => {
+      const u = url.toString();
+      if (u === "https://docs.example.com/proj/sitemap.xml") return Promise.resolve(makeRes(XML));
+      return Promise.resolve(makeRes("", 404));
+    });
+    const urls = await fetchSitemapUrls("https://docs.example.com/proj/docs/fundamentals/getting-started");
+    expect(urls).toEqual(["https://docs.example.com/proj/docs/core/useThing"]);
+    const firstUrl = mockFetch.mock.calls[0]?.[0]?.toString();
+    expect(firstUrl).toBe("https://docs.example.com/proj/sitemap.xml");
+  });
+
+  it("falls back to the root sitemap when the scoped one is missing", async () => {
+    const XML = "<urlset><url><loc>https://docs.example.com/docs/guide</loc></url></urlset>";
+    mockFetch.mockImplementation((url: RequestInfo | URL) => {
+      const u = url.toString();
+      if (u === "https://docs.example.com/sitemap.xml") return Promise.resolve(makeRes(XML));
+      return Promise.resolve(makeRes("", 404));
+    });
+    const urls = await fetchSitemapUrls("https://docs.example.com/proj/docs/start");
+    expect(urls).toEqual(["https://docs.example.com/docs/guide"]);
   });
 });

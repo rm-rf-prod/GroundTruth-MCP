@@ -607,3 +607,18 @@ describe("findTopicUrls", () => {
     expect(names).toContain("SQL"); // maxScore===1 → all matches kept
   });
 });
+
+describe("isAuthoritativeUrl", () => {
+  it("accepts curated official/standards domains incl. subdomains", async () => {
+    const { isAuthoritativeUrl } = await import("./search.js");
+    expect(isAuthoritativeUrl("https://www.postgresql.org/docs/current/ddl-rowsecurity.html")).toBe(true);
+    expect(isAuthoritativeUrl("https://developer.mozilla.org/en-US/docs/Web")).toBe(true);
+    expect(isAuthoritativeUrl("https://react.dev/blog/react-19")).toBe(true);
+  });
+
+  it("rejects content farms and invalid URLs", async () => {
+    const { isAuthoritativeUrl } = await import("./search.js");
+    expect(isAuthoritativeUrl("https://dev.to/someone/postgres-rls-best-practices")).toBe(false);
+    expect(isAuthoritativeUrl("not a url")).toBe(false);
+  });
+});

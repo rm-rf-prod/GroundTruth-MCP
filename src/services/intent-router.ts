@@ -40,7 +40,10 @@ export interface IntentMatch {
 
 /** Words/phrases that always strip from the query before further matching */
 const NOISE_PHRASES = [
-  /\b(?:use|using|run|invoke|call|please|can\s+you|could\s+you|let'?s|i\s+want\s+to|i\s+need|just|simply|quickly)\b/gi,
+  // "use" is noise ("use gt for react") EXCEPT in "can i use X" — that is the
+  // caniuse compat idiom and must survive to hint matching.
+  /(?<!\bcan\s+i\s)\buse\b/gi,
+  /\b(?:using|run|invoke|call|please|can\s+you|could\s+you|let'?s|i\s+want\s+to|i\s+need|just|simply|quickly)\b/gi,
   /\b(?:gt(?:\s*[-_]?\s*mcp)?|groundtruth(?:\s*mcp)?|the\s+gt|the\s+gt[-_]?mcp)\b/gi,
   /\bplease\b/gi,
 ];
@@ -59,7 +62,7 @@ const VERB_HINTS: Array<{ tool: GtToolName; words: string[] }> = [
   { tool: "gt_migration", words: ["migrate", "migration", "upgrade", "upgrading", "breaking change", "breaking changes", "move from", "switch to"] },
   { tool: "gt_changelog", words: ["changelog", "release notes", "what's new", "whats new", "new in", "recent changes"] },
   { tool: "gt_compare", words: ["compare", "vs", "versus", "differences between", "which one", "or better"] },
-  { tool: "gt_compat", words: ["browser support", "browser compatibility", "compatibility", "supported in", "works on", "caniuse"] },
+  { tool: "gt_compat", words: ["browser support", "browser compatibility", "compatibility", "supported in", "works on", "caniuse", "can i use", "does safari", "does chrome", "does firefox", "does edge", "does node", "safari support", "chrome support", "firefox support", "edge support", "node support", "which browsers", "baseline status"] },
   { tool: "gt_examples", words: ["example", "examples", "real-world", "real world", "show me code", "sample"] },
   { tool: "gt_snippets", words: ["snippets", "snippet", "code snippets", "snippet index"] },
   { tool: "gt_best_practices", words: ["best practices", "best-practices", "patterns", "recommendations", "guidelines", "tips for"] },
@@ -249,7 +252,7 @@ export function detectIntent({ query, projectPath }: IntentInput): IntentMatch {
       }
       case "gt_compat": {
         if (topic) args["feature"] = topic;
-        else if (text) args["feature"] = text.replace(/\b(?:browser|support|compatibility|in|on)\b/g, "").trim();
+        else if (text) args["feature"] = text.replace(/\b(?:does|do|can\s+i\s+use|browsers?|supports?|supported|compatibility|works?|caniuse|which|chrome|firefox|safari|edge|opera|in|on)\b/g, " ").replace(/\s+/g, " ").trim();
         return {
           tool: "gt_compat",
           args,

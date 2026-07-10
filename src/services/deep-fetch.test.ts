@@ -282,7 +282,7 @@ describe("deepFetchForTopic", () => {
       "https://docs.example.com",
     );
     expect(result.sourceType).toBe("deep-fetch");
-    expect(mockRankIndexLinks).toHaveBeenCalledWith(indexResult.content, "authentication middleware");
+    expect(mockRankIndexLinks).toHaveBeenCalledWith(indexResult.content, "authentication middleware", "https://docs.example.com");
   });
 
   it("follows internal links when content is shallow and not index", async () => {
@@ -459,5 +459,17 @@ describe("deepFetchForTopic", () => {
     expect(mockLog).toHaveBeenCalledWith(
       expect.objectContaining({ level: "warn", msg: "deep-fetch-timeout" }),
     );
+  });
+});
+
+describe("rankLinksForTopic legacy-version penalty", () => {
+  it("ranks the current unversioned doc above archived version trees", () => {
+    const links = [
+      { url: "https://docs.example.com/proj/docs/2.x/api/hooks/useSharedValue", text: "useSharedValue" },
+      { url: "https://docs.example.com/proj/docs/core/useSharedValue", text: "useSharedValue" },
+      { url: "https://docs.example.com/proj/docs/legacy/shared-values", text: "shared values" },
+    ];
+    const ranked = rankLinksForTopic(links, "shared value");
+    expect(ranked[0]?.url).toBe("https://docs.example.com/proj/docs/core/useSharedValue");
   });
 });

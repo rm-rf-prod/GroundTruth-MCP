@@ -2,7 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { FetchResult } from "../types.js";
 import { z } from "zod";
 import { lookupById, lookupByAlias } from "../sources/registry.js";
-import { fetchDocs, fetchGitHubContent, fetchAsMarkdownRace } from "../services/fetcher.js";
+import { fetchDocs, fetchGitHubContent, fetchAsMarkdownRace, isIndexContent } from "../services/fetcher.js";
 import { probeLlmsTxt } from "../services/resolve.js";
 import { deepFetchForTopic, splitTopics } from "../services/deep-fetch.js";
 import { extractRelevantContent } from "../utils/extract.js";
@@ -94,6 +94,7 @@ Do not call this tool more than 3 times per question.`,
     },
     async ({ libraryId, topic = "", version, tokens, projectPath }) => {
      return withTelemetry("gt_get_docs", async (ctx) => {
+      const startedAt = Date.now();
       if (isExtractionAttempt(libraryId) || (topic && isExtractionAttempt(topic))) {
         ctx.resolved = true;
         return { content: [{ type: "text", text: EXTRACTION_REFUSAL }] };
@@ -314,7 +315,12 @@ Do not call this tool more than 3 times per question.`,
         { url: fetchResult.url, sourceType: fetchResult.sourceType, ...(fetchResult.fetchedAt ? { fetchedAt: fetchResult.fetchedAt } : {}) },
       ];
 
-      if (topic && !evidence.ok) {
+      // Index/TOC output also escalates: a link list passes token checks via
+      // link text but answers nothing — the zod llms.txt served verbatim was
+      // exactly this failure. Elapsed guard bounds total latency: a slow
+      // initial pipeline must not stack a second 25s deep-fetch on top.
+      if (topic && (!evidence.ok || isIndexContent(text)) && Date.now() - startedAt < 45_000) {
+        const wasIndex = isIndexContent(text);
         const deeper = await deepFetchForTopic(fetchResult, topic, docsUrl, entry?.urlPatterns, undefined, true);
         escalated = true;
         if (deeper.url !== fetchResult.url) {
@@ -323,7 +329,11 @@ Do not call this tool more than 3 times per question.`,
         const deeperSafe = sanitizeContent(deeper.content);
         const reExtract = extractRelevantContent(deeperSafe, topic, tokens);
         const reCheck = checkEvidence(reExtract.text, topic);
-        if (reCheck.ok || reCheck.occurrences > evidence.occurrences) {
+        const deeperIsIndex = isIndexContent(reExtract.text);
+        const better = wasIndex
+          ? !deeperIsIndex && reCheck.matchRatio > 0
+          : reCheck.ok || reCheck.occurrences > evidence.occurrences;
+        if (better) {
           fetchResult = deeper;
           safe = deeperSafe;
           text = reExtract.text;
@@ -376,6 +386,7 @@ Do not call this tool more than 3 times per question.`,
         `# ${displayName} Documentation`,
         `> Source: ${fetchResult.sourceType} — ${fetchResult.url}`,
         topic ? `> Topic: ${topic}` : "",
+        topic && isIndexContent(text) ? "> Note: This is a documentation INDEX (link list), not the answer itself — fetch the linked pages that match your topic." : "",
         truncated ? "> Note: Response truncated. Use a more specific topic or increase tokens." : "",
         topic && !evidence.ok ? `> Evidence: Weak — topic terms appear only sparsely (${evidence.occurrences} occurrence${evidence.occurrences === 1 ? "" : "s"}). Verify against the source before relying on this.` : "",
         qualityScore < 0.4 ? `> Quality: Low — ${qualityHints.join("; ") || "try a more specific topic or different library ID."}` : "",

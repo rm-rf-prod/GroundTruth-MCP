@@ -9,6 +9,7 @@ import { computeQualityScore } from "../utils/quality.js";
 import { isExtractionAttempt, withNotice, EXTRACTION_REFUSAL } from "../utils/guard.js";
 import { DEFAULT_TOKEN_LIMIT, MAX_TOKEN_LIMIT } from "../constants.js";
 import { resolveDynamic } from "../services/resolve.js";
+import { webSearch, isAuthoritativeUrl } from "./search.js";
 
 const InputSchema = z.object({
   libraryId: z
@@ -218,6 +219,42 @@ Use this when the user asks HOW to upgrade their code from one version to anothe
             // All 7 candidates failed — leave sections empty for final-error path
           }
         } catch { /* invalid URL */ }
+      }
+
+      // Release notes alone are not a migration guide. Official upgrade guides
+      // often live at unguessable URLs (react.dev publishes them as dated blog
+      // posts) — find them the way a human would, preferring the library's own
+      // docs host, then other authoritative domains.
+      if (!sections.some((s) => !s.source.includes("Releases"))) {
+        let docsHost = "";
+        try {
+          docsHost = new URL(docsUrl).hostname;
+        } catch { /* keep empty */ }
+        const q = [
+          displayName,
+          "upgrade guide",
+          fromVersion ? `from ${fromVersion.replace(/^v/, "")}` : "",
+          toVersion ? `to ${toVersion.replace(/^v/, "")}` : "",
+        ].filter(Boolean).join(" ");
+        const found = await webSearch(q).catch(() => [] as string[]);
+        const sameHost = found.filter((u) => {
+          try {
+            return new URL(u).hostname === docsHost;
+          } catch {
+            return false;
+          }
+        });
+        const candidates = [...new Set([...sameHost, ...found.filter(isAuthoritativeUrl)])].slice(0, 3);
+        for (const url of candidates) {
+          const content = await fetchAsMarkdownRace(url).catch(() => null);
+          if (content && content.length > 500) {
+            const check = checkEvidence(content, "upgrade migration breaking changes");
+            if (check.matchRatio > 0) {
+              sections.unshift({ source: url, content });
+              break;
+            }
+          }
+        }
       }
 
       if (sections.length === 0) {

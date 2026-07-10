@@ -2,7 +2,8 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { FetchResult, Snippet, SnippetIndex } from "../types.js";
 import { z } from "zod";
 import { lookupById, lookupByAlias } from "../sources/registry.js";
-import { fetchDocs, fetchGitHubContent, fetchAsMarkdownRace } from "../services/fetcher.js";
+import { fetchDocs, fetchGitHubContent, fetchAsMarkdownRace, isIndexContent, rankIndexLinks, fetchSitemapUrls } from "../services/fetcher.js";
+import { extractInternalLinks, rankLinksForTopic, fetchMultiplePages } from "../services/deep-fetch.js";
 import { snippetStore } from "../services/snippet-store.js";
 import { sanitizeContent } from "../utils/sanitize.js";
 import { extractSnippets, rankSnippets, renderSnippets } from "../utils/snippet-extract.js";
@@ -13,6 +14,11 @@ import {
   assertPublicUrl,
 } from "../utils/guard.js";
 import { detectVersionFromLockfile } from "../utils/lockfile.js";
+
+/** Snippets that answer the topic; all snippets when no topic given. */
+function topicMatches(snippets: Snippet[], topic: string): number {
+  return topic.trim().length > 0 ? rankSnippets(snippets, topic, undefined, 3).length : snippets.length;
+}
 
 const InputSchema = z.object({
   libraryId: z
@@ -68,6 +74,7 @@ export async function buildIndex(
   llmsTxtUrl: string | undefined,
   llmsFullTxtUrl: string | undefined,
   githubUrl: string | undefined,
+  topic = "",
 ): Promise<SnippetIndex | null> {
   let fetchResult: FetchResult | undefined;
 
@@ -110,6 +117,74 @@ export async function buildIndex(
       if (ghSnippets.length > 0) {
         snippets = ghSnippets;
         sourceUrl = gh.url;
+      }
+    }
+  }
+
+  // Framework docs are often a link index (llms.txt/TOC) with zero fenced
+  // code — the snippets live one level down. Traverse the most topic-relevant
+  // child pages and index those too. This is why gt_snippets("vercel/next.js")
+  // used to return "No snippets indexed". Topic-aware: a landing page full of
+  // install commands must not satisfy a "shared value" query.
+  if (topicMatches(snippets, topic) < 3) {
+    const seedTopic = topic.trim().length > 0 ? topic : "example usage getting started";
+    const fromIndex = isIndexContent(fetchResult.content)
+      ? rankIndexLinks(fetchResult.content, seedTopic, fetchResult.url || docsUrl)
+      : [];
+    const fromLinks = rankLinksForTopic(
+      extractInternalLinks(fetchResult.content, docsUrl),
+      seedTopic,
+    ).map((l) => l.url);
+    const candidates = [...new Set([...fromIndex, ...fromLinks])].slice(0, 4);
+    if (candidates.length > 0) {
+      const pages = await fetchMultiplePages(candidates, 4);
+      const seen = new Set(snippets.map((s) => s.id));
+      const collect = (content: string, url: string): void => {
+        for (const s of extractSnippets(sanitizeContent(content), library, url, version)) {
+          if (!seen.has(s.id)) {
+            seen.add(s.id);
+            snippets.push(s);
+          }
+        }
+      };
+      for (const page of pages) collect(page.content, page.url);
+
+      // Hop 2: topic landing pages (e.g. supabase guides/auth.md) are often
+      // code-free overviews linking to the concrete sub-guides.
+      if (topicMatches(snippets, topic) < 3 && pages.length > 0) {
+        const secondary = [
+          ...new Set(
+            pages.flatMap((p) =>
+              rankLinksForTopic(extractInternalLinks(p.content, p.url), seedTopic)
+                .slice(0, 2)
+                .map((l) => l.url),
+            ),
+          ),
+        ].filter((u) => !candidates.includes(u));
+        for (const page of await fetchMultiplePages(secondary.slice(0, 3), 3)) {
+          collect(page.content, page.url);
+        }
+      }
+    }
+
+    // Hop 3: JS-rendered sidebars (Docusaurus etc.) hide most doc links from
+    // converted pages — the sitemap lists every page.
+    if (topicMatches(snippets, topic) < 3) {
+      const sitemapUrls = await fetchSitemapUrls(docsUrl);
+      const ranked = rankLinksForTopic(
+        sitemapUrls.map((url) => ({ url, text: url })),
+        seedTopic,
+      ).slice(0, 3);
+      if (ranked.length > 0) {
+        const seen = new Set(snippets.map((s) => s.id));
+        for (const page of await fetchMultiplePages(ranked.map((l) => l.url), 3)) {
+          for (const s of extractSnippets(sanitizeContent(page.content), library, page.url, version)) {
+            if (!seen.has(s.id)) {
+              seen.add(s.id);
+              snippets.push(s);
+            }
+          }
+        }
       }
     }
   }
@@ -213,7 +288,20 @@ IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library 
       }
 
       if (snippets.length === 0) {
-        const index = await buildIndex(library, version, docsUrl, llmsTxtUrl, llmsFullTxtUrl, githubUrl);
+        const index = await buildIndex(library, version, docsUrl, llmsTxtUrl, llmsFullTxtUrl, githubUrl, topic);
+
+        // Merge with whatever the store already holds for this library:version.
+        // Topic-directed traversal indexes different pages per topic — the
+        // union accumulates coverage instead of each rebuild wiping the last.
+        if (index) {
+          const existing = await snippetStore.load(library, versionKey);
+          if (existing && existing.snippets.length > 0) {
+            const byId = new Map(existing.snippets.map((s) => [s.id, s]));
+            for (const s of index.snippets) byId.set(s.id, s);
+            index.snippets = [...byId.values()].slice(-500);
+          }
+        }
+
         if (!index || index.snippets.length === 0) {
           return {
             content: [

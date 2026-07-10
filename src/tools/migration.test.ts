@@ -35,6 +35,11 @@ vi.mock("../utils/guard.js", () => ({
   EXTRACTION_REFUSAL: "EXTRACTION_REFUSED",
 }));
 
+vi.mock("./search.js", () => ({
+  webSearch: vi.fn(async () => []),
+  isAuthoritativeUrl: vi.fn(() => false),
+}));
+
 vi.mock("../services/resolve.js", () => ({
   resolveDynamic: vi.fn(async () => null),
 }));
@@ -175,5 +180,36 @@ describe("gt_migration", () => {
 
     const result = await handler({ libraryId: "example-lib" });
     expect(result.structuredContent?.displayName).toBe("example-lib");
+  });
+});
+
+describe("web-search escalation (releases alone are not a migration guide)", () => {
+  it("finds the official upgrade guide when only GitHub Releases matched", async () => {
+    const { lookupById } = await import("../sources/registry.js");
+    const { fetchGitHubContent, fetchGitHubReleases, fetchAsMarkdownRace } = await import("../services/fetcher.js");
+    const { webSearch } = await import("./search.js");
+
+    vi.mocked(lookupById).mockReturnValue({
+      id: "facebook/react", name: "React", aliases: ["react"],
+      description: "", docsUrl: "https://react.dev", githubUrl: "https://github.com/facebook/react",
+      language: ["javascript"], tags: [],
+    } as never);
+    vi.mocked(fetchGitHubContent).mockResolvedValue(null);
+    vi.mocked(fetchGitHubReleases).mockResolvedValue(
+      "## Recent Releases\n\n### v19.0.0\n\nupgrade migration breaking changes ".repeat(10),
+    );
+    vi.mocked(webSearch).mockResolvedValue([
+      "https://react.dev/blog/2024/04/25/react-19-upgrade-guide",
+    ]);
+    vi.mocked(fetchAsMarkdownRace).mockImplementation(async (url: string) =>
+      url === "https://react.dev/blog/2024/04/25/react-19-upgrade-guide"
+        ? "# React 19 Upgrade Guide\n\nBreaking changes and upgrade migration steps. ".repeat(20)
+        : null,
+    );
+
+    const result = await handler({ libraryId: "facebook/react", fromVersion: "18", toVersion: "19", tokens: 4000 });
+    const sc = result.structuredContent as { sources?: string[] } | undefined;
+    expect(sc?.sources?.[0]).toBe("https://react.dev/blog/2024/04/25/react-19-upgrade-guide");
+    expect(vi.mocked(webSearch)).toHaveBeenCalled();
   });
 });

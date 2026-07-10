@@ -138,3 +138,18 @@ describe("intent-router", () => {
     });
   });
 });
+
+describe("compat routing — natural browser-support phrasing", () => {
+  it("routes 'does safari support container queries' to gt_compat with a clean feature", () => {
+    const intent = detectIntent({ query: "does safari support container queries" });
+    expect(intent.tool).toBe("gt_compat");
+    const feature = String(intent.args["feature"] ?? "");
+    expect(feature).toContain("container queries");
+    expect(feature).not.toMatch(/safari|does|support/i);
+  });
+
+  it("routes 'can i use view transitions' to gt_compat", () => {
+    const intent = detectIntent({ query: "can i use view transitions" });
+    expect(intent.tool).toBe("gt_compat");
+  });
+});
