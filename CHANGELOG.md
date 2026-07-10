@@ -1,5 +1,11 @@
 # Changelog
 
+## [7.3.0] — 2026-07-10
+
+- feat: BCD compat redesign, snippets traversal, authority-ranked search
+
+---
+
 ## [7.2.0] — 2026-07-10
 
 - feat: multi-source retrieval, Jina 404 gate, prose-only evidence
