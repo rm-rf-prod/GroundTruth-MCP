@@ -2,7 +2,12 @@
 
 ## [7.3.0] — 2026-07-10
 
-- feat: BCD compat redesign, snippets traversal, authority-ranked search
+- feat: gt_compat redesigned on MDN machine-readable data (index.json + BCD API) — exact per-browser version_added incl. Node/Deno/Bun, Baseline status
+- feat: gt_snippets multi-hop traversal (index links, child pages, sitemap) — frameworks whose llms.txt is a link index now yield snippets
+- feat: nested llms.txt pointer following, relative-link index support, path-scoped sitemap discovery, legacy-version-tree ranking penalty
+- feat: gt_search authority-ranked sources (official docs above content farms) + full evidence coverage per source on specific queries
+- feat: gt_migration web-search escalation for upgrade guides at unguessable URLs; gt_examples official-docs fallback (GitHub code search is auth-only)
+- fix: gt_get_docs index-content escalation + latency guard; raceUrls ranks topic-first; dispatch routes natural browser-support phrasing to gt_compat
 
 ---
 
