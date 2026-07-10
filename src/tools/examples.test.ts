@@ -16,6 +16,17 @@ vi.mock("../services/cache.js", () => ({
     get: vi.fn(async () => undefined),
     set: vi.fn(async () => undefined),
   },
+  // Pulled in transitively via the docs-fallback path (snippets -> snippet-store).
+  DiskCache: class {
+    get = async (): Promise<undefined> => undefined;
+    set = async (): Promise<undefined> => undefined;
+    has = async (): Promise<boolean> => false;
+  },
+}));
+
+// The docs-fallback path must stay inert in GitHub-API-focused tests.
+vi.mock("./snippets.js", () => ({
+  buildIndex: vi.fn(async () => null),
 }));
 
 vi.mock("../utils/guard.js", () => ({
@@ -240,5 +251,35 @@ describe("gt_examples handler", () => {
     const url = decodeURIComponent(mockFetchWithTimeout.mock.calls[0]![0] as string);
     expect(url).toContain("-extension:md");
     expect(url).toContain("-extension:rst");
+  });
+});
+
+describe("gt_examples docs fallback (GitHub code search is auth-only)", () => {
+  it("serves official-docs snippets when GitHub returns 401", async () => {
+    const { buildIndex } = await import("./snippets.js");
+    vi.mocked(buildIndex).mockResolvedValueOnce({
+      library: "pmndrs/zustand",
+      version: null,
+      sourceUrl: "https://zustand.docs.pmnd.rs/llms.txt",
+      builtAt: new Date().toISOString(),
+      snippets: [{
+        id: "abc123", library: "pmndrs/zustand", title: "persist",
+        description: "How to persist a store",
+        code: "const useStore = create(persist(() => ({}), { name: 'store' }))",
+        language: "typescript", source: "https://zustand.docs.pmnd.rs/reference/middlewares/persist", score: 0,
+      }],
+    });
+    mockFetchWithTimeout.mockResolvedValue(makeRes("", 401));
+    const result = await handler({ library: "zustand", pattern: "persist", maxResults: 5 });
+    const text = result.content[0]!.text;
+    expect(text).toContain("official documentation");
+    expect(text).toContain("persist");
+    expect((result.structuredContent as { source?: string })?.source).toBe("official-docs-fallback");
+  });
+
+  it("keeps the honest error when no docs fallback exists either", async () => {
+    mockFetchWithTimeout.mockResolvedValue(makeRes("", 401));
+    const result = await handler({ library: "totally-unknown-lib-xyz", maxResults: 5 });
+    expect(result.content[0]!.text).toContain("GT_GITHUB_TOKEN");
   });
 });

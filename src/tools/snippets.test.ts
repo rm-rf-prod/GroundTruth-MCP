@@ -6,10 +6,26 @@ vi.mock("../services/fetcher.js", () => ({
   fetchDocs: vi.fn(),
   fetchGitHubContent: vi.fn(),
   fetchAsMarkdownRace: vi.fn(),
+  fetchSitemapUrls: vi.fn(async () => []),
+  // Mirror the real implementations — traversal logic under test depends on them.
+  isIndexContent: (content: string) => {
+    const lines = content.split("\n").filter((l) => l.trim().length > 0);
+    if (lines.length < 5) return false;
+    const linkLines = lines.filter((l) => /^\s*-?\s*\[.+\]\((?:https?:\/\/|\/)[^)]+\)/.test(l));
+    return linkLines.length / lines.length > 0.5;
+  },
+  rankIndexLinks: vi.fn(() => []),
+}));
+
+vi.mock("../services/deep-fetch.js", () => ({
+  extractInternalLinks: vi.fn(() => []),
+  rankLinksForTopic: vi.fn(() => []),
+  fetchMultiplePages: vi.fn(async () => []),
 }));
 
 import { buildIndex } from "./snippets.js";
-import { fetchDocs, fetchGitHubContent, fetchAsMarkdownRace } from "../services/fetcher.js";
+import { fetchDocs, fetchGitHubContent, fetchAsMarkdownRace, rankIndexLinks } from "../services/fetcher.js";
+import { fetchMultiplePages } from "../services/deep-fetch.js";
 
 const DOCS_WITH_CODE = [
   "# Express",
@@ -129,5 +145,52 @@ describe("buildIndex (gt_snippets) — FIX-9 GitHub README fallback", () => {
     expect(index).not.toBeNull();
     expect(fetchGitHubContent).not.toHaveBeenCalled();
     expect(index!.snippets.length).toBe(0);
+  });
+});
+
+describe("buildIndex index-traversal (framework llms.txt with no code)", () => {
+  const INDEX_DOC = [
+    "# Framework Docs",
+    "",
+    "- [Middleware](https://fw.example.com/docs/middleware)",
+    "- [Routing](https://fw.example.com/docs/routing)",
+    "- [Caching](https://fw.example.com/docs/caching)",
+    "- [Deploying](https://fw.example.com/docs/deploying)",
+    "- [Testing](https://fw.example.com/docs/testing)",
+    "- [CLI](https://fw.example.com/docs/cli)",
+  ].join("\n");
+  const PAGE_WITH_CODE = [
+    "# Middleware",
+    "",
+    "Register middleware in proxy.ts:",
+    "",
+    "```ts",
+    "export function proxy(request: NextRequest) {",
+    "  return NextResponse.next();",
+    "}",
+    "```",
+  ].join("\n");
+
+  it("fetches topic-ranked child pages and indexes their code", async () => {
+    vi.mocked(fetchDocs).mockResolvedValue({
+      content: INDEX_DOC,
+      url: "https://fw.example.com/llms.txt",
+      sourceType: "llms-txt",
+    });
+    vi.mocked(rankIndexLinks).mockReturnValue(["https://fw.example.com/docs/middleware"]);
+    vi.mocked(fetchMultiplePages).mockResolvedValue([
+      { content: PAGE_WITH_CODE, url: "https://fw.example.com/docs/middleware" },
+    ]);
+
+    const index = await buildIndex(
+      "fw/framework", undefined, "https://fw.example.com/docs",
+      "https://fw.example.com/llms.txt", undefined, undefined, "middleware",
+    );
+    expect(index).not.toBeNull();
+    expect(index!.snippets.length).toBeGreaterThanOrEqual(1);
+    expect(index!.snippets[0]!.source).toBe("https://fw.example.com/docs/middleware");
+    expect(index!.snippets[0]!.code).toContain("NextResponse.next()");
+    // rankIndexLinks must receive the base URL so relative indexes resolve
+    expect(vi.mocked(rankIndexLinks).mock.calls[0]?.[2]).toBe("https://fw.example.com/llms.txt");
   });
 });

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { registerBestPracticesTool } from "./best-practices.js";
+import { registerBestPracticesTool, raceUrls } from "./best-practices.js";
 
 // ── Dependency mocks ────────────────────────────────────────────────────────
 
@@ -449,5 +449,49 @@ describe("gt_best_practices handler", () => {
       const sourceUrl = String(result.structuredContent?.sourceUrl ?? "");
       expect(sourceUrl).toContain("optimizing-for-production");
     });
+  });
+});
+
+describe("raceUrls topic-first ranking", () => {
+  it("puts the on-topic page first even when an off-topic page has higher quality", async () => {
+    const MOCKING_PAGE = [
+      "# Mocking",
+      "",
+      "Use vi.mock to mock modules. Mocking timers with vi.useFakeTimers.",
+      "Mocking dates, mocking globals, and mocking network requests are covered below.",
+      "Automocking follows the module registry; spies via vi.spyOn preserve the original implementation.",
+      "",
+      "```ts",
+      "vi.mock('./module');",
+      "```",
+    ].join("\n");
+    // Higher quality (more headings, more code, longer) but zero topic tokens.
+    const SNAPSHOT_PAGE = Array.from({ length: 12 }, (_, i) =>
+      `## Snapshot section ${i}\n\nSerialize values for snapshot testing.\n\n\`\`\`ts\nexpect(x).toMatchSnapshot();\n\`\`\``,
+    ).join("\n\n") + "\n" + "padding ".repeat(500);
+
+    vi.mocked(fetchAsMarkdownRace).mockImplementation(async (url: string) => {
+      if (url.includes("mocking")) return MOCKING_PAGE;
+      if (url.includes("snapshot")) return SNAPSHOT_PAGE;
+      return null;
+    });
+
+    const hit = await raceUrls(
+      ["https://vitest.dev/guide/snapshot", "https://vitest.dev/guide/mocking"],
+      "mocking",
+    );
+    expect(hit).not.toBeNull();
+    expect(hit!.url).toBe("https://vitest.dev/guide/mocking");
+    expect(hit!.extraUrls).toContain("https://vitest.dev/guide/snapshot");
+  });
+
+  it("falls back to quality ranking when no topic is given", async () => {
+    vi.mocked(fetchAsMarkdownRace).mockImplementation(async (url: string) => {
+      if (url.includes("rich")) return "# A\n\n\`\`\`ts\ncode();\n\`\`\`\n\n## B\n\n" + "text ".repeat(300);
+      if (url.includes("thin")) return "just some plain text without structure that is long enough to pass the threshold ".repeat(4);
+      return null;
+    });
+    const hit = await raceUrls(["https://x.dev/thin", "https://x.dev/rich"]);
+    expect(hit!.url).toBe("https://x.dev/rich");
   });
 });

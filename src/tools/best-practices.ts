@@ -1106,8 +1106,9 @@ const GENERIC_BP_SUFFIXES = [
  *  Uses fetchAsMarkdownRace (direct HTML extraction + Jina) for each URL,
  *  so we're not solely dependent on Jina Reader.
  */
-async function raceUrls(
+export async function raceUrls(
   urls: string[],
+  topic = "",
 ): Promise<{ content: string; url: string; extraUrls: string[] } | null> {
   if (urls.length === 0) return null;
 
@@ -1129,12 +1130,27 @@ async function raceUrls(
   if (hits.length === 0) return null;
   if (hits.length === 1) return { ...hits[0]!, extraUrls: [] };
 
-  // Merge the top pages by content quality (headings, code blocks, length) —
-  // one page is a summary, several pages are best practices. Downstream BM25
-  // extraction trims the merged corpus back to the token budget, so callers
-  // get the most relevant sections ACROSS sources instead of a single page.
+  // Merge the top pages: topic relevance dominates, content quality (headings,
+  // code blocks, length) breaks ties. Quality alone let the vitest SNAPSHOT
+  // guide outrank the MOCKING guide for a "mocking" query — a longer page is
+  // not a more on-topic page. Downstream BM25 extraction trims the merged
+  // corpus back to the token budget.
+  const topicTokens = expandTopicTokens(tokenize(topic));
+  const topicScore = (h: { content: string; url: string }): number => {
+    if (topicTokens.length === 0) return 0;
+    const contentLower = h.content.slice(0, 20_000).toLowerCase();
+    const urlLower = h.url.toLowerCase();
+    let score = 0;
+    for (const t of topicTokens) {
+      if (urlLower.includes(t)) score += 20;
+      score += Math.min(contentLower.split(t).length - 1, 10);
+    }
+    return score;
+  };
   const ranked = [...hits].sort(
-    (a, b) => scoreContentQuality(b.content) - scoreContentQuality(a.content),
+    (a, b) =>
+      topicScore(b) - topicScore(a) ||
+      scoreContentQuality(b.content) - scoreContentQuality(a.content),
   );
   const top = ranked.slice(0, 3);
   // Cap each source before merging — three unbounded pages would make the
@@ -1227,7 +1243,7 @@ async function fetchBestPracticesContent(
     }
 
     if (!knownUrlsDeferred) {
-      const hit = await raceUrls(targetUrls.slice(0, 5));
+      const hit = await raceUrls(targetUrls.slice(0, 5), topic);
       if (hit) {
         const safe = sanitizeContent(hit.content);
         const { text: extracted, truncated } = extractRelevantContent(
@@ -1253,7 +1269,7 @@ async function fetchBestPracticesContent(
         `${topicOrigin}/docs/${slug}`,
         `${docsUrl}/${slug}`,
       ];
-      const topicHit = await raceUrls(topicUrls);
+      const topicHit = await raceUrls(topicUrls, topic);
       if (topicHit) {
         const safe = sanitizeContent(topicHit.content);
         const { text: extracted, truncated } = extractRelevantContent(
@@ -1277,7 +1293,7 @@ async function fetchBestPracticesContent(
 
   if (origin) {
     const genericUrls = GENERIC_BP_SUFFIXES.map((suffix) => `${origin}${suffix}`);
-    const hit = await raceUrls(genericUrls);
+    const hit = await raceUrls(genericUrls, topic);
     if (hit) {
       const safe = sanitizeContent(hit.content);
       const { text: extracted, truncated } = extractRelevantContent(
@@ -1304,7 +1320,7 @@ async function fetchBestPracticesContent(
       .map(({ u }) => u)
       .slice(0, 5);
     if (bpUrls.length > 0) {
-      const hit = await raceUrls(bpUrls);
+      const hit = await raceUrls(bpUrls, topic);
       if (hit) {
         const safe = sanitizeContent(hit.content);
         const { text: extracted, truncated } = extractRelevantContent(
@@ -1383,7 +1399,7 @@ async function fetchBestPracticesContent(
   // now rather than returning nothing. Only fires when those URLs were deferred,
   // so the success and no-topic paths are byte-for-byte unchanged.
   if (knownUrlsDeferred && knownUrls.length > 0) {
-    const hit = await raceUrls(knownUrls.slice(0, 5));
+    const hit = await raceUrls(knownUrls.slice(0, 5), topic);
     if (hit) {
       const safe = sanitizeContent(hit.content);
       const { text: extracted, truncated } = extractRelevantContent(

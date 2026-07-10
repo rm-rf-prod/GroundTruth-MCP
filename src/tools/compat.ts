@@ -1,6 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { fetchAsMarkdownRace } from "../services/fetcher.js";
+import { fetchMdnDocMeta, renderBcdTable, formatBaseline } from "../services/mdn-bcd.js";
 import { extractRelevantContent } from "../utils/extract.js";
 import { checkEvidence, buildEvidenceBlock } from "../utils/evidence.js";
 import { sanitizeContent } from "../utils/sanitize.js";
@@ -75,20 +76,65 @@ Use this when the question is specifically about which browsers or runtimes supp
       const mdnCandidates: string[] = topicMatches
         .flatMap((t) => t.urls)
         .filter((u) => u.includes("mozilla.org"));
-      if (mdnCandidates.length === 0) {
-        const apiHits = await searchMDN(feature);
-        mdnCandidates.push(...apiHits.slice(0, 2).map((h) => h.url));
+      // Always append MDN search hits: topic-map entries are often GUIDE pages
+      // that carry no BCD paths — the reference page (with the compat table)
+      // only surfaces via search.
+      const apiHits = await searchMDN(feature);
+      for (const hit of apiHits.slice(0, 5)) {
+        if (!mdnCandidates.includes(hit.url)) mdnCandidates.push(hit.url);
+      }
+      // Reference pages carry the compat data; guides rarely do. Probe them first.
+      const isGuideUrl = (u: string): boolean => /\/(Guides?|Learn)\//i.test(u);
+      mdnCandidates.sort((a, b) => Number(isGuideUrl(a)) - Number(isGuideUrl(b)));
+
+      // 1a. PRIMARY: MDN machine-readable data. {doc}/index.json carries the
+      // summary, Baseline status, and the BCD query paths; the BCD API returns
+      // exact per-browser version_added (incl. Node/Deno/Bun). Rendered-page
+      // scraping loses these tables — this path never does.
+      let bcdHit = false;
+      for (const candidateUrl of mdnCandidates.slice(0, 6)) {
+        const meta = await fetchMdnDocMeta(candidateUrl);
+        if (!meta || meta.browserCompat.length === 0) continue;
+        // Relevance gate: the resolved doc must actually be about the feature.
+        if (checkEvidence(`${meta.title}\n${meta.summary}`, feature).matchRatio === 0) continue;
+
+        const tables = (
+          await Promise.all(meta.browserCompat.slice(0, 3).map((p) => renderBcdTable(p, environments)))
+        ).filter((t): t is string => t !== null);
+        if (tables.length === 0) continue;
+
+        const baselineLine = formatBaseline(meta.baseline);
+        results.push(
+          [
+            `## MDN Web Docs — ${meta.title || feature}`,
+            "",
+            meta.summary,
+            baselineLine ? `\n**${baselineLine}**` : "",
+            "",
+            tables.join("\n\n"),
+            "",
+            "(Live browser-compat data from MDN BCD.)",
+          ]
+            .filter((l) => l !== "")
+            .join("\n"),
+        );
+        sources.push({ url: candidateUrl, sourceType: "mdn-bcd" });
+        bcdHit = true;
+        break;
       }
 
-      for (const candidateUrl of mdnCandidates.slice(0, 2)) {
-        const mdnContent = await fetchAsMarkdownRace(candidateUrl);
-        if (mdnContent && mdnContent.length > 200) {
-          const safe = sanitizeContent(mdnContent);
-          const { text } = extractRelevantContent(safe, searchTopic, Math.floor(tokens * 0.6));
-          if (text.length > 100 && checkEvidence(text, feature).matchRatio > 0) {
-            results.push(`## MDN Web Docs\n\n${text}`);
-            sources.push({ url: candidateUrl, sourceType: "mdn" });
-            break;
+      // 1b. Fallback: rendered MDN page via markdown conversion.
+      if (!bcdHit) {
+        for (const candidateUrl of mdnCandidates.slice(0, 2)) {
+          const mdnContent = await fetchAsMarkdownRace(candidateUrl);
+          if (mdnContent && mdnContent.length > 200) {
+            const safe = sanitizeContent(mdnContent);
+            const { text } = extractRelevantContent(safe, searchTopic, Math.floor(tokens * 0.6));
+            if (text.length > 100 && checkEvidence(text, feature).matchRatio > 0) {
+              results.push(`## MDN Web Docs\n\n${text}`);
+              sources.push({ url: candidateUrl, sourceType: "mdn" });
+              break;
+            }
           }
         }
       }
@@ -97,7 +143,7 @@ Use this when the question is specifically about which browsers or runtimes supp
       const isCssOrBrowser = /css|html|browser|webkit|layout|paint|grid|flex|animation|transition/i.test(
         feature,
       );
-      if (results.length === 0 || isCssOrBrowser) {
+      if (!bcdHit && (results.length === 0 || isCssOrBrowser)) {
         const caniuseUrl = `https://caniuse.com/?search=${featureEncoded}`;
         const caniuseContent = await fetchAsMarkdownRace(caniuseUrl);
         if (caniuseContent && caniuseContent.length > 200) {
@@ -162,10 +208,13 @@ Use this when the question is specifically about which browsers or runtimes supp
           environments: environments ?? [],
           sources: sources.map((s) => s.url),
           evidence: {
-            ok: evidenceCheck.ok && !weakEvidence,
+            // BCD data comes from the resolved MDN doc for this exact feature
+            // (relevance-gated above) — authoritative regardless of how many
+            // times the feature name recurs in the table text.
+            ok: bcdHit || (evidenceCheck.ok && !weakEvidence),
             matchRatio: evidenceCheck.matchRatio,
             occurrences: evidenceCheck.occurrences,
-            verdict: weakEvidence ? "weak" : evidenceCheck.ok ? "strong" : "weak",
+            verdict: bcdHit ? "strong" : weakEvidence ? "weak" : evidenceCheck.ok ? "strong" : "weak",
           },
         },
       };

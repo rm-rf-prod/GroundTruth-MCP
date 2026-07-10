@@ -490,7 +490,7 @@ Reads: package.json, requirements.txt, pyproject.toml, Cargo.toml, go.mod, pom.x
                   enrichedTopic,
                 );
                 if (isIndexContent(fetchResult.content)) {
-                  const deepLinks = rankIndexLinks(fetchResult.content, enrichedTopic);
+                  const deepLinks = rankIndexLinks(fetchResult.content, enrichedTopic, fetchResult.url || entry.docsUrl);
                   for (const deepUrl of deepLinks.slice(0, 3)) {
                     const deepContent = await fetchAsMarkdownRace(deepUrl);
                     if (deepContent && deepContent.length > 300) {

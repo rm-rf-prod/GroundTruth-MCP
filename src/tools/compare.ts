@@ -80,7 +80,7 @@ Pass library NAMES (e.g. ['prisma', 'drizzle-orm']) — not registry IDs. The to
             let fetchResult = await fetchDocs(entry.docsUrl, entry.llmsTxtUrl, entry.llmsFullTxtUrl, topic);
             if (!fetchResult) return { lib, entry, content: null };
             if (isIndexContent(fetchResult.content)) {
-              const deepLinks = rankIndexLinks(fetchResult.content, topic);
+              const deepLinks = rankIndexLinks(fetchResult.content, topic, fetchResult.url || entry.docsUrl);
               for (const deepUrl of deepLinks) {
                 const deepContent = await fetchAsMarkdownRace(deepUrl);
                 if (deepContent && deepContent.length > 300) {

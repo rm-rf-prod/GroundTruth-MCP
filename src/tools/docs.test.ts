@@ -14,6 +14,14 @@ vi.mock("../services/fetcher.js", () => ({
   fetchGitHubContent: vi.fn(),
   fetchViaJina: vi.fn(),
   fetchAsMarkdownRace: vi.fn(),
+  // Mirror of the real implementation — the index-content gate under test
+  // depends on it (relative links count too).
+  isIndexContent: (content: string) => {
+    const lines = content.split("\n").filter((l) => l.trim().length > 0);
+    if (lines.length < 5) return false;
+    const linkLines = lines.filter((l) => /^\s*-?\s*\[.+\]\((?:https?:\/\/|\/)[^)]+\)/.test(l));
+    return linkLines.length / lines.length > 0.5;
+  },
 }));
 
 vi.mock("../services/deep-fetch.js", () => ({
