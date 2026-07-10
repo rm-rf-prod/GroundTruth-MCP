@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { fuzzySearch, lookupById } from "../sources/registry.js";
 import { fetchDocs, fetchWithTimeout, fetchDevDocs, fetchAsMarkdownRace, isErrorPage } from "../services/fetcher.js";
+import { deepFetchForTopic } from "../services/deep-fetch.js";
 import { extractRelevantContent, normalizeQueryYear } from "../utils/extract.js";
 import { checkEvidence, buildEvidenceBlock } from "../utils/evidence.js";
 import { sanitizeContent } from "../utils/sanitize.js";
@@ -415,8 +416,8 @@ const TOPIC_URL_MAP: Array<{ patterns: string[]; urls: string[]; name: string }>
   {
     patterns: ['react patterns', 'react best practices', 'react architecture', 'thinking in react'],
     urls: [
-      'https://react.dev/learn/thinking-in-react',
-      'https://react.dev/learn/managing-state',
+      'https://react.dev/reference/rules',
+      'https://react.dev/learn/you-might-not-need-an-effect',
     ],
     name: 'React Patterns',
   },
@@ -432,16 +433,16 @@ const TOPIC_URL_MAP: Array<{ patterns: string[]; urls: string[]; name: string }>
   {
     patterns: ['next.js caching', 'nextjs cache', 'use cache', 'cache components', 'next.js rendering'],
     urls: [
-      'https://nextjs.org/docs/app/building-your-application/caching',
-      'https://nextjs.org/docs/app/building-your-application/rendering',
+      'https://nextjs.org/docs/app/guides/caching',
+      'https://nextjs.org/docs/app/getting-started/caching-and-revalidating',
     ],
     name: 'Next.js Caching & Rendering',
   },
   {
     patterns: ['next.js routing', 'nextjs app router', 'parallel routes', 'intercepting routes', 'next.js middleware'],
     urls: [
-      'https://nextjs.org/docs/app/building-your-application/routing',
-      'https://nextjs.org/docs/app/building-your-application/routing/parallel-routes',
+      'https://nextjs.org/docs/app/getting-started/layouts-and-pages',
+      'https://nextjs.org/docs/app/api-reference/file-conventions/parallel-routes',
     ],
     name: 'Next.js Routing',
   },
@@ -1130,7 +1131,7 @@ const TOPIC_URL_MAP: Array<{ patterns: string[]; urls: string[]; name: string }>
   {
     patterns: ["server side rendering", "static site generation", "incremental static", "ssr vs ssg", "isr rendering", "rendering strategy"],
     urls: [
-      "https://nextjs.org/docs/app/building-your-application/rendering",
+      "https://nextjs.org/docs/app/getting-started/server-and-client-components",
       "https://web.dev/articles/rendering-on-the-web",
     ],
     name: "Rendering Strategies (SSR/SSG/ISR)",
@@ -1701,7 +1702,10 @@ Examples:
         const entry = lookupById(match.id);
         if (!entry) continue;
         try {
-          const fetchResult = await fetchDocs(entry.docsUrl, entry.llmsTxtUrl, entry.llmsFullTxtUrl);
+          let fetchResult = await fetchDocs(entry.docsUrl, entry.llmsTxtUrl, entry.llmsFullTxtUrl);
+          // llms.txt is usually an index of links — traverse it to the actual
+          // topic pages instead of extracting from the link list itself.
+          fetchResult = await deepFetchForTopic(fetchResult, query, entry.docsUrl, entry.urlPatterns);
           const safe = sanitizeContent(fetchResult.content);
           const { text } = extractRelevantContent(safe, query, Math.floor(tokens / 2));
           if (text.length > 200) {
@@ -1733,8 +1737,10 @@ Examples:
         }
       }
 
-      // 3. Try direct URL construction for common documentation sites
-      if (results.length === 0) {
+      // 3. Try direct URL construction for common documentation sites.
+      // Runs whenever we have FEWER THAN TWO sources — one weak hit must not
+      // stop sourcing (that is exactly how thin single-page answers happen).
+      if (results.length < 2) {
         const directUrls = buildDirectDocsUrls(query);
         if (directUrls.length > 0) {
           const directResults = await Promise.allSettled(
@@ -1747,7 +1753,7 @@ Examples:
             }),
           );
           for (const result of directResults) {
-            if (result.status === "fulfilled") {
+            if (result.status === "fulfilled" && !results.some((r) => r.url === result.value.url)) {
               results.push(result.value);
               if (results.length >= 2) break;
             }
@@ -1756,7 +1762,7 @@ Examples:
       }
 
       // 4. MDN JSON API search — free, structured, no scraping needed
-      if (results.length === 0) {
+      if (results.length < 2) {
         const mdnResults = await searchMDN(query);
         if (mdnResults.length > 0) {
           const mdnFetchResults = await Promise.allSettled(
@@ -1769,7 +1775,7 @@ Examples:
             }),
           );
           for (const result of mdnFetchResults) {
-            if (result.status === "fulfilled") {
+            if (result.status === "fulfilled" && !results.some((r) => r.url === result.value.url)) {
               results.push(result.value);
               if (results.length >= 2) break;
             }
@@ -1802,7 +1808,9 @@ Examples:
       }
 
       // 5. If still no results, try web search for authoritative URLs then fetch via Jina
+      let webSearched = false;
       if (results.length === 0) {
+        webSearched = true;
         const searchUrls = await webSearch(query);
         // Fetch top 3 search results in parallel for speed
         const searchResults = await Promise.allSettled(
@@ -1884,6 +1892,29 @@ Examples:
         };
       }
 
+      // Evidence-driven escalation — sources exist but combined coverage is weak:
+      // add authoritative web sources once instead of shipping a thin answer.
+      let combinedCheck = checkEvidence(results.map((r) => r.content).join("\n\n"), query);
+      if (!combinedCheck.ok && !webSearched && results.length < 3) {
+        const escalationUrls = await webSearch(query);
+        const known = new Set(results.map((r) => r.url));
+        const extraResults = await Promise.allSettled(
+          escalationUrls.filter((u) => !known.has(u)).slice(0, 2).map(async (url) => {
+            const content = await fetchTopicContent(url, query, Math.floor(tokens / 3));
+            if (content.length > 200) {
+              let source: string;
+              try { source = new URL(url).hostname; } catch { source = url; }
+              return { source, url, content };
+            }
+            throw new Error("no content");
+          }),
+        );
+        for (const r of extraResults) {
+          if (r.status === "fulfilled") results.push(r.value);
+        }
+        combinedCheck = checkEvidence(results.map((r) => r.content).join("\n\n"), query);
+      }
+
       const header = [
         `# Search: ${query}`,
         `> Found ${results.length} source${results.length > 1 ? "s" : ""}`,
@@ -1895,8 +1926,6 @@ Examples:
       const body = results
         .map((r) => `## ${r.source}\n> Source: ${r.url}\n\n${r.content}\n\n---\n`)
         .join("\n");
-
-      const combinedCheck = checkEvidence(results.map((r) => r.content).join("\n\n"), query);
       const evidenceBlock = buildEvidenceBlock({
         sources: results.map((r) => ({ url: r.url })),
         topic: query,

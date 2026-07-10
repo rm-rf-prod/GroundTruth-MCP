@@ -145,9 +145,13 @@ function parseSections(content: string): Section[] {
   const lines = content.split("\n");
   const sections: Section[] = [];
   let current: Section | null = null;
+  let inFence = false;
 
   for (const line of lines) {
-    const headingMatch = /^(#{1,4})\s+(.+)/.exec(line);
+    // '#' lines inside code fences are comments, not headings — splitting there
+    // fragments code blocks and ships unbalanced fences to the client.
+    if (/^\s*(?:```|~~~)/.test(line)) inFence = !inFence;
+    const headingMatch = inFence ? null : /^(#{1,4})\s+(.+)/.exec(line);
     if (headingMatch) {
       if (current) sections.push(current);
       current = {
@@ -224,6 +228,13 @@ export function extractRelevantContent(
 ): { text: string; truncated: boolean } {
   const charLimit = Math.floor(tokenLimit * CHARS_PER_TOKEN);
 
+  // Markdown images are pure token waste for an LLM consumer — Jina output is
+  // full of nav logos/badges ("![Image 1: Vercel](...svg)"). Drop them (and the
+  // link wrappers left empty by the removal) before any budgeting or scoring.
+  content = content
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
+    .replace(/\[\s*\]\([^)]*\)/g, "");
+
   // If content fits within limit, return it all
   if (content.length <= charLimit) {
     return { text: content, truncated: false };
@@ -296,7 +307,12 @@ export function extractRelevantContent(
     .map((s) => (s.heading ? `## ${s.heading}\n${s.content}` : s.content))
     .join("\n---\n");
 
-  const finalText = resultText.slice(0, charLimit);
+  let finalText = resultText.slice(0, charLimit);
+  // Truncation can land mid-code-block — close the fence rather than shipping
+  // a half-open block that swallows everything after it in the client's render.
+  for (const fence of ["```", "~~~"]) {
+    if ((finalText.split(fence).length - 1) % 2 === 1) finalText += `\n${fence}`;
+  }
   return { text: finalText, truncated: content.length > charLimit };
 }
 
@@ -376,8 +392,10 @@ export function sliceVersionBand(
   }
   const segs: Seg[] = [];
   let current: Seg | null = null;
+  let inFence = false;
   for (const line of content.split("\n")) {
-    const h = /^(#{1,3})\s+(.+)/.exec(line);
+    if (/^\s*(?:```|~~~)/.test(line)) inFence = !inFence;
+    const h = inFence ? null : /^(#{1,3})\s+(.+)/.exec(line);
     if (h) {
       if (current) segs.push(current);
       current = { versions: headingVersions(h[2] ?? ""), lines: [line] };

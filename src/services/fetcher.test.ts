@@ -16,6 +16,7 @@ import {
   rankIndexLinks,
   isBlockedIP,
   isHtmlBlob,
+  isErrorPage,
 } from "./fetcher.js";
 import { resetAllCircuits } from "./circuit-breaker.js";
 
@@ -186,6 +187,39 @@ describe("fetchViaJina", () => {
     mockFetch.mockResolvedValueOnce(makeRes("", 404));
     const result = await fetchViaJina("https://example.com/notfound");
     expect(result).toBeNull();
+  });
+
+  it("rejects Jina-rendered 404 pages instead of returning them as content", async () => {
+    // Jina returns HTTP 200 for pages whose TARGET returned 404 — the body carries
+    // a warning marker plus the rendered error page. This must never become "content".
+    const jina404 = [
+      "Title: Next.js by Vercel - The React Framework",
+      "",
+      "URL Source: https://nextjs.org/docs/guides/performance",
+      "",
+      "Warning: Target URL returned error 404: Not Found",
+      "",
+      "Markdown Content:",
+      "[nav](https://nextjs.org/)".repeat(60),
+      "",
+      "# 404",
+      "",
+      "## This page could not be found.",
+      "",
+      "[footer](https://vercel.com/legal)".repeat(60),
+    ].join("\n");
+    mockFetch.mockResolvedValue(makeRes(jina404, 200));
+    const result = await fetchViaJina("https://nextjs.org/docs/guides/performance");
+    expect(result).toBeNull();
+  });
+
+  it("does not cache rejected garbage (next call re-fetches)", async () => {
+    const jina404 = `Warning: Target URL returned error 404: Not Found\n\n${"junk ".repeat(100)}`;
+    mockFetch.mockResolvedValue(makeRes(jina404, 200));
+    await fetchViaJina("https://example.com/dead");
+    const callsAfterFirst = mockFetch.mock.calls.length;
+    await fetchViaJina("https://example.com/dead");
+    expect(mockFetch.mock.calls.length).toBeGreaterThan(callsAfterFirst);
   });
 
   it("returns null on 503 after two attempts", async () => {
@@ -1091,5 +1125,40 @@ describe("docsifyToRaw", () => {
     expect(docsifyToRaw("https://example.com/docs/web")).toBeNull();
     expect(docsifyToRaw("https://example.com/#/")).toBeNull();
     expect(docsifyToRaw("not a url")).toBeNull();
+  });
+});
+
+// ── isErrorPage — long 404s and Jina warning markers ────────────────────────
+
+describe("isErrorPage strong signals", () => {
+  it("detects Jina 'Target URL returned error' warning regardless of length", () => {
+    const content = `Title: Some Page\n\nURL Source: https://x.dev/dead\n\nWarning: Target URL returned error 404: Not Found\n\nMarkdown Content:\n${"nav link ".repeat(1000)}`;
+    expect(content.length).toBeGreaterThan(3000);
+    expect(isErrorPage(content)).toBe(true);
+  });
+
+  it("detects a big framework 404 page (heading + not-found text past the old 3000-char cap)", () => {
+    const nav = "[Showcase](https://nextjs.org/showcase) [Docs](https://nextjs.org/docs) ".repeat(40);
+    const content = `${nav}\n\n# 404\n\n## This page could not be found.\n\n${"[footer](https://vercel.com) ".repeat(80)}`;
+    expect(content.length).toBeGreaterThan(3000);
+    expect(isErrorPage(content)).toBe(true);
+  });
+
+  it("does not flag real documentation ABOUT 404 handling", () => {
+    const content = [
+      "# Handling not found errors",
+      "",
+      "Use the notFound() helper to render your 404 page. When a request does not match,",
+      "the framework serves the not-found boundary. This page could contain anything.",
+      "",
+      "```tsx",
+      "import { notFound } from 'next/navigation';",
+      "export default async function Page() { notFound(); }",
+      "```",
+      "",
+      `${"More real prose about custom error pages and status codes. ".repeat(80)}`,
+    ].join("\n");
+    expect(content.length).toBeGreaterThan(3000);
+    expect(isErrorPage(content)).toBe(false);
   });
 });

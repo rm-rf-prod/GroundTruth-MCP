@@ -1,4 +1,5 @@
 import { tokenize } from "./extract.js";
+import { stripUrlNoise } from "./evidence.js";
 
 export interface QualityResult {
   score: number;
@@ -48,7 +49,9 @@ export function computeQualityScore(
   const topicTokens = tokenize(topic);
   let topicCoverage = 1;
   if (topicTokens.length > 0) {
-    const contentLower = content.toLowerCase();
+    // Same URL stripping as checkEvidence — a token appearing only inside link
+    // hrefs must not inflate qualityScore while the evidence gate reports a miss.
+    const contentLower = stripUrlNoise(content).toLowerCase();
     const found = topicTokens.filter((t) => contentLower.includes(t)).length;
     topicCoverage = found / topicTokens.length;
   }

@@ -34,6 +34,18 @@ export interface EvidenceSource {
 const MAX_OCCURRENCES_PER_TOKEN = 50;
 
 /**
+ * Drop markdown link targets and bare URLs so topic tokens are only counted in
+ * prose/headings/code — never inside hrefs or utm params. Link TEXT is kept.
+ * Shared by checkEvidence and computeQualityScore so the evidence gate and the
+ * quality score can never disagree about what counts as topic coverage.
+ */
+export function stripUrlNoise(content: string): string {
+  return content
+    .replace(/\]\([^)]*\)/g, "]")
+    .replace(/https?:\/\/\S+/g, " ");
+}
+
+/**
  * Strict topic-evidence check on FINAL output text.
  *
  * Deliberately stricter than scoreTopicRelevance (deep-fetch trigger):
@@ -55,8 +67,14 @@ export function checkEvidence(content: string, topic: string): EvidenceCheck {
     };
   }
 
-  const lower = content.toLowerCase();
-  const headings = (content.match(/^#{1,4}\s+.+$/gm) ?? []).join("\n").toLowerCase();
+  // A 404 page whose nav links carry utm_campaign=docs_guides_<topic>
+  // must not pass as topic coverage.
+  const prose = stripUrlNoise(content);
+
+  const lower = prose.toLowerCase();
+  const headings = (prose.match(/^#{1,4}\s+.+$/gm) ?? []).join("\n").toLowerCase();
+  // Code blocks keep their URLs — `curl https://api.x.com/webhooks` is real
+  // topic evidence, unlike nav hrefs. Extract from the ORIGINAL content.
   const code = (content.match(/```[\s\S]*?```/g) ?? []).join("\n").toLowerCase();
 
   const matchedTokens: string[] = [];

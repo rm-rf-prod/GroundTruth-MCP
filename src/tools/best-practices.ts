@@ -4,7 +4,7 @@ import { lookupById, lookupByAlias } from "../sources/registry.js";
 import { fetchDocs, fetchGitHubContent, fetchGitHubExamples, fetchAsMarkdownRace, fetchSitemapUrls } from "../services/fetcher.js";
 import { resolveDynamic, probeLlmsTxt } from "../services/resolve.js";
 import { deepFetchForTopic } from "../services/deep-fetch.js";
-import { extractRelevantContent } from "../utils/extract.js";
+import { extractRelevantContent, tokenize } from "../utils/extract.js";
 import { checkEvidence, buildEvidenceBlock, buildHonestMiss, extractHeadingOutline } from "../utils/evidence.js";
 import { isExtractionAttempt, withNotice, EXTRACTION_REFUSAL } from "../utils/guard.js";
 import { sanitizeContent } from "../utils/sanitize.js";
@@ -43,18 +43,16 @@ const InputSchema = z.object({
 const BEST_PRACTICES_URLS: Record<string, string[]> = {
   // ─── JavaScript / TypeScript Frameworks ─────────────────────────────────
   "vercel/next.js": [
-    "https://nextjs.org/docs/app/building-your-application/rendering",
-    "https://nextjs.org/docs/app/building-your-application/caching",
-    "https://nextjs.org/docs/app/building-your-application/deploying",
-    "https://nextjs.org/docs/app/building-your-application/optimizing",
-    "https://nextjs.org/docs/app/building-your-application/authentication",
+    "https://nextjs.org/docs/app/guides/production-checklist",
+    "https://nextjs.org/docs/app/guides/caching",
+    "https://nextjs.org/docs/app/guides/authentication",
+    "https://nextjs.org/docs/app/getting-started/caching-and-revalidating",
   ],
   "facebook/react": [
-    "https://react.dev/learn/thinking-in-react",
-    "https://react.dev/learn/escape-hatches",
     "https://react.dev/reference/rules",
-    "https://react.dev/learn/managing-state",
     "https://react.dev/learn/you-might-not-need-an-effect",
+    "https://react.dev/learn/escape-hatches",
+    "https://react.dev/learn/managing-state",
   ],
   "vuejs/vue": [
     "https://vuejs.org/guide/best-practices/performance",
@@ -82,7 +80,6 @@ const BEST_PRACTICES_URLS: Record<string, string[]> = {
     "https://docs.nestjs.com/fundamentals/testing",
   ],
   "elysiajs/elysia": [
-    "https://elysiajs.com/patterns/best-practices.html",
     "https://elysiajs.com/essential/best-practice.html",
   ],
   "unjs/nitro": [
@@ -110,7 +107,7 @@ const BEST_PRACTICES_URLS: Record<string, string[]> = {
     "https://www.radix-ui.com/primitives/docs/overview/accessibility",
     "https://www.radix-ui.com/primitives/docs/overview/getting-started",
   ],
-  "ariakit/ariakit": ["https://ariakit.org/guide/accessibility"],
+  "ariakit/ariakit": ["https://ariakit.org/guide"],
   "chakra-ui/chakra-ui": [
     "https://v2.chakra-ui.com/docs/styled-system/customize-theme",
     "https://v2.chakra-ui.com/docs/components",
@@ -130,14 +127,14 @@ const BEST_PRACTICES_URLS: Record<string, string[]> = {
   ],
   "prisma/prisma": [
     "https://www.prisma.io/docs/guides/performance-and-optimization",
-    "https://www.prisma.io/docs/guides/database/best-practices",
+    "https://www.prisma.io/docs/orm/more/best-practices",
     "https://www.prisma.io/docs/guides/testing",
   ],
   "supabase/supabase": [
     "https://supabase.com/docs/guides/database/postgres/row-level-security",
     "https://supabase.com/docs/guides/auth/overview",
-    "https://supabase.com/docs/guides/performance",
-    "https://supabase.com/docs/guides/database/postgres/best-practices",
+    "https://supabase.com/docs/guides/platform/performance",
+    "https://supabase.com/docs/guides/troubleshooting/rls-performance-and-best-practices-Z5Jjwv",
     "https://supabase.com/docs/guides/realtime",
     "https://supabase.com/docs/guides/realtime/presence",
     "https://supabase.com/docs/guides/realtime/broadcast",
@@ -147,26 +144,24 @@ const BEST_PRACTICES_URLS: Record<string, string[]> = {
   ],
   "neondatabase/neon": [
     "https://neon.tech/docs/guides/branching-intro",
-    "https://neon.tech/docs/introduction/connection-pooling",
+    "https://neon.com/docs/connect/connection-pooling",
   ],
   "turso-tech/libsql": [
     "https://docs.turso.tech/sdk/ts/guides",
     "https://docs.turso.tech/features/embedded-replicas",
   ],
   "typeorm/typeorm": [
-    "https://typeorm.io/connection",
+    "https://typeorm.io/docs/data-source/data-source-options/",
     "https://typeorm.io/migrations",
-    "https://typeorm.io/performance-tips",
+    "https://typeorm.io/docs/performance-optimization/introduction/",
   ],
   "Automattic/mongoose": [
     "https://mongoosejs.com/docs/guide.html",
-    "https://mongoosejs.com/docs/best_practices.html",
-    "https://mongoosejs.com/docs/indexes.html",
+    "https://mongoosejs.com/docs/faq.html",
   ],
   "mongoose/mongoose": [
     "https://mongoosejs.com/docs/guide.html",
-    "https://mongoosejs.com/docs/best_practices.html",
-    "https://mongoosejs.com/docs/indexes.html",
+    "https://mongoosejs.com/docs/faq.html",
     "https://mongoosejs.com/docs/middleware.html",
   ],
   "knex/knex": [
@@ -179,7 +174,7 @@ const BEST_PRACTICES_URLS: Record<string, string[]> = {
   ],
   "electric-sql/electric": [
     "https://electric-sql.com/docs/intro/quickstart",
-    "https://electric-sql.com/docs/guides/sync",
+    "https://electric.ax/docs/sync",
   ],
   "redis/node-redis": [
     "https://redis.io/docs/latest/develop/connect/clients/nodejs/",
@@ -189,8 +184,7 @@ const BEST_PRACTICES_URLS: Record<string, string[]> = {
   // ─── Validation / Schema ─────────────────────────────────────────────────
   "colinhacks/zod": [
     "https://zod.dev/basics",
-    "https://zod.dev/parsing",
-    "https://zod.dev/error-handling",
+    "https://zod.dev/error-formatting",
   ],
   "fabian-hiller/valibot": [
     "https://valibot.dev/guides/introduction/",
@@ -212,9 +206,9 @@ const BEST_PRACTICES_URLS: Record<string, string[]> = {
 
   // ─── State Management ────────────────────────────────────────────────────
   "pmndrs/zustand": [
-    "https://docs.pmnd.rs/zustand/guides/updating-state",
-    "https://docs.pmnd.rs/zustand/guides/typescript",
-    "https://docs.pmnd.rs/zustand/guides/testing",
+    "https://zustand.docs.pmnd.rs/learn/guides/updating-state",
+    "https://zustand.docs.pmnd.rs/learn/guides/beginner-typescript",
+    "https://zustand.docs.pmnd.rs/learn/guides/testing",
   ],
   "pmndrs/jotai": [
     "https://jotai.org/docs/guides/typescript",
@@ -241,8 +235,8 @@ const BEST_PRACTICES_URLS: Record<string, string[]> = {
     "https://valtio.pmnd.rs/docs/how-tos/how-to-use-with-context",
   ],
   "mobxjs/mobx": [
-    "https://mobx.js.org/best/pitfalls.html",
-    "https://mobx.js.org/guides/react-optimizations.html",
+    "https://mobx.js.org/react-integration.html",
+    "https://mobx.js.org/react-optimizations.html",
   ],
   "statelyai/xstate": [
     "https://stately.ai/docs/xstate",
@@ -294,7 +288,7 @@ const BEST_PRACTICES_URLS: Record<string, string[]> = {
   "biomejs/biome": [
     "https://biomejs.dev/guides/getting-started/",
     "https://biomejs.dev/guides/integrate-in-vcs/",
-    "https://biomejs.dev/linter/rules/",
+    "https://biomejs.dev/linter/",
   ],
   "vercel/turbo": [
     "https://turbo.build/repo/docs/core-concepts/caching",
@@ -303,7 +297,7 @@ const BEST_PRACTICES_URLS: Record<string, string[]> = {
   ],
   "nrwl/nx": [
     "https://nx.dev/concepts/mental-model",
-    "https://nx.dev/recipes/tips-n-tricks/monorepo-nx-enterprise",
+    "https://nx.dev/docs/concepts/decisions/why-monorepos",
   ],
   "rollup/rollup": [
     "https://rollupjs.org/guide/en/#tree-shaking",
@@ -321,7 +315,7 @@ const BEST_PRACTICES_URLS: Record<string, string[]> = {
 
   // ─── Runtime ─────────────────────────────────────────────────────────────
   "nodejs/node": [
-    "https://nodejs.org/en/docs/guides/",
+    "https://nodejs.org/en/learn",
     "https://nodejs.org/en/learn/getting-started/introduction-to-nodejs",
   ],
   "oven-sh/bun": [
@@ -380,13 +374,13 @@ const BEST_PRACTICES_URLS: Record<string, string[]> = {
   ],
   "xenova/transformers.js": [
     "https://huggingface.co/docs/transformers.js/index",
-    "https://huggingface.co/docs/transformers.js/guides/node-esm",
+    "https://huggingface.co/docs/transformers.js/tutorials/node",
   ],
   "ollama/ollama-js": [
     "https://github.com/ollama/ollama-js#usage",
   ],
   "assistant-ui/assistant-ui": [
-    "https://www.assistant-ui.com/docs/getting-started",
+    "https://www.assistant-ui.com/docs/installation",
     "https://www.assistant-ui.com/docs/api-reference",
   ],
 
@@ -406,8 +400,7 @@ const BEST_PRACTICES_URLS: Record<string, string[]> = {
     "https://docs.crewai.com/concepts/tasks",
   ],
   "langchain-ai/langgraph": [
-    "https://langchain-ai.github.io/langgraph/concepts/",
-    "https://langchain-ai.github.io/langgraph/how-tos/",
+    "https://docs.langchain.com/oss/python/langgraph/overview",
   ],
   "huggingface/transformers": [
     "https://huggingface.co/docs/transformers/main/en/quicktour",
@@ -435,7 +428,7 @@ const BEST_PRACTICES_URLS: Record<string, string[]> = {
   "nextauthjs/next-auth": [
     "https://authjs.dev/getting-started",
     "https://authjs.dev/getting-started/providers",
-    "https://authjs.dev/concepts/session-management",
+    "https://authjs.dev/concepts/session-strategies",
     "https://authjs.dev/getting-started/deployment",
   ],
   "better-auth/better-auth": [
@@ -443,8 +436,8 @@ const BEST_PRACTICES_URLS: Record<string, string[]> = {
     "https://www.better-auth.com/docs/authentication/email-password",
   ],
   "pilcrowonpaper/lucia": [
-    "https://lucia-auth.com/tutorials/",
-    "https://lucia-auth.com/guides/validate-session-cookies/",
+    "https://lucia-auth.com/sessions/overview",
+    "https://v3.lucia-auth.com/guides/validate-session-cookies/",
   ],
   "jaredhanson/passport": [
     "https://www.passportjs.org/tutorials/password/",
@@ -454,7 +447,7 @@ const BEST_PRACTICES_URLS: Record<string, string[]> = {
   // ─── Mobile / React Native ───────────────────────────────────────────────
   "expo/expo": [
     "https://docs.expo.dev/develop/development-builds/introduction/",
-    "https://docs.expo.dev/guides/file-based-routing/",
+    "https://docs.expo.dev/router/basics/core-concepts/",
     "https://docs.expo.dev/guides/using-eslint/",
     "https://docs.expo.dev/eas/",
   ],
@@ -466,20 +459,19 @@ const BEST_PRACTICES_URLS: Record<string, string[]> = {
   ],
   "expo/router": [
     "https://docs.expo.dev/router/introduction/",
-    "https://docs.expo.dev/router/layouts/",
-    "https://docs.expo.dev/router/navigating-pages/",
+    "https://docs.expo.dev/router/basics/navigation-layouts/",
+    "https://docs.expo.dev/router/basics/navigation/",
   ],
   "react-navigation/react-navigation": [
     "https://reactnavigation.org/docs/getting-started",
     "https://reactnavigation.org/docs/auth-flow",
-    "https://reactnavigation.org/docs/performance",
+    "https://docs.swmansion.com/react-native-screens/",
   ],
   "marceloterreiro/flash-list": [
     "https://shopify.github.io/flash-list/docs/",
-    "https://shopify.github.io/flash-list/docs/performance-troubleshooting",
+    "https://shopify.github.io/flash-list/docs/fundamentals/performance/",
   ],
   "software-mansion/react-native-reanimated": [
-    "https://docs.swmansion.com/react-native-reanimated/docs/",
     "https://docs.swmansion.com/react-native-reanimated/docs/fundamentals/getting-started/",
   ],
   "mrousavy/react-native-mmkv": [
@@ -489,8 +481,8 @@ const BEST_PRACTICES_URLS: Record<string, string[]> = {
     "https://shopify.github.io/react-native-skia/docs/getting-started/installation",
   ],
   "nativewind/nativewind": [
-    "https://www.nativewind.dev/getting-started/",
-    "https://www.nativewind.dev/overview/",
+    "https://www.nativewind.dev/docs/getting-started/installation",
+    "https://www.nativewind.dev/docs",
   ],
   "software-mansion/react-native-gesture-handler": [
     "https://docs.swmansion.com/react-native-gesture-handler/docs/",
@@ -522,12 +514,12 @@ const BEST_PRACTICES_URLS: Record<string, string[]> = {
 
   // ─── Go Frameworks ───────────────────────────────────────────────────────
   "gin-gonic/gin": [
-    "https://gin-gonic.com/docs/introduction/",
-    "https://gin-gonic.com/docs/examples/",
+    "https://gin-gonic.com/en/docs/quickstart/",
+    "https://github.com/gin-gonic/examples",
   ],
   "gofiber/fiber": [
     "https://docs.gofiber.io/",
-    "https://docs.gofiber.io/guide/",
+    "https://docs.gofiber.io/next/category/-guide/",
   ],
   "go-gorm/gorm": [
     "https://gorm.io/docs/",
@@ -563,21 +555,19 @@ const BEST_PRACTICES_URLS: Record<string, string[]> = {
   ],
   "strapi/strapi": [
     "https://docs.strapi.io/dev-docs/intro",
-    "https://docs.strapi.io/dev-docs/configurations/",
+    "https://docs.strapi.io/cms/configurations",
     "https://docs.strapi.io/dev-docs/plugins-development",
   ],
   "contentful/contentful-management.js": [
-    "https://www.contentful.com/developers/docs/javascript/getting-started/",
+    "https://www.contentful.com/developers/docs/sdks/javascript/tutorials/using-js-cda-sdk/",
   ],
   "withastro/astro": [
-    "https://docs.astro.build/en/guides/best-practices/",
-    "https://docs.astro.build/en/guides/performance/",
+    "https://docs.astro.build/en/guides/images/",
     "https://docs.astro.build/en/guides/deploy/",
     "https://docs.astro.build/en/guides/server-side-rendering/",
   ],
   "astro-build/astro": [
-    "https://docs.astro.build/en/guides/best-practices/",
-    "https://docs.astro.build/en/guides/performance/",
+    "https://docs.astro.build/en/guides/images/",
     "https://docs.astro.build/en/guides/deploy/",
     "https://docs.astro.build/en/guides/server-side-rendering/",
     "https://docs.astro.build/en/guides/content-collections/",
@@ -592,7 +582,7 @@ const BEST_PRACTICES_URLS: Record<string, string[]> = {
     "https://nuxt.com/docs/guide/directory-structure",
   ],
   "nuxt/content": [
-    "https://content.nuxt.com/get-started/installation",
+    "https://content.nuxt.com/docs/getting-started/installation",
     "https://content.nuxt.com/usage/content-directory",
   ],
   "mdx-js/mdx": [
@@ -612,13 +602,13 @@ const BEST_PRACTICES_URLS: Record<string, string[]> = {
   // ─── Email ───────────────────────────────────────────────────────────────
   "resend/resend-node": [
     "https://resend.com/docs/introduction",
-    "https://resend.com/docs/send-with-react",
-    "https://resend.com/docs/idempotency",
+    "https://react.email/docs/integrations/resend",
+    "https://resend.com/docs/dashboard/emails/idempotency-keys",
   ],
   "nodemailer/nodemailer": [
     "https://nodemailer.com/about/",
-    "https://nodemailer.com/smtp/",
-    "https://nodemailer.com/transports/",
+    "https://nodemailer.com/smtp",
+    "https://nodemailer.com/transports",
   ],
 
   // ─── Payments ────────────────────────────────────────────────────────────
@@ -696,8 +686,8 @@ const BEST_PRACTICES_URLS: Record<string, string[]> = {
 
   // ─── Cloud ───────────────────────────────────────────────────────────────
   "vercel/vercel": [
-    "https://vercel.com/docs/deployments/best-practices",
-    "https://vercel.com/docs/security/best-practices",
+    "https://vercel.com/docs/deployment-protection",
+    "https://vercel.com/docs/security",
     "https://vercel.com/docs/functions/configuring-functions/",
   ],
   "cloudflare/workers-sdk": [
@@ -750,7 +740,7 @@ const BEST_PRACTICES_URLS: Record<string, string[]> = {
   "rwf2/Rocket": ["https://rocket.rs/guide/", "https://rocket.rs/guide/configuration/"],
 
   // ─── Go Ecosystem ────────────────────────────────────────────────────────
-  "labstack/echo": ["https://echo.labstack.com/docs/middleware", "https://echo.labstack.com/docs/cookbook"],
+  "labstack/echo": ["https://echo.labstack.com/docs/category/middleware", "https://echo.labstack.com/docs/category/cookbook"],
   "spf13/cobra": ["https://cobra.dev/", "https://github.com/spf13/cobra/blob/main/site/content/user_guide.md"],
 
   // ─── Java / Kotlin ────────────────────────────────────────────────────────
@@ -763,7 +753,7 @@ const BEST_PRACTICES_URLS: Record<string, string[]> = {
     "https://docs.spring.io/spring-security/reference/servlet/authentication/index.html",
     "https://docs.spring.io/spring-security/reference/servlet/authorization/index.html",
   ],
-  "ktorio/ktor": ["https://ktor.io/docs/server-create-new-project.html", "https://ktor.io/docs/server-auto-reload.html"],
+  "ktorio/ktor": ["https://ktor.io/docs/server-create-a-new-project.html", "https://ktor.io/docs/server-auto-reload.html"],
 
   // ─── DevOps / Infrastructure ──────────────────────────────────────────────
   "ansible/ansible": [
@@ -1038,7 +1028,7 @@ const BEST_PRACTICES_URLS: Record<string, string[]> = {
   ],
   "huggingface/transformers.js": [
     "https://huggingface.co/docs/transformers.js/index",
-    "https://huggingface.co/docs/transformers.js/guides/node-esm",
+    "https://huggingface.co/docs/transformers.js/tutorials/node",
   ],
 
   // ─── ML / Deep Learning ───────────────────────────────────────────────
@@ -1072,8 +1062,8 @@ const BEST_PRACTICES_URLS: Record<string, string[]> = {
     "https://trigger.dev/docs/guides",
   ],
   "lucia-auth/lucia": [
-    "https://lucia-auth.com/tutorials/",
-    "https://lucia-auth.com/guides/validate-session-cookies/",
+    "https://lucia-auth.com/sessions/overview",
+    "https://v3.lucia-auth.com/guides/validate-session-cookies/",
   ],
 };
 
@@ -1115,7 +1105,9 @@ const GENERIC_BP_SUFFIXES = [
  *  Uses fetchAsMarkdownRace (direct HTML extraction + Jina) for each URL,
  *  so we're not solely dependent on Jina Reader.
  */
-async function raceUrls(urls: string[]): Promise<{ content: string; url: string } | null> {
+async function raceUrls(
+  urls: string[],
+): Promise<{ content: string; url: string; extraUrls: string[] } | null> {
   if (urls.length === 0) return null;
 
   const results = await Promise.allSettled(
@@ -1134,14 +1126,35 @@ async function raceUrls(urls: string[]): Promise<{ content: string; url: string 
   }
 
   if (hits.length === 0) return null;
-  if (hits.length === 1) return hits[0]!;
+  if (hits.length === 1) return { ...hits[0]!, extraUrls: [] };
 
-  // Pick the result with the best content quality (headings, code blocks, length)
-  return hits.reduce((best, current) => {
-    const bestScore = scoreContentQuality(best.content);
-    const currentScore = scoreContentQuality(current.content);
-    return currentScore > bestScore ? current : best;
-  });
+  // Merge the top pages by content quality (headings, code blocks, length) —
+  // one page is a summary, several pages are best practices. Downstream BM25
+  // extraction trims the merged corpus back to the token budget, so callers
+  // get the most relevant sections ACROSS sources instead of a single page.
+  const ranked = [...hits].sort(
+    (a, b) => scoreContentQuality(b.content) - scoreContentQuality(a.content),
+  );
+  const top = ranked.slice(0, 3);
+  // Cap each source before merging — three unbounded pages would make the
+  // downstream sanitize + BM25 pass scan megabytes for a few-KB output.
+  const MAX_CHARS_PER_SOURCE = 80_000;
+  const merged = top
+    .map((h) => {
+      let body = h.content.slice(0, MAX_CHARS_PER_SOURCE);
+      // Balance fences per source — one truncated page must not leave the
+      // section parser "inside a fence" for every source merged after it.
+      for (const fence of ["```", "~~~"]) {
+        if ((body.split(fence).length - 1) % 2 === 1) body += `\n${fence}`;
+      }
+      return `## Source: ${h.url}\n\n${body}`;
+    })
+    .join("\n\n---\n\n");
+  return {
+    content: merged,
+    url: top[0]!.url,
+    extraUrls: top.slice(1).map((h) => h.url),
+  };
 }
 
 function scoreContentQuality(content: string): number {
@@ -1167,7 +1180,7 @@ async function fetchBestPracticesContent(
   topic: string,
   tokens: number,
   bestPracticesPaths?: string[],
-): Promise<{ text: string; sourceUrl: string; truncated: boolean }> {
+): Promise<{ text: string; sourceUrl: string; truncated: boolean; extraSources: string[] }> {
   // Build URLs from registry bestPracticesPaths and merge with known URLs
   const registryUrls: string[] = [];
   if (bestPracticesPaths && bestPracticesPaths.length > 0) {
@@ -1219,12 +1232,15 @@ async function fetchBestPracticesContent(
           topic || "best practices patterns guide",
           tokens,
         );
-        return { text: extracted, sourceUrl: hit.url, truncated };
+        return { text: extracted, sourceUrl: hit.url, truncated, extraSources: hit.extraUrls };
       }
     }
   }
 
-  // 1b. If topic provided, try constructing docs URL from topic slug
+  // 1b. If topic provided, try constructing docs URL from topic slug.
+  // Safe only because the fetch layer garbage-gates Jina results: a fabricated
+  // path that 404s now fails cleanly instead of short-circuiting the real
+  // discovery paths below with a Jina-rendered error page.
   if (topic) {
     const topicOrigin = (() => { try { return new URL(docsUrl).origin; } catch { return null; } })();
     if (topicOrigin) {
@@ -1242,7 +1258,7 @@ async function fetchBestPracticesContent(
           topic || "best practices patterns guide",
           tokens,
         );
-        return { text: extracted, sourceUrl: topicHit.url, truncated };
+        return { text: extracted, sourceUrl: topicHit.url, truncated, extraSources: topicHit.extraUrls };
       }
     }
   }
@@ -1266,7 +1282,7 @@ async function fetchBestPracticesContent(
         topic || "best practices patterns guide",
         tokens,
       );
-      return { text: extracted, sourceUrl: hit.url, truncated };
+      return { text: extracted, sourceUrl: hit.url, truncated, extraSources: hit.extraUrls };
     }
   }
 
@@ -1275,8 +1291,14 @@ async function fetchBestPracticesContent(
   if (sitemapUrls.length > 0) {
     const bpPatterns = /best.?practice|guide|pattern|getting.?started|performance|security|testing|deployment/i;
     const topicSlug = topic ? topic.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "") : "";
+    const topicWords = topic ? tokenize(topic) : [];
     const bpUrls = sitemapUrls
       .filter((u) => bpPatterns.test(u) || (topicSlug && u.toLowerCase().includes(topicSlug)))
+      // Topic-matching URLs first — a generic pattern hit (e.g. /docs/security)
+      // must not outrank an actual topic page (e.g. /docs/app/guides/caching).
+      .map((u) => ({ u, hits: topicWords.filter((w) => u.toLowerCase().includes(w)).length }))
+      .sort((a, b) => b.hits - a.hits)
+      .map(({ u }) => u)
       .slice(0, 5);
     if (bpUrls.length > 0) {
       const hit = await raceUrls(bpUrls);
@@ -1287,7 +1309,7 @@ async function fetchBestPracticesContent(
           topic || "best practices patterns guide",
           tokens,
         );
-        return { text: extracted, sourceUrl: hit.url, truncated };
+        return { text: extracted, sourceUrl: hit.url, truncated, extraSources: hit.extraUrls };
       }
     }
   }
@@ -1311,7 +1333,7 @@ async function fetchBestPracticesContent(
         const safe = sanitizeContent(raw);
         const { text: extracted, truncated } = extractRelevantContent(safe, enrichedTopic, tokens);
         if (extracted.length > 200) {
-          return { text: extracted, sourceUrl: url, truncated };
+          return { text: extracted, sourceUrl: url, truncated, extraSources: [] };
         }
       }
     }
@@ -1326,7 +1348,7 @@ async function fetchBestPracticesContent(
     result = await deepFetchForTopic(result, enrichedTopic, docsUrl, bestPracticesPaths);
     const safe = sanitizeContent(result.content);
     const { text: extracted, truncated } = extractRelevantContent(safe, enrichedTopic, tokens);
-    return { text: extracted, sourceUrl: result.url, truncated };
+    return { text: extracted, sourceUrl: result.url, truncated, extraSources: [] };
   } catch {
     // ignore
   }
@@ -1337,7 +1359,7 @@ async function fetchBestPracticesContent(
     if (examplesContent) {
       const safe = sanitizeContent(examplesContent);
       const { text: extracted, truncated } = extractRelevantContent(safe, topic, tokens);
-      return { text: extracted, sourceUrl: githubUrl, truncated };
+      return { text: extracted, sourceUrl: githubUrl, truncated, extraSources: [] };
     }
 
     for (const path of ["CONTRIBUTING.md", "docs/patterns.md", "docs/best-practices.md"]) {
@@ -1345,7 +1367,7 @@ async function fetchBestPracticesContent(
       if (ghResult) {
         const safe = sanitizeContent(ghResult.content);
         const { text: extracted, truncated } = extractRelevantContent(safe, topic, tokens);
-        return { text: extracted, sourceUrl: ghResult.url, truncated };
+        return { text: extracted, sourceUrl: ghResult.url, truncated, extraSources: [] };
       }
     }
   }
@@ -1363,7 +1385,7 @@ async function fetchBestPracticesContent(
         topic || "best practices patterns guide",
         tokens,
       );
-      return { text: extracted, sourceUrl: hit.url, truncated };
+      return { text: extracted, sourceUrl: hit.url, truncated, extraSources: hit.extraUrls };
     }
   }
 
@@ -1371,6 +1393,7 @@ async function fetchBestPracticesContent(
     text: `Could not find specific best practices for "${libraryId}". Try gt_get_docs with topic="best practices patterns".`,
     sourceUrl: docsUrl,
     truncated: false,
+    extraSources: [],
   };
 }
 
@@ -1455,7 +1478,7 @@ Do not call this tool more than 3 times per question.`,
 
       const effectiveTopic = version ? `${topic ? `${topic} ` : ""}v${version.replace(/^v/, "")}`.trim() : topic;
 
-      let { text, sourceUrl, truncated } = await fetchBestPracticesContent(
+      let { text, sourceUrl, truncated, extraSources } = await fetchBestPracticesContent(
         resolvedId,
         docsUrl,
         llmsTxtUrl,
@@ -1472,7 +1495,10 @@ Do not call this tool more than 3 times per question.`,
       // they were the requested best practices.
       let evidence = checkEvidence(text, effectiveTopic);
       let escalated = false;
-      const sourcesTried: Array<{ url: string; sourceType?: string }> = [{ url: sourceUrl }];
+      const sourcesTried: Array<{ url: string; sourceType?: string }> = [
+        { url: sourceUrl },
+        ...extraSources.map((url) => ({ url })),
+      ];
 
       if (effectiveTopic && !evidence.ok) {
         const deeper = await deepFetchForTopic(
