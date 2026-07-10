@@ -384,6 +384,14 @@ export async function fetchViaJina(url: string): Promise<string | null> {
         }
         const text = await res.text();
         if (text.length < 100) return null;
+        // Jina answers 200 even when the TARGET page 404'd or is a challenge/login
+        // shell — rendered garbage must never be returned or cached as content.
+        const garbage = isGarbageContent(text);
+        if (garbage.garbage) {
+          log({ level: "warn", msg: "fetchViaJina.garbage_rejected", url, reason: garbage.reason });
+          recordSuccess(jinaDomain); // Jina itself worked — the target was bad
+          return null;
+        }
         recordSuccess(jinaDomain);
         cacheDoc(cacheKey, text, CACHE_TTLS.JINA_RESULT);
         return text;
@@ -724,10 +732,12 @@ export async function fetchDocs(
       const tagDensity = (html.match(/<[a-z]/gi) ?? []).length / Math.max(html.length, 1);
       // Already plain text / markdown
       if (tagDensity < 0.005 && html.length > 100) {
+        if (isGarbageContent(html).garbage) throw new Error("garbage content");
         return { content: html, url: docsUrl, sourceType: "direct" as const };
       }
       const md = convertHtmlToMarkdown(html);
       if (md.length >= 200) {
+        if (isGarbageContent(md).garbage) throw new Error("garbage content after extraction");
         return { content: md, url: docsUrl, sourceType: "direct" as const };
       }
       throw new Error("extraction too short");
@@ -1000,6 +1010,21 @@ export async function fetchDevDocs(slug: string, topic?: string): Promise<string
 
 /** Detect 404/error pages returned as content (common with Jina on non-existent pages) */
 export function isErrorPage(content: string): boolean {
+  // Strong signals — length-independent. Framework 404 shells ship kilobytes of
+  // nav/footer markup, so a length cap can never be a precondition here.
+  // Jina Reader responds 200 but prepends this warning when the TARGET errored.
+  if (/^Warning:\s*Target URL returned error\s*\d+/im.test(content.slice(0, 2000))) return true;
+  // Bare "404"-style heading anywhere plus canonical not-found body text.
+  // Real 404 shells never contain code fences — documentation ABOUT not-found
+  // handling always does, so a code block clears the page.
+  if (
+    /^#{1,3}\s*(?:404|page not found|not found)\s*\.?\s*$/im.test(content) &&
+    /(?:page|resource) (?:could not be found|not found|doesn.t exist)/i.test(content) &&
+    !content.includes("```")
+  ) {
+    return true;
+  }
+  // Weak signals — only trusted on thin pages so docs ABOUT 404 handling stay clean.
   const sample = content.slice(0, 1500).toLowerCase();
   return (
     (/page\s*not\s*found|404\s*not\s*found|oops!.*doesn.t\s*exist/i.test(sample) && content.length < 3000) ||

@@ -201,3 +201,27 @@ describe("tokenize version tokens", () => {
     expect(tokenize("upgrade to 16")).toContain("16");
   });
 });
+
+// ── fence-aware section parsing ─────────────────────────────────────────────
+
+describe("extractRelevantContent fence handling", () => {
+  it("keeps code fences intact when # comment lines appear inside them", () => {
+    const content = [
+      "# Guide",
+      "",
+      "```bash",
+      "npm install foo",
+      "# caching setup",
+      "FOO_CACHING=1 npm start",
+      "```",
+      "",
+      `${"unrelated prose. ".repeat(300)}`,
+    ].join("\n");
+    const { text } = extractRelevantContent(content, "caching", 1000);
+    // A '# comment' inside a fence must not become a section boundary — that
+    // splits the code block and ships unbalanced fences to the client.
+    expect(((text.match(/```/g) ?? []).length) % 2).toBe(0);
+    expect(text).toContain("npm install foo");
+    expect(text).toContain("FOO_CACHING=1 npm start");
+  });
+});

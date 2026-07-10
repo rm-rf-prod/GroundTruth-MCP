@@ -70,6 +70,42 @@ describe("checkEvidence", () => {
     expect(r.occurrences).toBeLessThanOrEqual(50);
     expect(r.ok).toBe(true);
   });
+
+  it("does not count topic tokens that appear only inside link URLs", () => {
+    // Regression: a 404 page whose nav/footer links carry utm_campaign=docs_guides_performance
+    // scored "strong" for topic "performance" because tokens were counted in raw URLs.
+    const content = [
+      "# 404",
+      "",
+      "## This page could not be found.",
+      "",
+      "[Next.js + Vercel](https://vercel.com/solutions/nextjs?utm_campaign=docs_guides_performance)",
+      "[Open Source](https://vercel.com/oss?utm_campaign=docs_guides_performance)",
+      "[GitHub](https://github.com/vercel?utm_campaign=docs_guides_performance)",
+      "![logo](https://nextjs.org/logo.svg?utm_campaign=docs_guides_performance)",
+      "Bare link: https://vercel.com/legal?utm_campaign=docs_guides_performance",
+    ].join("\n");
+    const r = checkEvidence(content, "performance");
+    expect(r.occurrences).toBe(0);
+    expect(r.ok).toBe(false);
+  });
+
+  it("still counts topic tokens in link text, prose, headings, and code", () => {
+    const content = [
+      "## Performance guide",
+      "",
+      "Measure performance before optimizing. See [performance tips](https://example.com/a1b2).",
+      "",
+      "```js",
+      "reportPerformance();",
+      "```",
+    ].join("\n");
+    const r = checkEvidence(content, "performance");
+    expect(r.ok).toBe(true);
+    expect(r.topicInHeading).toBe(true);
+    expect(r.topicInCode).toBe(true);
+    expect(r.occurrences).toBeGreaterThanOrEqual(3);
+  });
 });
 
 describe("buildEvidenceBlock", () => {

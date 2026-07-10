@@ -14,11 +14,11 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     language: ["typescript", "javascript"],
     tags: ["framework", "react", "ssr", "fullstack"],
     bestPracticesPaths: [
-      "/docs/app/building-your-application/rendering",
-      "/docs/app/building-your-application/caching",
-      "/docs/app/building-your-application/deploying",
+      "/docs/app/guides/production-checklist",
+      "/docs/app/guides/caching",
+      "/docs/app/guides/authentication",
     ],
-    urlPatterns: ["/docs/app/{slug}", "/docs/app/building-your-application/{slug}", "/docs/app/api-reference/{slug}"],
+    urlPatterns: ["/docs/app/{slug}", "/docs/app/guides/{slug}", "/docs/app/getting-started/{slug}", "/docs/app/api-reference/{slug}"],
   },
   {
     id: "facebook/react",
@@ -31,7 +31,7 @@ export const LIBRARY_REGISTRY: LibraryEntry[] = [
     npmPackage: "react",
     language: ["typescript", "javascript"],
     tags: ["ui", "library", "components"],
-    bestPracticesPaths: ["/learn", "/reference/react"],
+    bestPracticesPaths: ["/reference/rules", "/learn/you-might-not-need-an-effect", "/learn/escape-hatches"],
     urlPatterns: ["/reference/react/{slug}", "/learn/{slug}"],
   },
   {
