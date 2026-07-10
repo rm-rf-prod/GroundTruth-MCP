@@ -77,7 +77,7 @@ const TOPIC_URL_MAP: Array<{ patterns: string[]; urls: string[]; name: string }>
     patterns: ["cors", "cross-origin", "access-control"],
     urls: [
       "https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS",
-      "https://cheatsheetseries.owasp.org/cheatsheets/CORS_OriginHeaderScrutiny_Cheat_Sheet.html",
+      "https://cheatsheetseries.owasp.org/cheatsheets/HTTP_Headers_Cheat_Sheet.html",
     ],
     name: "CORS",
   },
@@ -86,7 +86,7 @@ const TOPIC_URL_MAP: Array<{ patterns: string[]; urls: string[]; name: string }>
     patterns: ["jwt", "json web token", "bearer token"],
     urls: [
       "https://jwt.io/introduction",
-      "https://cheatsheetseries.owasp.org/cheatsheets/JSON_Web_Token_for_Java_Cheat_Sheet.html",
+      "https://cheatsheetseries.owasp.org/cheatsheets/JSON_Web_Token_Cheat_Sheet.html",
     ],
     name: "JWT",
   },
@@ -348,7 +348,7 @@ const TOPIC_URL_MAP: Array<{ patterns: string[]; urls: string[]; name: string }>
   // Node.js
   {
     patterns: ["node.js", "nodejs", "node best practices"],
-    urls: ["https://nodejs.org/en/docs/guides/", "https://github.com/goldbergyoni/nodebestpractices"],
+    urls: ["https://nodejs.org/learn", "https://github.com/goldbergyoni/nodebestpractices"],
     name: "Node.js",
   },
   // TypeScript
@@ -451,7 +451,7 @@ const TOPIC_URL_MAP: Array<{ patterns: string[]; urls: string[]; name: string }>
     patterns: ['react native', 'react-native', 'expo sdk', 'expo router', 'expo app'],
     urls: [
       'https://reactnative.dev/docs/getting-started',
-      'https://docs.expo.dev/get-started/introduction/',
+      'https://docs.expo.dev/get-started/introduction',
     ],
     name: 'React Native / Expo',
   },
@@ -478,7 +478,7 @@ const TOPIC_URL_MAP: Array<{ patterns: string[]; urls: string[]; name: string }>
   },
   {
     patterns: ['react native reanimated', 'reanimated', 'useanimatedstyle', 'withspring', 'shared value'],
-    urls: ['https://docs.swmansion.com/react-native-reanimated/docs/'],
+    urls: ['https://docs.swmansion.com/react-native-reanimated/docs/fundamentals/getting-started/'],
     name: 'React Native Reanimated',
   },
   {
@@ -493,7 +493,7 @@ const TOPIC_URL_MAP: Array<{ patterns: string[]; urls: string[]; name: string }>
   },
   {
     patterns: ['nativewind', 'tailwind react native', 'tailwind expo'],
-    urls: ['https://www.nativewind.dev/getting-started/expo-router'],
+    urls: ['https://www.nativewind.dev/docs/getting-started/installation'],
     name: 'NativeWind',
   },
   {
@@ -640,7 +640,7 @@ const TOPIC_URL_MAP: Array<{ patterns: string[]; urls: string[]; name: string }>
     patterns: ["page experience", "mobile friendly", "mobile first", "mobile usability"],
     urls: [
       "https://developers.google.com/search/docs/appearance/page-experience",
-      "https://web.dev/articles/mobile-first-design",
+      "https://web.dev/articles/responsive-web-design-basics",
     ],
     name: "Page Experience / Mobile",
   },
@@ -728,7 +728,7 @@ const TOPIC_URL_MAP: Array<{ patterns: string[]; urls: string[]; name: string }>
     patterns: ["technical seo", "technical seo checklist", "technical seo audit", "seo audit"],
     urls: [
       "https://developers.google.com/search/docs/fundamentals/seo-starter-guide",
-      "https://developers.google.com/search/docs/crawling-indexing/overview",
+      "https://developers.google.com/search/docs/crawling-indexing",
     ],
     name: "Technical SEO Checklist",
   },
@@ -803,7 +803,7 @@ const TOPIC_URL_MAP: Array<{ patterns: string[]; urls: string[]; name: string }>
     patterns: ["internationalization", "i18n", "localization", "l10n", "translation", "multi-language website"],
     urls: [
       "https://developer.mozilla.org/en-US/docs/Glossary/Internationalization",
-      "https://web.dev/articles/i18n",
+      "https://web.dev/learn/design/internationalization",
     ],
     name: "Internationalization (i18n)",
   },
@@ -845,7 +845,7 @@ const TOPIC_URL_MAP: Array<{ patterns: string[]; urls: string[]; name: string }>
   {
     patterns: ["google search console", "gsc", "search console api", "url inspection"],
     urls: [
-      "https://developers.google.com/search/docs/monitor-debug/search-console-about",
+      "https://developers.google.com/search/docs/monitor-debug/search-console-start",
       "https://developers.google.com/webmaster-tools/v1/api_reference_index",
     ],
     name: "Google Search Console",
@@ -883,7 +883,7 @@ const TOPIC_URL_MAP: Array<{ patterns: string[]; urls: string[]; name: string }>
     patterns: ["google discover", "discover feed", "google news", "news publisher"],
     urls: [
       "https://developers.google.com/search/docs/appearance/google-discover",
-      "https://developers.google.com/search/docs/appearance/publication-overview",
+      "https://developers.google.com/search/docs/appearance",
     ],
     name: "Google Discover / News",
   },
@@ -1113,7 +1113,7 @@ const TOPIC_URL_MAP: Array<{ patterns: string[]; urls: string[]; name: string }>
   {
     patterns: ["email authentication", "spf", "dkim", "dmarc", "email deliverability"],
     urls: [
-      "https://cheatsheetseries.owasp.org/cheatsheets/Email_Security_Cheat_Sheet.html",
+      "https://cheatsheetseries.owasp.org/cheatsheets/Email_Validation_and_Verification_Cheat_Sheet.html",
     ],
     name: "Email Authentication (SPF/DKIM/DMARC)",
   },
@@ -1654,6 +1654,39 @@ async function webSearch(query: string): Promise<string[]> {
   return [];
 }
 
+/**
+ * Web-search fallback shared by step 5 (no sources yet) and the evidence-driven
+ * escalation (sources exist but combined coverage is weak): search, skip URLs
+ * already collected, fetch candidates in parallel, and append every page with
+ * real content until maxResults is reached.
+ */
+async function addWebSearchSources(
+  query: string,
+  results: Array<{ source: string; url: string; content: string }>,
+  perSourceTokens: number,
+  maxUrls: number,
+  maxResults = Number.POSITIVE_INFINITY,
+): Promise<void> {
+  const searchUrls = await webSearch(query);
+  const known = new Set(results.map((r) => r.url));
+  const fetched = await Promise.allSettled(
+    searchUrls.filter((u) => !known.has(u)).slice(0, maxUrls).map(async (url) => {
+      const content = await fetchTopicContent(url, query, perSourceTokens);
+      if (content.length > 200) {
+        let source: string;
+        try { source = new URL(url).hostname; } catch { source = url; }
+        return { source, url, content };
+      }
+      throw new Error("no content");
+    }),
+  );
+  for (const r of fetched) {
+    if (r.status === "fulfilled" && results.length < maxResults) {
+      results.push(r.value);
+    }
+  }
+}
+
 export function registerSearchTool(server: McpServer): void {
   const currentYear = new Date().getFullYear();
   server.registerTool(
@@ -1811,25 +1844,7 @@ Examples:
       let webSearched = false;
       if (results.length === 0) {
         webSearched = true;
-        const searchUrls = await webSearch(query);
-        // Fetch top 3 search results in parallel for speed
-        const searchResults = await Promise.allSettled(
-          searchUrls.slice(0, 3).map(async (url) => {
-            const content = await fetchTopicContent(url, query, Math.floor(tokens / 2));
-            if (content.length > 200) {
-              let source: string;
-              try { source = new URL(url).hostname; } catch { source = url; }
-              return { source, url, content };
-            }
-            throw new Error("no content");
-          }),
-        );
-        for (const result of searchResults) {
-          if (result.status === "fulfilled") {
-            results.push(result.value);
-            if (results.length >= 2) break;
-          }
-        }
+        await addWebSearchSources(query, results, Math.floor(tokens / 2), 3, 2);
       }
 
       // 6. Fallback — try DevDocs (pre-parsed docs for 200+ technologies)
@@ -1896,22 +1911,7 @@ Examples:
       // add authoritative web sources once instead of shipping a thin answer.
       let combinedCheck = checkEvidence(results.map((r) => r.content).join("\n\n"), query);
       if (!combinedCheck.ok && !webSearched && results.length < 3) {
-        const escalationUrls = await webSearch(query);
-        const known = new Set(results.map((r) => r.url));
-        const extraResults = await Promise.allSettled(
-          escalationUrls.filter((u) => !known.has(u)).slice(0, 2).map(async (url) => {
-            const content = await fetchTopicContent(url, query, Math.floor(tokens / 3));
-            if (content.length > 200) {
-              let source: string;
-              try { source = new URL(url).hostname; } catch { source = url; }
-              return { source, url, content };
-            }
-            throw new Error("no content");
-          }),
-        );
-        for (const r of extraResults) {
-          if (r.status === "fulfilled") results.push(r.value);
-        }
+        await addWebSearchSources(query, results, Math.floor(tokens / 3), 2);
         combinedCheck = checkEvidence(results.map((r) => r.content).join("\n\n"), query);
       }
 

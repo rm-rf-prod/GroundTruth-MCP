@@ -1,5 +1,5 @@
 import type { FetchResult } from "../types.js";
-import { tokenize } from "../utils/extract.js";
+import { tokenize, expandTopicTokens } from "../utils/extract.js";
 import { fetchAsMarkdownRace, isIndexContent, rankIndexLinks, fetchSitemapUrls } from "./fetcher.js";
 import { log } from "../utils/logger.js";
 import {
@@ -83,7 +83,9 @@ export function rankLinksForTopic(
   links: Array<{ url: string; text: string }>,
   topic: string,
 ): Array<{ url: string; text: string; score: number }> {
-  const topicTokens = tokenize(topic);
+  // Synonyms bridge caller vocabulary to docs vocabulary — a "migration"
+  // query must find the "Upgrade guide" link.
+  const topicTokens = expandTopicTokens(tokenize(topic));
   if (topicTokens.length === 0 || links.length === 0) return [];
 
   const scored = links.map((link) => {
@@ -280,12 +282,9 @@ export async function deepFetchForTopic(
   }
 
   const pipeline = async (): Promise<FetchResult> => {
-    const topicUrls = buildTopicUrls(docsUrl, topic, urlPatterns);
-    if (topicUrls.length > 0) {
-      const directHit = await fetchFirstSuccessful(topicUrls.slice(0, 6));
-      if (directHit) return directHit;
-    }
-
+    // Real links from an index/TOC (llms.txt) beat fabricated slug URLs — try
+    // them FIRST. Guessed slugs mostly 404 and used to burn the deep-fetch
+    // time budget before the reliable path ever ran.
     if (isIndexContent(initialResult.content)) {
       const ranked = rankIndexLinks(initialResult.content, topic);
       const pages = await fetchMultiplePages(ranked, maxPages);
@@ -296,6 +295,12 @@ export async function deepFetchForTopic(
           sourceType: "deep-fetch",
         };
       }
+    }
+
+    const topicUrls = buildTopicUrls(docsUrl, topic, urlPatterns);
+    if (topicUrls.length > 0) {
+      const directHit = await fetchFirstSuccessful(topicUrls.slice(0, 6));
+      if (directHit) return directHit;
     }
 
     const internalLinks = extractInternalLinks(initialResult.content, docsUrl);

@@ -1,4 +1,4 @@
-import { tokenize } from "./extract.js";
+import { substantiveTokens } from "./extract.js";
 
 /**
  * Evidence verification layer — the "never generic" gate.
@@ -54,7 +54,9 @@ export function stripUrlNoise(content: string): string {
  * repeated occurrences, a heading, or topic tokens inside code.
  */
 export function checkEvidence(content: string, topic: string): EvidenceCheck {
-  const tokens = [...new Set(tokenize(topic))];
+  // Meta words ("best", "practices", "latest") are filtered so coverage is
+  // measured on the SUBJECT — otherwise any docs page passes any query.
+  const tokens = substantiveTokens(topic);
   if (tokens.length === 0) {
     return {
       ok: true,

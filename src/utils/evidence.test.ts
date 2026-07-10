@@ -181,3 +181,25 @@ describe("buildHonestMiss", () => {
     expect(miss).toContain("- Do the thing");
   });
 });
+
+describe("checkEvidence meta-token filtering", () => {
+  it("fails off-topic content that only matches query-meta words", () => {
+    // A web-performance page must not pass a Postgres RLS query just because
+    // both say "best practices" and "performance".
+    const cwvContent = [
+      "# Web performance best practices",
+      "",
+      "Optimize LCP and INP. Follow these best practices for Core Web Vitals.",
+      "Performance best practices matter. More performance guidance below.",
+    ].join("\n");
+    const r = checkEvidence(cwvContent, "postgres row level security best practices");
+    expect(r.ok).toBe(false);
+    expect(r.matchRatio).toBe(0);
+  });
+
+  it("still passes when substantive tokens are covered", () => {
+    const content = "# Row Level Security\n\nEnable row level security on every table. Postgres row level security policies below.";
+    const r = checkEvidence(content, "postgres row level security best practices");
+    expect(r.ok).toBe(true);
+  });
+});

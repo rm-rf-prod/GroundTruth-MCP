@@ -16,6 +16,14 @@ vi.mock("../services/fetcher.js", () => ({
   fetchGitHubContent: vi.fn(),
   fetchGitHubExamples: vi.fn(),
   fetchSitemapUrls: vi.fn(async () => []),
+  // Mirrors the real link-list heuristic so index-escalation paths behave
+  // identically under test.
+  isIndexContent: (content: string) => {
+    const lines = content.split("\n").filter((l) => l.trim().length > 0);
+    if (lines.length < 5) return false;
+    const linkLines = lines.filter((l) => /^\s*-?\s*\[.+\]\(https?:\/\/.+\)/.test(l));
+    return linkLines.length / lines.length > 0.5;
+  },
 }));
 
 vi.mock("../services/deep-fetch.js", () => ({
@@ -426,7 +434,10 @@ describe("gt_best_practices handler", () => {
       expect(sourceUrl).not.toContain("utility-first");
       expect(sourceUrl).not.toContain("optimizing-for-production");
       expect(sourceUrl).not.toContain("reusing-styles");
-      expect(sourceUrl).toContain("migration");
+      // Synonym expansion makes the curated upgrade-guide URL an eligible
+      // topic match for "v4 migration" — both it and a slug-guessed
+      // /migration path are correct outcomes.
+      expect(sourceUrl).toMatch(/migration|upgrade/);
     });
 
     it("still returns the known BP URL immediately when the topic matches it (no regression)", async () => {

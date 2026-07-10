@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { extractRelevantContent, sliceVersionBand, parseMajor, tokenize } from "./extract.js";
+import { extractRelevantContent, sliceVersionBand, parseMajor, tokenize, expandTopicTokens, substantiveTokens } from "./extract.js";
 
 const SHORT = "Hello world. This is short content.";
 const LONG_DOC = `
@@ -223,5 +223,32 @@ describe("extractRelevantContent fence handling", () => {
     expect(((text.match(/```/g) ?? []).length) % 2).toBe(0);
     expect(text).toContain("npm install foo");
     expect(text).toContain("FOO_CACHING=1 npm start");
+  });
+});
+
+// ── topic vocabulary helpers ────────────────────────────────────────────────
+
+describe("expandTopicTokens", () => {
+  it("bridges migration queries to upgrade-guide vocabulary", () => {
+    const expanded = expandTopicTokens(["v4", "migration"]);
+    expect(expanded).toContain("upgrade");
+    expect(expanded).toContain("v4");
+    expect(expanded).toContain("migration");
+  });
+
+  it("returns tokens unchanged when no synonyms exist", () => {
+    expect(expandTopicTokens(["zustand"])).toEqual(["zustand"]);
+  });
+});
+
+describe("substantiveTokens", () => {
+  it("drops query-meta words so off-topic pages cannot pass on them", () => {
+    expect(substantiveTokens("postgres row level security best practices")).toEqual([
+      "postgres", "row", "level", "security",
+    ]);
+  });
+
+  it("keeps meta words when the topic is nothing but meta words", () => {
+    expect(substantiveTokens("best practices")).toEqual(["best", "practices"]);
   });
 });
