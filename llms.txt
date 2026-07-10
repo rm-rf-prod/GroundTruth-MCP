@@ -4,7 +4,7 @@
 
 GroundTruth is a Model Context Protocol (MCP) server that fetches documentation from official sources at query time. It tries llms.txt first, then Jina Reader for JS-rendered pages, then GitHub. It covers 445+ curated libraries and falls back to npm, PyPI, crates.io, and pkg.go.dev for any public package. Unlike cloud-hosted documentation tools, GroundTruth runs on your machine. No rate limits. No API keys.
 
-v7.1.0 adds a dispatch tool for plain-text intent routing, per-tool telemetry, an SSRF-hardened multi-source fetcher, atomic disk cache writes, and Unicode-homoglyph injection defenses.
+v7.2.0 adds a dispatch tool for plain-text intent routing, per-tool telemetry, an SSRF-hardened multi-source fetcher, atomic disk cache writes, and Unicode-homoglyph injection defenses.
 
 ## Install
 
