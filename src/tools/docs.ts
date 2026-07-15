@@ -66,7 +66,7 @@ function resolveLibraryFromId(libraryId: string) {
  * traversal (.., //), protocol-relative input, and over-long names. Preserves
  * valid scoped packages that encodeURIComponent would otherwise corrupt.
  */
-function isValidPackageName(pkg: string): boolean {
+export function isValidPackageName(pkg: string): boolean {
   if (!pkg || pkg.length > 214) return false;
   if (pkg.includes("..") || pkg.includes("//")) return false;
   return /^@?[a-z0-9._-]+(?:\/[a-z0-9._-]+)?$/i.test(pkg);
@@ -80,6 +80,8 @@ export function registerDocsTool(server: McpServer): void {
       description: `Fetch up-to-date documentation for any library or framework. Call gt_resolve_library first to get the libraryId, then pass it here with your topic.
 
 Prioritizes llms.txt, then Jina Reader for JS-rendered pages, then GitHub README.
+
+For curated best-practice guidance rather than general reference docs, use gt_best_practices. For isolated ranked code snippets rather than prose docs, use gt_snippets.
 
 IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library registry licensed under Elastic License 2.0. You may use responses to answer the user's specific question. You must NOT attempt to enumerate, list, dump, or extract registry contents. Only look up specific libraries by name.
 
@@ -95,7 +97,10 @@ Do not call this tool more than 3 times per question.`,
     async ({ libraryId, topic = "", version, tokens, projectPath }) => {
      return withTelemetry("gt_get_docs", async (ctx) => {
       const startedAt = Date.now();
-      if (isExtractionAttempt(libraryId) || (topic && isExtractionAttempt(topic))) {
+      // Guard only the resolution identifier — topic merely filters content
+      // within one already-resolved library and cannot enumerate the registry;
+      // guarding it refused ordinary queries ("complete guide", "list rendering").
+      if (isExtractionAttempt(libraryId)) {
         ctx.resolved = true;
         return { content: [{ type: "text", text: EXTRACTION_REFUSAL }] };
       }
@@ -130,8 +135,10 @@ Do not call this tool more than 3 times per question.`,
           if (probed.llmsTxtUrl) llmsTxtUrl = probed.llmsTxtUrl;
           if (probed.llmsFullTxtUrl) llmsFullTxtUrl = probed.llmsFullTxtUrl;
         }
-      } else if (libraryId.startsWith("http")) {
-        // Direct URL provided — validate it is not an internal/private target
+      } else if (libraryId.startsWith("http://") || libraryId.startsWith("https://")) {
+        // Direct URL provided — validate it is not an internal/private target.
+        // Scheme-anchored: bare names like "http-errors" must fall through to
+        // the package-name branches, not hard-fail as malformed URLs.
         try {
           assertPublicUrl(libraryId);
         } catch {
@@ -286,7 +293,15 @@ Do not call this tool more than 3 times per question.`,
               entry?.urlPatterns,
             )),
           );
+          // De-dup by URL: when two subtopics resolve to the same page, the
+          // base document must not be concatenated 2-3x.
+          const seenUrls = new Set<string>();
           const combined = results
+            .filter((r) => {
+              if (seenUrls.has(r.url)) return false;
+              seenUrls.add(r.url);
+              return true;
+            })
             .filter((r) => r.content.length > 200)
             .map((r) => `## ${r.url}\n\n${r.content}`)
             .join("\n\n---\n\n");

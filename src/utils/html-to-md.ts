@@ -38,22 +38,52 @@ function stripNoisyElements(html: string): string {
   return cleaned;
 }
 
+/**
+ * Find the opening <div> matching openTagRegex, then scan forward tracking
+ * <div>/</div> depth to return the fully balanced inner content. A lazy
+ * [\s\S]*?<\/div> match stops at the FIRST nested close tag (a TOC box, a
+ * callout) and silently drops the entire article after it. Returns null when
+ * no balanced close exists (malformed HTML) so callers fall through.
+ */
+function extractBalancedDivContent(html: string, openTagRegex: RegExp): string | null {
+  const openMatch = openTagRegex.exec(html);
+  if (!openMatch) return null;
+  const start = openMatch.index + openMatch[0].length;
+  const tagScanner = /<div\b[^>]*>|<\/div>/gi;
+  tagScanner.lastIndex = start;
+  let depth = 1;
+  let m: RegExpExecArray | null;
+  while ((m = tagScanner.exec(html)) !== null) {
+    depth += m[0][1] === "/" ? -1 : 1;
+    if (depth === 0) return html.slice(start, m.index);
+  }
+  return null;
+}
+
 /** Extract the main content area from HTML */
 function extractMainContent(html: string): string {
-  // Try to find <main>, <article>, or content-area div
-  const mainPatterns = [
+  // <main>/<article> close tags don't nest with themselves in practice, so a
+  // lazy match is safe for them.
+  const tagPatterns = [
     /<main[^>]*>([\s\S]*?)<\/main>/i,
     /<article[^>]*>([\s\S]*?)<\/article>/i,
-    /<div[^>]+(?:class|id)="[^"]*(?:content|main|docs|documentation|article|post|entry|page-content|markdown-body|prose)[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
-    /<div[^>]+role="main"[^>]*>([\s\S]*?)<\/div>/i,
   ];
-
-  for (const pattern of mainPatterns) {
+  for (const pattern of tagPatterns) {
     const match = pattern.exec(html);
     if (match) {
-      const content = match[1] ?? match[2] ?? "";
+      const content = match[1] ?? "";
       if (content.length > 200) return content;
     }
+  }
+
+  // Content-area divs need depth tracking (see extractBalancedDivContent).
+  const divOpenPatterns = [
+    /<div[^>]+(?:class|id)="[^"]*(?:content|main|docs|documentation|article|post|entry|page-content|markdown-body|prose)[^"]*"[^>]*>/i,
+    /<div[^>]+role="main"[^>]*>/i,
+  ];
+  for (const pattern of divOpenPatterns) {
+    const content = extractBalancedDivContent(html, pattern);
+    if (content !== null && content.length > 200) return content;
   }
 
   // Fallback: use the body
@@ -80,20 +110,21 @@ function htmlToMarkdown(html: string): string {
     (_, attrs: string, code: string) => {
       const langMatch = /class="[^"]*language-(\w+)/.exec(attrs);
       const lang = langMatch?.[1] ?? "";
-      const decoded = decodeHtmlEntities(code.trim());
-      return `\n\`\`\`${lang}\n${decoded}\n\`\`\`\n`;
+      // No per-element entity decode — the single global pass at the end of
+      // htmlToMarkdown handles it; decoding here AND there turned doubly-
+      // escaped example text (&amp;lt;div&amp;gt;) into live tags.
+      return `\n\`\`\`${lang}\n${code.trim()}\n\`\`\`\n`;
     },
   );
 
   // Pre blocks without code wrapper
   md = md.replace(/<pre[^>]*>([\s\S]*?)<\/pre>/gi, (_, code: string) => {
-    const decoded = decodeHtmlEntities(stripTags(code).trim());
-    return `\n\`\`\`\n${decoded}\n\`\`\`\n`;
+    return `\n\`\`\`\n${stripTags(code).trim()}\n\`\`\`\n`;
   });
 
   // Inline code
   md = md.replace(/<code[^>]*>([\s\S]*?)<\/code>/gi, (_, c: string) => {
-    const text = decodeHtmlEntities(stripTags(c).trim());
+    const text = stripTags(c).trim();
     return text.includes("\n") ? text : `\`${text}\``;
   });
 

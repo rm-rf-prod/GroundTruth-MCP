@@ -14,6 +14,7 @@ import {
   assertPublicUrl,
 } from "../utils/guard.js";
 import { detectVersionFromLockfile } from "../utils/lockfile.js";
+import { isValidPackageName } from "./docs.js";
 
 /** Snippets that answer the topic; all snippets when no topic given. */
 function topicMatches(snippets: Snippet[], topic: string): number {
@@ -207,7 +208,7 @@ export function registerSnippetsTool(server: McpServer): void {
 
 Use this when you want focused code examples rather than full doc pages. Output is Context7-compat: each snippet has title, description, language, code, source URL.
 
-Prioritizes llms.txt, then Jina-rendered HTML, then GitHub README. Caches per library:version.
+Prioritizes llms.txt, then Jina-rendered HTML, then GitHub README. Caches per library:version. An explicit version overrides projectPath lockfile auto-detection. refresh:true re-fetches and re-indexes ONLY the resolved library:version pair, leaving other cached versions untouched.
 
 Source: the library's own documentation (not GitHub repositories). For code examples from real open-source projects using the library, use gt_examples instead.
 
@@ -221,7 +222,9 @@ IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library 
       },
     },
     async ({ libraryId, topic = "", version, language, maxSnippets, refresh, projectPath }) => {
-      if (isExtractionAttempt(libraryId) || (topic && isExtractionAttempt(topic))) {
+      // Guard only the resolution identifier (see docs.ts) — topic is a
+      // content filter, not a registry key.
+      if (isExtractionAttempt(libraryId)) {
         return { content: [{ type: "text", text: EXTRACTION_REFUSAL }] };
       }
 
@@ -248,7 +251,25 @@ IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library 
         llmsTxtUrl = entry.llmsTxtUrl;
         llmsFullTxtUrl = entry.llmsFullTxtUrl;
         githubUrl = entry.githubUrl;
-      } else if (libraryId.startsWith("http")) {
+      } else if (libraryId.startsWith("npm:")) {
+        // npm:/pypi: IDs are documented in this tool's own schema — resolve
+        // them the same way gt_get_docs does instead of refusing.
+        const pkg = libraryId.slice(4);
+        if (!isValidPackageName(pkg)) {
+          return { content: [{ type: "text", text: `Invalid npm package name: "${pkg}".` }] };
+        }
+        library = libraryId;
+        docsUrl = `https://www.npmjs.com/package/${pkg}`;
+        displayName = pkg;
+      } else if (libraryId.startsWith("pypi:")) {
+        const pkg = libraryId.slice(5);
+        if (!isValidPackageName(pkg)) {
+          return { content: [{ type: "text", text: `Invalid PyPI package name: "${pkg}".` }] };
+        }
+        library = libraryId;
+        docsUrl = `https://pypi.org/project/${pkg}`;
+        displayName = pkg;
+      } else if (libraryId.startsWith("http://") || libraryId.startsWith("https://")) {
         try {
           assertPublicUrl(libraryId);
         } catch {
@@ -294,7 +315,9 @@ IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library 
         // Topic-directed traversal indexes different pages per topic — the
         // union accumulates coverage instead of each rebuild wiping the last.
         if (index) {
-          const existing = await snippetStore.load(library, versionKey);
+          // refresh:true is documented as a clean rebuild — merging with the
+          // old disk index would carry deleted upstream snippets forever.
+          const existing = refresh ? null : await snippetStore.load(library, versionKey);
           if (existing && existing.snippets.length > 0) {
             const byId = new Map(existing.snippets.map((s) => [s.id, s]));
             for (const s of index.snippets) byId.set(s.id, s);

@@ -263,4 +263,25 @@ describe("index.ts bootstrap", () => {
       expect(SERVER_NAME.length).toBeGreaterThan(0);
     });
   });
+
+  describe("unhandledRejection handler", () => {
+    it("calls process.exit(1) when an unhandled rejection fires", () => {
+      // index.js registers process.on("unhandledRejection", ...) at module scope on the real
+      // process object. NOTE: the vi.hoisted() process.exit spy at the top of this file only
+      // covers the module's synchronous bootstrap — this project's global `restoreMocks: true`
+      // (vitest.config.mts) restores process.exit to the native implementation before any it()
+      // runs (confirmed via vi.isMockFunction(process.exit) === false at the very first test in
+      // this file). Re-spy here, using the exact same pattern as the vi.hoisted() spy above, so
+      // invoking the real registered handler cannot terminate the test runner.
+      const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => undefined) as () => never);
+
+      const handlers = process.listeners("unhandledRejection");
+      const registered = handlers[handlers.length - 1] as ((reason: unknown) => void) | undefined;
+      expect(registered).toBeDefined();
+
+      registered!(new Error("boom"));
+
+      expect(exitSpy).toHaveBeenCalledWith(1);
+    });
+  });
 });

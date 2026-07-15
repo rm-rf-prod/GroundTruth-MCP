@@ -224,6 +224,17 @@ describe("extractRelevantContent fence handling", () => {
     expect(text).toContain("npm install foo");
     expect(text).toContain("FOO_CACHING=1 npm start");
   });
+
+  it("closes an unclosed code fence when the char-limit cutoff lands inside it", () => {
+    // The doc opens a ```bash fence and never closes it — the final resultText.slice(0,
+    // charLimit) cutoff (extract.ts:366-371) must land mid-fence and auto-close it so the
+    // client never receives an unbalanced ``` that swallows everything after it.
+    const content = "# Guide\n\n```bash\n" + "echo line\n".repeat(2000);
+    const { text, truncated } = extractRelevantContent(content, "guide", 50);
+    expect(truncated).toBe(true);
+    expect((text.match(/```/g) ?? []).length % 2).toBe(0);
+    expect(text.trimEnd().endsWith("```")).toBe(true);
+  });
 });
 
 // ── topic vocabulary helpers ────────────────────────────────────────────────

@@ -1,4 +1,4 @@
-import { tokenize } from "./extract.js";
+import { substantiveTokens } from "./extract.js";
 import { stripUrlNoise } from "./evidence.js";
 
 export interface QualityResult {
@@ -46,7 +46,9 @@ export function computeQualityScore(
   sourceType: string,
   targetVersions?: string[],
 ): QualityResult {
-  const topicTokens = tokenize(topic);
+  // Same meta-word-filtered token set as checkEvidence — the quality footer
+  // and the evidence footer must not disagree about subject coverage.
+  const topicTokens = substantiveTokens(topic);
   let topicCoverage = 1;
   if (topicTokens.length > 0) {
     // Same URL stripping as checkEvidence — a token appearing only inside link

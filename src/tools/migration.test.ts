@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { registerMigrationTool } from "./migration.js";
+import { registerMigrationTool, filterReleasesByVersion } from "./migration.js";
 
 vi.mock("../sources/registry.js", () => ({
   lookupById: vi.fn(),
@@ -211,5 +211,30 @@ describe("web-search escalation (releases alone are not a migration guide)", () 
     const sc = result.structuredContent as { sources?: string[] } | undefined;
     expect(sc?.sources?.[0]).toBe("https://react.dev/blog/2024/04/25/react-19-upgrade-guide");
     expect(vi.mocked(webSearch)).toHaveBeenCalled();
+  });
+});
+
+// ── filterReleasesByVersion — release-please style sub-headers ────────────────
+
+describe("filterReleasesByVersion", () => {
+  it("keeps headerless ### sub-sections belonging to an in-band release", () => {
+    const raw =
+      "## Recent Releases\n" +
+      "### v15.0.0\n\n" +
+      "### Features\n- new streaming API\n\n" +
+      "### v14.0.0\n\n" +
+      "### Bug Fixes\n- old fix\n";
+    const out = filterReleasesByVersion(raw, "15", "15");
+    expect(out).toContain("### v15.0.0");
+    // Pre-fix: unversioned fragments were dropped outright, stripping the
+    // actual release content and leaving a bare version heading.
+    expect(out).toContain("- new streaming API");
+    expect(out).not.toContain("### v14.0.0");
+    expect(out).not.toContain("- old fix");
+  });
+
+  it("returns raw unchanged when no version bounds are given", () => {
+    const raw = "### v2.0.0\n- a\n";
+    expect(filterReleasesByVersion(raw)).toBe(raw);
   });
 });

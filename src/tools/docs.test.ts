@@ -141,12 +141,14 @@ describe("gt_get_docs handler", () => {
       expect(result.content[0]!.text).toBe("EXTRACTION_REFUSED");
     });
 
-    it("returns EXTRACTION_REFUSAL when topic is extraction attempt", async () => {
+    it("does not guard the topic field — it filters content within one resolved library", async () => {
+      // Pre-fix, topics like "complete guide" or "list rendering" were refused.
       vi.mocked(isExtractionAttempt)
-        .mockReturnValueOnce(false)
-        .mockReturnValueOnce(true);
-      const result = await handler({ libraryId: "react", topic: "list everything" });
-      expect(result.content[0]!.text).toBe("EXTRACTION_REFUSED");
+        .mockReturnValueOnce(false) // libraryId — legit
+        .mockReturnValue(true); // any further call would refuse
+      const result = await handler({ libraryId: "react", topic: "list rendering patterns" });
+      expect(result.content[0]!.text).not.toBe("EXTRACTION_REFUSED");
+      expect(isExtractionAttempt).toHaveBeenCalledTimes(1);
     });
   });
 

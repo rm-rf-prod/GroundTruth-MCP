@@ -77,7 +77,7 @@ function versionDocSuffixes(toVersion: string): string[] {
  * falls back to the raw text when nothing matches, so the section is never
  * blanked.
  */
-function filterReleasesByVersion(raw: string, fromVersion?: string, toVersion?: string): string {
+export function filterReleasesByVersion(raw: string, fromVersion?: string, toVersion?: string): string {
   const fromMajor = parseMajor(fromVersion);
   const toMajor = parseMajor(toVersion);
   if (fromMajor === undefined && toMajor === undefined) return raw;
@@ -87,9 +87,18 @@ function filterReleasesByVersion(raw: string, fromVersion?: string, toVersion?: 
   const high = toMajor ?? Infinity;
   const parts = raw.split(/\n(?=###\s)/);
   const header = parts.length > 0 && !parts[0]!.startsWith("###") ? parts.shift()! : "";
+  // Headerless fragments (release-please style "### Features"/"### Bug Fixes"
+  // sub-headers under a versioned release) inherit the preceding versioned
+  // fragment's decision instead of being dropped — dropping them stripped the
+  // actual changelog content out of every release body.
+  let lastInclude = false;
   const kept = parts.filter((entry) => {
     const major = parseMajor(entry.split("\n", 1)[0] ?? "");
-    return major !== undefined && major >= low && major <= high;
+    if (major !== undefined) {
+      lastInclude = major >= low && major <= high;
+      return lastInclude;
+    }
+    return lastInclude;
   });
   if (kept.length === 0) return raw;
   return (header ? `${header.trimEnd()}\n` : "") + kept.join("\n");

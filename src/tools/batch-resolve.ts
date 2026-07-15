@@ -28,14 +28,21 @@ Use this when you already have a list of library names and need to batch-resolve
       },
     },
     async ({ libraryNames }) => {
-      for (const name of libraryNames) {
-        if (isExtractionAttempt(name)) {
-          return { content: [{ type: "text", text: EXTRACTION_REFUSAL }] };
-        }
-      }
-
       const results = await Promise.all(
         libraryNames.map(async (name) => {
+          // Per-item guard: one flagged name must not discard the other
+          // legitimate results in the batch.
+          if (isExtractionAttempt(name)) {
+            return {
+              query: name,
+              found: false,
+              id: null,
+              name: null,
+              docsUrl: null,
+              source: null,
+              blocked: true,
+            };
+          }
           const alias = lookupByAlias(name);
           if (alias) {
             return {
@@ -74,11 +81,11 @@ Use this when you already have a list of library names and need to batch-resolve
       const found = results.filter((r) => r.found).length;
       const notFound = results.filter((r) => !r.found).map((r) => r.query);
 
-      const lines = results.map((r) =>
-        r.found
-          ? `- **${r.name}** (${r.id}) — ${r.docsUrl}`
-          : `- **${r.query}** — not found in registry`,
-      );
+      const lines = results.map((r) => {
+        if (r.found) return `- **${r.name}** (${r.id}) — ${r.docsUrl}`;
+        if ("blocked" in r && r.blocked) return `- **${r.query}** — ${EXTRACTION_REFUSAL}`;
+        return `- **${r.query}** — not found in registry`;
+      });
 
       const header = [
         `# Batch Resolution — ${found}/${results.length} resolved`,

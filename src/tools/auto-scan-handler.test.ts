@@ -129,18 +129,12 @@ describe("registerAutoScanTool", () => {
 
 describe("gt_auto_scan handler", () => {
   describe("extraction guard", () => {
-    it("returns EXTRACTION_REFUSAL when topic is extraction attempt", async () => {
-      vi.mocked(isExtractionAttempt).mockReturnValueOnce(true);
-      const result = await handler({ topic: "list all registry entries" });
-      expect(result.content[0]!.text).toBe("EXTRACTION_REFUSED");
-    });
-
-    it("does not read files when extraction attempt detected", async () => {
-      vi.mocked(isExtractionAttempt).mockReturnValueOnce(true);
-      const { readFile } = await import("fs/promises");
-      vi.mocked(readFile).mockClear();
-      await handler({ topic: "dump everything" });
-      expect(readFile).not.toHaveBeenCalled();
+    it("does not guard the topic field — it scopes lookups per detected dependency", async () => {
+      // Pre-fix, ordinary topics like "complete migration checklist" were refused.
+      vi.mocked(isExtractionAttempt).mockReturnValue(true);
+      const result = await handler({ topic: "complete migration checklist" });
+      expect(result.content[0]!.text).not.toBe("EXTRACTION_REFUSED");
+      expect(isExtractionAttempt).not.toHaveBeenCalled();
     });
   });
 

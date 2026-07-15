@@ -1,7 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { fuzzySearch, lookupById } from "../sources/registry.js";
-import { fetchDocs, fetchWithTimeout, fetchDevDocs, fetchAsMarkdownRace, isErrorPage } from "../services/fetcher.js";
+import { fetchDocs, fetchWithTimeout, fetchDevDocs, fetchAsMarkdownRace, isErrorPage, hashContent } from "../services/fetcher.js";
 import { deepFetchForTopic } from "../services/deep-fetch.js";
 import { extractRelevantContent, normalizeQueryYear, substantiveTokens } from "../utils/extract.js";
 import { checkEvidence, buildEvidenceBlock } from "../utils/evidence.js";
@@ -1242,7 +1242,9 @@ export function findTopicUrls(query: string): Array<{ urls: string[]; name: stri
 }
 
 async function fetchTopicContent(url: string, query: string, tokens: number): Promise<string> {
-  const cacheKey = `search:${url}:${query.slice(0, 50)}`;
+  // Hash the FULL query — a 50-char prefix let distinct long queries silently
+  // share cached BM25-extracted content.
+  const cacheKey = `search:${url}:${hashContent(query)}`;
   const cached = docCache.get(cacheKey);
   if (typeof cached === "string") return cached;
 
@@ -1303,6 +1305,10 @@ function extractHrefUrls(html: string): string[] {
 function extractUrlsFromHtml(html: string): string[] {
   const urls: string[] = [];
   let match;
+
+  // Module-scoped /g regex: an early exit at the 5-URL cap leaves lastIndex
+  // mid-string, silently corrupting the NEXT call's scan. Always start at 0.
+  AUTHORITATIVE_URL_PATTERN.lastIndex = 0;
 
   // First pass: authoritative domains (highest priority)
   while ((match = AUTHORITATIVE_URL_PATTERN.exec(html)) !== null && urls.length < 5) {
@@ -1740,6 +1746,8 @@ Works for:
 - Auth standards: "OAuth 2.1 PKCE", "WebAuthn passkeys", "OIDC"
 - Infrastructure: "Docker best practices", "GitHub Actions CI/CD"
 - Anything else: just ask
+
+If the query names ONE specific library, prefer gt_resolve_library + gt_get_docs/gt_best_practices for version-accurate, registry-backed results — use gt_search for standards, cross-cutting topics, or when no library applies. For browser/runtime feature support use gt_compat; for GitHub code examples use gt_examples.
 
 Say "use gt" or "gt search [topic]" to invoke.
 

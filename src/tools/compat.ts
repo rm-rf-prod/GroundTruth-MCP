@@ -5,7 +5,7 @@ import { fetchMdnDocMeta, renderBcdTable, formatBaseline } from "../services/mdn
 import { extractRelevantContent } from "../utils/extract.js";
 import { checkEvidence, buildEvidenceBlock } from "../utils/evidence.js";
 import { sanitizeContent } from "../utils/sanitize.js";
-import { isExtractionAttempt, withNotice, EXTRACTION_REFUSAL } from "../utils/guard.js";
+import { withNotice } from "../utils/guard.js";
 import { docCache } from "../services/cache.js";
 import { findTopicUrls, searchMDN } from "./search.js";
 import { DEFAULT_TOKEN_LIMIT, MAX_TOKEN_LIMIT } from "../constants.js";
@@ -49,14 +49,22 @@ Use this when the question is specifically about which browsers or runtimes supp
       },
     },
     async ({ feature, environments, tokens }) => {
-      if (isExtractionAttempt(feature)) {
-        return { content: [{ type: "text", text: EXTRACTION_REFUSAL }] };
-      }
-
+      // No extraction guard: `feature` is a web-platform feature description,
+      // not a registry key — guarding it refused ordinary queries like
+      // "does Safari support the full :has() selector list".
       const envFilter = environments?.map((e) => e.toLowerCase()).join(", ") ?? "";
       const cacheKey = `compat:${feature}:${envFilter}:${tokens}`;
       const cached = docCache.get(cacheKey);
       if (typeof cached === "string") {
+        try {
+          const envelope = JSON.parse(cached) as { text?: string; structuredContent?: Record<string, unknown> };
+          if (typeof envelope.text === "string") {
+            return {
+              content: [{ type: "text", text: envelope.text }],
+              ...(envelope.structuredContent ? { structuredContent: envelope.structuredContent } : {}),
+            };
+          }
+        } catch { /* pre-envelope cache entry — plain rendered text */ }
         return { content: [{ type: "text", text: cached }] };
       }
 
@@ -199,24 +207,27 @@ Use this when the question is specifically about which browsers or runtimes supp
 
       const evidenceBlock = buildEvidenceBlock({ sources, topic: feature, check: evidenceCheck });
       const response = withNotice(`${header}\n\n${results.join("\n\n---\n\n")}${evidenceBlock}`);
-      docCache.set(cacheKey, response);
+      const structuredContent = {
+        feature,
+        environments: environments ?? [],
+        sources: sources.map((s) => s.url),
+        evidence: {
+          // BCD data comes from the resolved MDN doc for this exact feature
+          // (relevance-gated above) — authoritative regardless of how many
+          // times the feature name recurs in the table text.
+          ok: bcdHit || (evidenceCheck.ok && !weakEvidence),
+          matchRatio: evidenceCheck.matchRatio,
+          occurrences: evidenceCheck.occurrences,
+          verdict: bcdHit ? "strong" : weakEvidence ? "weak" : evidenceCheck.ok ? "strong" : "weak",
+        },
+      };
+      // Envelope keeps evidence.ok available on cache hits — a bare string
+      // cache silently dropped the whole structuredContent block.
+      docCache.set(cacheKey, JSON.stringify({ text: response, structuredContent }));
 
       return {
         content: [{ type: "text", text: response }],
-        structuredContent: {
-          feature,
-          environments: environments ?? [],
-          sources: sources.map((s) => s.url),
-          evidence: {
-            // BCD data comes from the resolved MDN doc for this exact feature
-            // (relevance-gated above) — authoritative regardless of how many
-            // times the feature name recurs in the table text.
-            ok: bcdHit || (evidenceCheck.ok && !weakEvidence),
-            matchRatio: evidenceCheck.matchRatio,
-            occurrences: evidenceCheck.occurrences,
-            verdict: bcdHit ? "strong" : weakEvidence ? "weak" : evidenceCheck.ok ? "strong" : "weak",
-          },
-        },
+        structuredContent,
       };
     },
   );

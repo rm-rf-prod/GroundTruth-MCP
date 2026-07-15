@@ -348,6 +348,35 @@ describe("DiskCache", () => {
     await expect(cache.prune(1000)).resolves.toBeDefined();
   });
 
+  // ── set() write-lock serialization (HARDENING) ─────────────────────────────
+
+  it("set() write-lock serializes concurrent writes to the same key — last-enqueued write wins deterministically", async () => {
+    const cache = await makeDiskCache(tmpDir);
+    // Warm ensureDir() first so both racing set() calls below skip the
+    // internal `await mkdir(...)` and resume from `await this.ensureDir()`
+    // in the same order they were invoked (V8 microtask FIFO ordering) —
+    // this is what makes the winner deterministic rather than a true race.
+    await cache.set("warm-up", "warm");
+
+    await Promise.all([
+      cache.set("race-key", "valueA"),
+      cache.set("race-key", "valueB"),
+    ]);
+
+    const { createHash } = await import("crypto");
+    const { readFile } = await import("fs/promises");
+    const hash = createHash("sha256").update("race-key").digest("hex");
+    const raw = await readFile(join(tmpDir, `${hash}.json`), "utf-8");
+    const parsed = JSON.parse(raw) as { data: string; expiresAt: number };
+
+    // set()'s per-key writeLocks chain each call onto the previous write's
+    // promise (`previous.then(() => atomicWrite(...))`), so the second call
+    // in program order ('valueB') is enqueued after the first ('valueA') and
+    // its atomicWrite runs last, overwriting the file via temp-write + rename.
+    expect(["valueA", "valueB"]).toContain(parsed.data);
+    expect(parsed.data).toBe("valueB");
+  });
+
   afterEach(() => {
     delete process.env.GT_CACHE_DIR;
   });

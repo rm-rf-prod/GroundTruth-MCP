@@ -183,23 +183,38 @@ export function sanitizeContent(content: string): string {
   // form before regex evaluation. When the normalized form matches, redact
   // the *original* matched substring length so visible content stays aligned.
   const normalized = normalizeForInjectionScan(sanitized);
+  // Collect ALL match ranges across every pattern against the single frozen
+  // `normalized` snapshot BEFORE touching `sanitized`. Redacting inside the
+  // pattern loop desynchronized later patterns' offsets from the mutated
+  // string and spliced "[content removed]" into legitimate prose.
+  const ranges: Array<{ start: number; end: number }> = [];
   for (const pattern of INJECTION_PATTERNS) {
     // Reset regex state for global flags
     if (pattern.global) pattern.lastIndex = 0;
     let m: RegExpExecArray | null;
     const reGlobal = pattern.global ? pattern : new RegExp(pattern.source, pattern.flags + "g");
-    const offsets: Array<{ start: number; end: number }> = [];
     while ((m = reGlobal.exec(normalized)) !== null) {
-      offsets.push({ start: m.index, end: m.index + m[0].length });
+      ranges.push({ start: m.index, end: m.index + m[0].length });
+      if (m[0].length === 0) reGlobal.lastIndex++;
       if (!pattern.global) break;
     }
-    // Redact in reverse so earlier offsets stay valid
-    for (let i = offsets.length - 1; i >= 0; i--) {
-      const { start, end } = offsets[i]!;
-      if (start < sanitized.length) {
-        const safeEnd = Math.min(end, sanitized.length);
-        sanitized = sanitized.slice(0, start) + "[content removed]" + sanitized.slice(safeEnd);
-      }
+  }
+  // Merge overlapping ranges so two patterns hitting the same text produce
+  // one marker instead of nested fragments.
+  ranges.sort((a, b) => a.start - b.start);
+  const merged: Array<{ start: number; end: number }> = [];
+  for (const r of ranges) {
+    const last = merged[merged.length - 1];
+    if (last && r.start <= last.end) last.end = Math.max(last.end, r.end);
+    else merged.push({ ...r });
+  }
+  // Single reverse pass — earlier offsets stay valid because the string is
+  // only mutated after every offset has been resolved.
+  for (let i = merged.length - 1; i >= 0; i--) {
+    const { start, end } = merged[i]!;
+    if (start < sanitized.length) {
+      const safeEnd = Math.min(end, sanitized.length);
+      sanitized = sanitized.slice(0, start) + "[content removed]" + sanitized.slice(safeEnd);
     }
   }
 

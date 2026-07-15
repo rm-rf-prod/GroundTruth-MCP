@@ -140,3 +140,37 @@ describe("detectAllVersions", () => {
     expect(result.size).toBe(0);
   });
 });
+
+// ── name-boundary anchoring (substring collisions) ────────────────────────────
+
+describe("lockfile name-boundary anchoring", () => {
+  it("does not return eslint-plugin-react's version when asked for react (pnpm)", async () => {
+    mockReadFile.mockRejectedValueOnce(new Error("ENOENT")); // no package-lock
+    const pnpmContent = `lockfileVersion: '9.0'
+packages:
+  'eslint-plugin-react@7.37.0':
+    resolution: {integrity: sha256-aaa}
+  'react@19.1.0':
+    resolution: {integrity: sha256-bbb}
+`;
+    mockReadFile.mockResolvedValueOnce(pnpmContent);
+    const result = await detectVersionFromLockfile("/project", "react");
+    expect(result).toBe("19.1.0");
+  });
+
+  it("does not return super-react's version when asked for react (yarn)", async () => {
+    mockReadFile.mockRejectedValueOnce(new Error("ENOENT")); // no package-lock
+    mockReadFile.mockRejectedValueOnce(new Error("ENOENT")); // no pnpm-lock
+    const yarnContent = `# yarn lockfile v1
+
+"super-react@^1.0.0":
+  version "1.2.3"
+
+"react@^19.0.0":
+  version "19.1.0"
+`;
+    mockReadFile.mockResolvedValueOnce(yarnContent);
+    const result = await detectVersionFromLockfile("/project", "react");
+    expect(result).toBe("19.1.0");
+  });
+});

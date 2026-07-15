@@ -4,7 +4,7 @@ import { lookupById, lookupByAlias, fuzzySearch } from "../sources/registry.js";
 import { fetchDocs, fetchAsMarkdownRace, isIndexContent, rankIndexLinks } from "../services/fetcher.js";
 import { extractRelevantContent } from "../utils/extract.js";
 import { sanitizeContent } from "../utils/sanitize.js";
-import { isExtractionAttempt, withNotice, EXTRACTION_REFUSAL } from "../utils/guard.js";
+import { isExtractionAttempt, withNotice } from "../utils/guard.js";
 import { docCache } from "../services/cache.js";
 import type { LibraryEntry } from "../types.js";
 
@@ -49,17 +49,15 @@ Pass library NAMES (e.g. ['prisma', 'drizzle-orm']) — not registry IDs. The to
       },
     },
     async ({ libraries, criteria, tokens }) => {
-      for (const lib of libraries) {
-        if (isExtractionAttempt(lib)) {
-          return { content: [{ type: "text", text: EXTRACTION_REFUSAL }] };
-        }
-      }
-      if (criteria && isExtractionAttempt(criteria)) {
-        return { content: [{ type: "text", text: EXTRACTION_REFUSAL }] };
-      }
-
+      // No extraction guard on `criteria` — it is a comparison angle, not a
+      // registry key ("full feature list" is a legitimate criteria).
       const topic = criteria ? `${criteria} comparison tradeoffs` : "overview features comparison";
-      const entries = libraries.map((lib) => ({ lib, entry: resolveLibrary(lib) }));
+      // Per-item guard: one flagged name is treated as unresolvable instead of
+      // aborting the sibling libraries' comparison.
+      const entries = libraries.map((lib) => ({
+        lib,
+        entry: isExtractionAttempt(lib) ? null : resolveLibrary(lib),
+      }));
 
       if (entries.every(({ entry }) => entry === null)) {
         const text = withNotice(

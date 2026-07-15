@@ -439,7 +439,9 @@ export function sliceVersionBand(
   const toMajor = parseMajor(toVersion);
   if (fromMajor === undefined && toMajor === undefined) return content;
 
-  const lowBound = fromMajor ?? toMajor ?? -Infinity;
+  // toVersion-only keeps the lower bound OPEN (mirror of migration.ts's
+  // filterReleasesByVersion) — `?? toMajor` collapsed the band to one major.
+  const lowBound = fromMajor ?? -Infinity;
   const highBound = toMajor ?? Infinity;
 
   interface Seg {

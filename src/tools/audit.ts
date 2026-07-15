@@ -121,19 +121,40 @@ class CommentMap {
   get size(): number { return this.ranges.length; }
 }
 
-/** Build a CommentMap of block-comment ranges to reduce false positives */
+/**
+ * Build a CommentMap of block-comment ranges to reduce false positives.
+ * String/template literals and // comments are skipped so a '/*' inside a
+ * quoted glob like "**\/*.spec.ts" cannot open a bogus comment range that
+ * hides all subsequent code from every audit pattern. Regex-literal contexts
+ * are not handled (rare trigger, same as before).
+ */
 export function buildCommentMap(content: string): CommentMap {
   const ranges: [number, number][] = [];
   let i = 0;
   while (i < content.length) {
-    if (content[i] === "/" && content[i + 1] === "*") {
+    const ch = content[i];
+    if (ch === '"' || ch === "'" || ch === "`") {
+      i++;
+      while (i < content.length) {
+        if (content[i] === "\\") { i += 2; continue; }
+        if (content[i] === ch) { i++; break; }
+        i++;
+      }
+      continue;
+    }
+    if (ch === "/" && content[i + 1] === "/") {
+      const nl = content.indexOf("\n", i);
+      i = nl === -1 ? content.length : nl;
+      continue;
+    }
+    if (ch === "/" && content[i + 1] === "*") {
       const end = content.indexOf("*/", i + 2);
       const stop = end === -1 ? content.length - 1 : end + 1;
       ranges.push([i, stop]);
       i = stop + 1;
-    } else {
-      i++;
+      continue;
     }
+    i++;
   }
   return new CommentMap(ranges);
 }
@@ -1416,7 +1437,10 @@ export const AUDIT_PATTERNS: AuditPattern[] = [
       if (!/StyleSheet\.create/.test(line)) return null;
       const idx = charOffset;
       const before = content.slice(Math.max(0, idx - 2000), idx);
-      const hasComponentAbove = /(?:function\s+\w+|const\s+\w+\s*=\s*(?:\([^)]*\)|[^=])*=>|class\s+\w+)/.test(before);
+      // Disjoint skip modes ([^=()] vs parenthesized groups) — the previous
+      // overlapping alternation was catastrophically backtracking (ReDoS) on
+      // benign builder chains like Yup.object().shape({...}).shape({...}).
+      const hasComponentAbove = /(?:function\s+\w+|const\s+\w+\s*=\s*(?:[^=()]*\([^)]*\))*[^=()]*=>|class\s+\w+)/.test(before);
       const hasReturnAbove = /\breturn\s*\(/.test(before);
       return hasComponentAbove && hasReturnAbove ? line : null;
     },
@@ -1775,7 +1799,7 @@ export function registerAuditTool(server: McpServer): void {
     "gt_audit",
     {
       title: "Audit Project Code",
-      description: `Scan source files for code issues across 18 categories, then fetch live best-practice fixes from official docs. Returns file:line locations.
+      description: `Scan source files for code issues across 18 categories, then fetch live best-practice fixes from official docs. Returns file:line locations. Unlike gt_auto_scan (best practices for your dependencies), this audits YOUR OWN source code.
 
 Categories: layout, performance, accessibility, security, react, nextjs, typescript, node, python, vue, svelte, angular, testing, mobile, api, css, seo, i18n — or "all" (default).
 

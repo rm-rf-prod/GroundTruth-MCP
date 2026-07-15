@@ -29,7 +29,9 @@ export async function detectVersionFromLockfile(
   try {
     const raw = await readFile(join(projectPath, "pnpm-lock.yaml"), "utf-8");
     const escaped = escapeRegex(packageName);
-    const re = new RegExp(`['"]?/?${escaped}[@/]([\\d.]+)`, "m");
+    // Anchored on a real name boundary — an unanchored search matched
+    // substrings of unrelated packages (eslint-plugin-react vs react).
+    const re = new RegExp(`(?:^|["',])\\s*/?${escaped}[@/]([\\d.]+)`, "m");
     const match = raw.match(re);
     if (match?.[1]) return match[1];
   } catch { /* not found */ }
@@ -37,7 +39,9 @@ export async function detectVersionFromLockfile(
   try {
     const raw = await readFile(join(projectPath, "yarn.lock"), "utf-8");
     const escaped = escapeRegex(packageName);
-    const re = new RegExp(`"?${escaped}@[^"]*"?[\\s\\S]*?\\n\\s+version\\s+"([^"]+)"`, "m");
+    // Same boundary anchoring as pnpm above (super-react@1 must not answer
+    // a lookup for react).
+    const re = new RegExp(`(?:^|["',])\\s*${escaped}@[^"]*"?[\\s\\S]*?\\n\\s+version\\s+"([^"]+)"`, "m");
     const match = raw.match(re);
     if (match?.[1]) return match[1];
   } catch { /* not found */ }
