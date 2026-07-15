@@ -1,5 +1,12 @@
 # Changelog
 
+## [7.4.0] — 2026-07-15
+
+- fix: adversarially verified hardening across all 14 tools
+- docs: expand 7.3.0 changelog entry
+
+---
+
 ## [7.3.0] — 2026-07-10
 
 - feat: gt_compat redesigned on MDN machine-readable data (index.json + BCD API) — exact per-browser version_added incl. Node/Deno/Bun, Baseline status
