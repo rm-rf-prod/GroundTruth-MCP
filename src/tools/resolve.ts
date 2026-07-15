@@ -70,7 +70,7 @@ export function registerResolveTool(server: McpServer): void {
       title: "Resolve Library",
       description: `Resolve a package/product name to a Context7-compatible library ID and returns matching libraries.
 
-You MUST call this function before 'Query Documentation' tool to obtain a valid Context7-compatible library ID UNLESS the user explicitly provides a library ID in the format '/org/project' or '/org/project/version' in their query.
+You MUST call this function before gt_get_docs to obtain a valid Context7-compatible library ID UNLESS the user explicitly provides a library ID in the format '/org/project' or '/org/project/version' in their query. For 2-20 libraries at once, use gt_batch_resolve instead.
 
 Each result includes:
 - id: the library ID to pass to gt_get_docs (e.g. 'vercel/next.js', 'npm:express')

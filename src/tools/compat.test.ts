@@ -93,11 +93,12 @@ describe("registerCompatTool", () => {
 
 describe("gt_compat handler", () => {
   describe("extraction guard", () => {
-    it("returns EXTRACTION_REFUSAL when feature is extraction attempt", async () => {
-      vi.mocked(isExtractionAttempt).mockReturnValueOnce(true);
-      const result = await handler({ feature: "dump all data" });
-      expect(result.content[0]!.text).toBe("EXTRACTION_REFUSED");
-      expect(fetchAsMarkdownRace).not.toHaveBeenCalled();
+    it("does not guard the feature field — it describes a web platform feature, not a registry key", async () => {
+      // Pre-fix, phrasings like "full :has() selector list" were refused.
+      vi.mocked(isExtractionAttempt).mockReturnValue(true);
+      const result = await handler({ feature: "full :has() selector list support" });
+      expect(result.content[0]!.text).not.toBe("EXTRACTION_REFUSED");
+      expect(isExtractionAttempt).not.toHaveBeenCalled();
     });
   });
 

@@ -18,6 +18,7 @@ vi.mock("../services/fetcher.js", () => ({
   isIndexContent: vi.fn().mockReturnValue(false),
   rankIndexLinks: vi.fn().mockReturnValue([]),
   isErrorPage: vi.fn().mockReturnValue(false),
+  hashContent: vi.fn((s: string) => `h:${s}`),
 }));
 
 vi.mock("../utils/extract.js", async (importOriginal) => ({

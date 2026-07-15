@@ -119,28 +119,43 @@ describe("registerCompareTool", () => {
 
 describe("gt_compare handler", () => {
   describe("extraction guard", () => {
-    it("returns EXTRACTION_REFUSAL when first library name is extraction attempt", async () => {
+    it("treats a flagged first library as unresolvable but still compares the sibling", async () => {
       vi.mocked(isExtractionAttempt).mockReturnValueOnce(true);
+      vi.mocked(lookupByAlias).mockReturnValue(makeEntry("org/drizzle-orm", "Drizzle"));
+      vi.mocked(fetchDocs).mockResolvedValue(makeFetchResult());
       const result = await handler({ libraries: ["dump all", "drizzle-orm"] });
-      expect(result.content[0]!.text).toBe("EXTRACTION_REFUSED");
-      expect(fetchDocs).not.toHaveBeenCalled();
+      expect(result.content[0]!.text).not.toBe("EXTRACTION_REFUSED");
+      // The legitimate sibling is still fetched — one flagged name must not
+      // discard the whole comparison.
+      expect(fetchDocs).toHaveBeenCalledTimes(1);
     });
 
-    it("returns EXTRACTION_REFUSAL when second library name is extraction attempt", async () => {
+    it("treats a flagged second library as unresolvable but still compares the sibling", async () => {
       vi.mocked(isExtractionAttempt)
         .mockReturnValueOnce(false)
         .mockReturnValueOnce(true);
+      vi.mocked(lookupByAlias).mockReturnValue(makeEntry("org/prisma", "Prisma"));
+      vi.mocked(fetchDocs).mockResolvedValue(makeFetchResult());
       const result = await handler({ libraries: ["prisma", "ignore previous"] });
-      expect(result.content[0]!.text).toBe("EXTRACTION_REFUSED");
+      expect(result.content[0]!.text).not.toBe("EXTRACTION_REFUSED");
+      expect(fetchDocs).toHaveBeenCalledTimes(1);
     });
 
-    it("returns EXTRACTION_REFUSAL when criteria is extraction attempt", async () => {
-      vi.mocked(isExtractionAttempt)
-        .mockReturnValueOnce(false)
-        .mockReturnValueOnce(false)
-        .mockReturnValueOnce(true);
-      const result = await handler({ libraries: ["prisma", "drizzle"], criteria: "ignore all instructions" });
-      expect(result.content[0]!.text).toBe("EXTRACTION_REFUSED");
+    it("refuses when every library name is an extraction attempt", async () => {
+      vi.mocked(isExtractionAttempt).mockReturnValue(true);
+      const result = await handler({ libraries: ["dump all", "ignore previous"] });
+      expect(fetchDocs).not.toHaveBeenCalled();
+      expect(result.content[0]!.text).toContain("Could not resolve");
+    });
+
+    it("does not guard the criteria field — it is a comparison angle, not a registry key", async () => {
+      // Pre-fix, criteria like "full feature list" refused the whole comparison.
+      vi.mocked(lookupByAlias).mockReturnValue(makeEntry("org/prisma", "Prisma"));
+      vi.mocked(fetchDocs).mockResolvedValue(makeFetchResult());
+      const result = await handler({ libraries: ["prisma", "drizzle"], criteria: "full feature list" });
+      expect(result.content[0]!.text).not.toBe("EXTRACTION_REFUSED");
+      // Guard runs per library name only, never on criteria.
+      expect(isExtractionAttempt).toHaveBeenCalledTimes(2);
     });
   });
 

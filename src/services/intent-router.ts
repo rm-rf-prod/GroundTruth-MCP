@@ -205,6 +205,16 @@ export function detectIntent({ query, projectPath }: IntentInput): IntentMatch {
     const top = verbHits[0];
     const args: Record<string, unknown> = {};
 
+    // Every branch whose target tool has a REQUIRED identifier must fall back
+    // to gt_search when that identifier could not be parsed — recommending a
+    // call that fails the target's own Zod schema is worse than a soft route.
+    const searchFallback = (verb: string): IntentMatch => ({
+      tool: "gt_search",
+      args: { query: raw },
+      reason: `${verb} verb detected ("${top.word}") but required arguments not parseable — fallback to search`,
+      confidence: 0.5,
+    });
+
     switch (top.tool) {
       case "gt_audit": {
         args["projectPath"] = projectPath ?? ".";
@@ -217,24 +227,26 @@ export function detectIntent({ query, projectPath }: IntentInput): IntentMatch {
         };
       }
       case "gt_migration": {
-        if (library) args["libraryId"] = library.id;
+        if (!library) return searchFallback("migration");
+        args["libraryId"] = library.id;
         const versions = extractMigrationVersions(raw);
         if (versions.from !== undefined) args["fromVersion"] = versions.from;
         if (versions.to !== undefined) args["toVersion"] = versions.to;
         return {
           tool: "gt_migration",
           args,
-          reason: `detected migration verb ("${top.word}")` + (library ? ` for ${library.name}` : ""),
-          confidence: library ? 0.92 : 0.7,
+          reason: `detected migration verb ("${top.word}") for ${library.name}`,
+          confidence: 0.92,
         };
       }
       case "gt_changelog": {
-        if (library) args["libraryId"] = library.id;
+        if (!library) return searchFallback("changelog/release");
+        args["libraryId"] = library.id;
         return {
           tool: "gt_changelog",
           args,
-          reason: `detected changelog/release verb ("${top.word}")` + (library ? ` for ${library.name}` : ""),
-          confidence: library ? 0.92 : 0.6,
+          reason: `detected changelog/release verb ("${top.word}") for ${library.name}`,
+          confidence: 0.92,
         };
       }
       case "gt_compare": {
@@ -242,17 +254,19 @@ export function detectIntent({ query, projectPath }: IntentInput): IntentMatch {
         // crude: look for "X vs Y" or "X or Y" or "X, Y"
         const vs = raw.match(/([\w@/.-]+)\s+(?:vs\.?|versus|or)\s+([\w@/.-]+)/i);
         if (vs && vs[1] && vs[2]) libs.push(vs[1], vs[2]);
-        if (libs.length >= 2) args["libraries"] = libs;
+        if (libs.length < 2) return searchFallback("compare");
+        args["libraries"] = libs;
         return {
           tool: "gt_compare",
           args,
           reason: `detected compare verb ("${top.word}")`,
-          confidence: libs.length >= 2 ? 0.92 : 0.6,
+          confidence: 0.92,
         };
       }
       case "gt_compat": {
         if (topic) args["feature"] = topic;
         else if (text) args["feature"] = text.replace(/\b(?:does|do|can\s+i\s+use|browsers?|supports?|supported|compatibility|works?|caniuse|which|chrome|firefox|safari|edge|opera|in|on)\b/g, " ").replace(/\s+/g, " ").trim();
+        if (!args["feature"]) return searchFallback("compatibility");
         return {
           tool: "gt_compat",
           args,
@@ -261,23 +275,25 @@ export function detectIntent({ query, projectPath }: IntentInput): IntentMatch {
         };
       }
       case "gt_examples": {
-        if (library) args["library"] = library.alias;
+        if (!library) return searchFallback("example");
+        args["library"] = library.alias;
         if (topic) args["pattern"] = topic;
         return {
           tool: "gt_examples",
           args,
-          reason: `detected example verb ("${top.word}")` + (library ? ` for ${library.name}` : ""),
-          confidence: library ? 0.9 : 0.65,
+          reason: `detected example verb ("${top.word}") for ${library.name}`,
+          confidence: 0.9,
         };
       }
       case "gt_best_practices": {
-        if (library) args["libraryId"] = library.id;
+        if (!library) return searchFallback("best-practices");
+        args["libraryId"] = library.id;
         if (topic) args["topic"] = topic;
         return {
           tool: "gt_best_practices",
           args,
-          reason: `detected best-practices verb` + (library ? ` for ${library.name}` : ""),
-          confidence: library ? 0.93 : 0.7,
+          reason: `detected best-practices verb for ${library.name}`,
+          confidence: 0.93,
         };
       }
       case "gt_auto_scan": {
@@ -290,13 +306,14 @@ export function detectIntent({ query, projectPath }: IntentInput): IntentMatch {
         };
       }
       case "gt_get_docs": {
-        if (library) args["libraryId"] = library.id;
+        if (!library) return searchFallback("docs");
+        args["libraryId"] = library.id;
         if (topic) args["topic"] = topic;
         return {
           tool: "gt_get_docs",
           args,
-          reason: `detected docs verb` + (library ? ` for ${library.name}` : ""),
-          confidence: library ? 0.95 : 0.6,
+          reason: `detected docs verb for ${library.name}`,
+          confidence: 0.95,
         };
       }
       case "gt_resolve_library": {
@@ -339,6 +356,9 @@ export function detectIntent({ query, projectPath }: IntentInput): IntentMatch {
       case "gt_search":
       case "gt_snippets":
       default: {
+        // gt_snippets requires libraryId — without one the recommendation
+        // would fail the target schema.
+        if (top.tool === "gt_snippets" && !library) return searchFallback("snippets");
         if (top.tool === "gt_search") args["query"] = topic ?? text;
         if (top.tool === "gt_snippets" && library) args["libraryId"] = library.id;
         return {

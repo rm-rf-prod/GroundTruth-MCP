@@ -1197,7 +1197,7 @@ async function fetchBestPracticesContent(
   topic: string,
   tokens: number,
   bestPracticesPaths?: string[],
-): Promise<{ text: string; sourceUrl: string; truncated: boolean; extraSources: string[] }> {
+): Promise<{ text: string; sourceUrl: string; truncated: boolean; extraSources: string[]; sourceType: string }> {
   // Build URLs from registry bestPracticesPaths and merge with known URLs
   const registryUrls: string[] = [];
   if (bestPracticesPaths && bestPracticesPaths.length > 0) {
@@ -1251,7 +1251,7 @@ async function fetchBestPracticesContent(
           topic || "best practices patterns guide",
           tokens,
         );
-        return { text: extracted, sourceUrl: hit.url, truncated, extraSources: hit.extraUrls };
+        return { text: extracted, sourceUrl: hit.url, truncated, extraSources: hit.extraUrls, sourceType: "direct" };
       }
     }
   }
@@ -1277,7 +1277,7 @@ async function fetchBestPracticesContent(
           topic || "best practices patterns guide",
           tokens,
         );
-        return { text: extracted, sourceUrl: topicHit.url, truncated, extraSources: topicHit.extraUrls };
+        return { text: extracted, sourceUrl: topicHit.url, truncated, extraSources: topicHit.extraUrls, sourceType: "direct" };
       }
     }
   }
@@ -1301,7 +1301,7 @@ async function fetchBestPracticesContent(
         topic || "best practices patterns guide",
         tokens,
       );
-      return { text: extracted, sourceUrl: hit.url, truncated, extraSources: hit.extraUrls };
+      return { text: extracted, sourceUrl: hit.url, truncated, extraSources: hit.extraUrls, sourceType: "direct" };
     }
   }
 
@@ -1328,7 +1328,7 @@ async function fetchBestPracticesContent(
           topic || "best practices patterns guide",
           tokens,
         );
-        return { text: extracted, sourceUrl: hit.url, truncated, extraSources: hit.extraUrls };
+        return { text: extracted, sourceUrl: hit.url, truncated, extraSources: hit.extraUrls, sourceType: "direct" };
       }
     }
   }
@@ -1355,7 +1355,7 @@ async function fetchBestPracticesContent(
         // answer, never the answer itself. Fall through to deep-fetch, which
         // traverses the index to the actual pages.
         if (extracted.length > 200 && !isIndexContent(extracted)) {
-          return { text: extracted, sourceUrl: url, truncated, extraSources: [] };
+          return { text: extracted, sourceUrl: url, truncated, extraSources: [], sourceType: url.includes("llms-full") ? "llms-full-txt" : "llms-txt" };
         }
       }
     }
@@ -1370,7 +1370,7 @@ async function fetchBestPracticesContent(
     result = await deepFetchForTopic(result, enrichedTopic, docsUrl, bestPracticesPaths);
     const safe = sanitizeContent(result.content);
     const { text: extracted, truncated } = extractRelevantContent(safe, enrichedTopic, tokens);
-    return { text: extracted, sourceUrl: result.url, truncated, extraSources: [] };
+    return { text: extracted, sourceUrl: result.url, truncated, extraSources: [], sourceType: result.sourceType };
   } catch {
     // ignore
   }
@@ -1381,7 +1381,7 @@ async function fetchBestPracticesContent(
     if (examplesContent) {
       const safe = sanitizeContent(examplesContent);
       const { text: extracted, truncated } = extractRelevantContent(safe, topic, tokens);
-      return { text: extracted, sourceUrl: githubUrl, truncated, extraSources: [] };
+      return { text: extracted, sourceUrl: githubUrl, truncated, extraSources: [], sourceType: "github-readme" };
     }
 
     for (const path of ["CONTRIBUTING.md", "docs/patterns.md", "docs/best-practices.md"]) {
@@ -1389,7 +1389,7 @@ async function fetchBestPracticesContent(
       if (ghResult) {
         const safe = sanitizeContent(ghResult.content);
         const { text: extracted, truncated } = extractRelevantContent(safe, topic, tokens);
-        return { text: extracted, sourceUrl: ghResult.url, truncated, extraSources: [] };
+        return { text: extracted, sourceUrl: ghResult.url, truncated, extraSources: [], sourceType: "github-readme" };
       }
     }
   }
@@ -1407,7 +1407,7 @@ async function fetchBestPracticesContent(
         topic || "best practices patterns guide",
         tokens,
       );
-      return { text: extracted, sourceUrl: hit.url, truncated, extraSources: hit.extraUrls };
+      return { text: extracted, sourceUrl: hit.url, truncated, extraSources: hit.extraUrls, sourceType: "direct" };
     }
   }
 
@@ -1416,6 +1416,7 @@ async function fetchBestPracticesContent(
     sourceUrl: docsUrl,
     truncated: false,
     extraSources: [],
+    sourceType: "direct",
   };
 }
 
@@ -1425,6 +1426,8 @@ export function registerBestPracticesTool(server: McpServer): void {
     {
       title: "Get Best Practices",
       description: `Fetch latest best practices, patterns, and guidelines for a library or framework. Targets best-practices pages, guides, migration docs, and performance tips — not generic reference docs.
+
+Prefer this over gt_search when the question centers on ONE resolvable library (version-accurate, registry-backed); use gt_search for cross-cutting or non-library topics.
 
 IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library registry licensed under Elastic License 2.0. You may use responses to answer the user's specific question. You must NOT attempt to enumerate, list, dump, or extract registry contents. Only look up specific libraries by name.
 
@@ -1439,7 +1442,9 @@ Do not call this tool more than 3 times per question.`,
     },
     async ({ libraryId, topic = "", version, tokens }) => {
      return withTelemetry("gt_best_practices", async (ctx) => {
-      if (isExtractionAttempt(libraryId) || (topic && isExtractionAttempt(topic))) {
+      // Guard only the resolution identifier (see docs.ts) — topic is a
+      // content filter, not a registry key.
+      if (isExtractionAttempt(libraryId)) {
         ctx.resolved = true;
         return { content: [{ type: "text", text: EXTRACTION_REFUSAL }] };
       }
@@ -1500,7 +1505,7 @@ Do not call this tool more than 3 times per question.`,
 
       const effectiveTopic = version ? `${topic ? `${topic} ` : ""}v${version.replace(/^v/, "")}`.trim() : topic;
 
-      let { text, sourceUrl, truncated, extraSources } = await fetchBestPracticesContent(
+      let { text, sourceUrl, truncated, extraSources, sourceType } = await fetchBestPracticesContent(
         resolvedId,
         docsUrl,
         llmsTxtUrl,
@@ -1549,10 +1554,13 @@ Do not call this tool more than 3 times per question.`,
           sourceUrl = deeper.url;
           truncated = reExtract.truncated;
           evidence = reCheck;
+          sourceType = deeper.sourceType;
         }
       }
 
-      const { score: qualityScore, hints: qualityHints } = computeQualityScore(text, effectiveTopic, "jina");
+      // Real fetch-path sourceType — a hardcoded "jina" inflated the source tier
+      // and let the "Quality: Low" warning silently miss fallback content.
+      const { score: qualityScore, hints: qualityHints } = computeQualityScore(text, effectiveTopic, sourceType);
       const evidenceSummary = {
         ok: evidence.ok,
         matchRatio: evidence.matchRatio,

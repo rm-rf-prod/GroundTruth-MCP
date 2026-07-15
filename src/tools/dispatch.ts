@@ -183,7 +183,7 @@ export function registerDispatchTool(server: McpServer): void {
         lines.push("");
         lines.push("## Next step");
         lines.push(
-          `Invoke the recommended tool with the args above. The arguments are already validated against the target tool's input schema. If the routing looks wrong, fall back to \`gt_search({ query: "${query.replace(/"/g, '\\"')}" })\` — it never fails to return *something* useful.`,
+          `Invoke the recommended tool with the args above. The arguments are checked against the target tool's required fields. If the routing looks wrong, fall back to \`gt_search({ query: "${query.replace(/"/g, '\\"')}" })\` — it never fails to return *something* useful.`,
         );
         lines.push("");
         lines.push("---");

@@ -5,7 +5,7 @@ import { join } from "path";
 import { lookupByAlias, lookupById, fuzzySearch } from "../sources/registry.js";
 import { fetchDocs, fetchAsMarkdownRace, isIndexContent, rankIndexLinks } from "../services/fetcher.js";
 import { extractRelevantContent } from "../utils/extract.js";
-import { isExtractionAttempt, withNotice, withToolTimeout, EXTRACTION_REFUSAL, safeguardPath } from "../utils/guard.js";
+import { withNotice, withToolTimeout, safeguardPath } from "../utils/guard.js";
 import { sanitizeContent } from "../utils/sanitize.js";
 import type { LibraryEntry } from "../types.js";
 import { detectAllVersions } from "../utils/lockfile.js";
@@ -399,7 +399,9 @@ export function registerAutoScanTool(server: McpServer): void {
       title: "Auto-Scan Project Dependencies",
       description: `Automatically detect all dependencies in a project and fetch latest best practices for each. Say "use gt" to invoke.
 
-Reads: package.json, requirements.txt, pyproject.toml, Cargo.toml, go.mod, pom.xml, composer.json, build.gradle — whichever exist.`,
+Reads: package.json, requirements.txt, pyproject.toml, Cargo.toml, go.mod, pom.xml, composer.json, build.gradle — whichever exist.
+
+Fetches best practices for your installed DEPENDENCIES — to scan your own source code for issues, use gt_audit instead. Unrecognized dependencies are listed separately, never fail the call.`,
       inputSchema: InputSchema,
       annotations: {
         readOnlyHint: true,
@@ -417,10 +419,8 @@ Reads: package.json, requirements.txt, pyproject.toml, Cargo.toml, go.mod, pom.x
         return { content: [{ type: "text", text: `Invalid project path.` }] };
       }
 
-      if (isExtractionAttempt(topic)) {
-        return { content: [{ type: "text", text: EXTRACTION_REFUSAL }] };
-      }
-
+      // No extraction guard on `topic` — it only scopes what to look up per
+      // already-detected dependency and cannot enumerate the registry.
       const sources = await detectDependencies(resolvedPath);
 
       if (sources.length === 0) {
@@ -471,7 +471,7 @@ Reads: package.json, requirements.txt, pyproject.toml, Cargo.toml, go.mod, pom.x
       // Default 8 (server-wide FetchSemaphore caps at 12, leaving headroom for other concurrent tools)
       const rawConcurrency = parseInt(process.env.GT_CONCURRENCY ?? "8", 10);
       const CONCURRENCY = Number.isFinite(rawConcurrency) && rawConcurrency > 0 ? Math.min(rawConcurrency, 12) : 8;
-      const results: Array<{ name: string; content: string; url: string }> = [];
+      const results: Array<{ name: string; content: string; url: string; failed?: boolean }> = [];
 
       const fetchAllLibs = async (): Promise<void> => {
         for (let i = 0; i < topMatched.length; i += CONCURRENCY) {
@@ -503,7 +503,9 @@ Reads: package.json, requirements.txt, pyproject.toml, Cargo.toml, go.mod, pom.x
                 const { text } = extractRelevantContent(safe, enrichedTopic, tokensPerLib);
                 return { name: entry.name, content: text, url: fetchResult.url };
               } catch {
-                return { name: entry.name, content: `Could not fetch docs for ${entry.name}.`, url: entry.docsUrl };
+                // Marked failed so the resolveRate telemetry doesn't count
+                // laundered placeholders as successes.
+                return { name: entry.name, content: `Could not fetch docs for ${entry.name}.`, url: entry.docsUrl, failed: true as const };
               }
             }),
           );
@@ -552,7 +554,7 @@ Reads: package.json, requirements.txt, pyproject.toml, Cargo.toml, go.mod, pom.x
         )
         .join("\n");
 
-      ctx.resolved = results.length > 0;
+      ctx.resolved = results.some((r) => !r.failed);
       return {
         content: [{ type: "text", text: withNotice(header + sections) }],
         structuredContent: {

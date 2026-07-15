@@ -6012,15 +6012,21 @@ const byId = new Map<string, LibraryEntry>(
 );
 
 const byAlias = new Map<string, LibraryEntry>();
+// Pass 1: explicit names and aliases own their keys unconditionally.
 for (const entry of LIBRARY_REGISTRY) {
   for (const alias of [entry.name.toLowerCase(), ...entry.aliases]) {
     byAlias.set(alias.toLowerCase(), entry);
   }
-  if (entry.npmPackage) {
-    byAlias.set(entry.npmPackage.toLowerCase(), entry);
-  }
-  if (entry.pypiPackage) {
-    byAlias.set(entry.pypiPackage.toLowerCase(), entry);
+}
+// Pass 2: npm/pypi package names auto-register only when the key is free.
+// Last-write-wins here silently hijacked explicit aliases — e.g. the Python
+// "langchain" pypiPackage overwrote the "langchain" alias declared by
+// langchain-ai/langchainjs, resolving JS lookups to the wrong library.
+for (const entry of LIBRARY_REGISTRY) {
+  for (const pkg of [entry.npmPackage, entry.pypiPackage]) {
+    if (!pkg) continue;
+    const key = pkg.toLowerCase();
+    if (!byAlias.has(key)) byAlias.set(key, entry);
   }
 }
 
@@ -6060,7 +6066,15 @@ export function fuzzySearch(query: string, limit = 5, minScore = 1): LibraryEntr
   }
 
   return scored
-    .sort((a, b) => b.score - a.score)
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      // Deterministic tie-break: shorter/more specific name wins, then
+      // alphabetical by id — never incidental registry array order.
+      if (a.entry.name.length !== b.entry.name.length) {
+        return a.entry.name.length - b.entry.name.length;
+      }
+      return a.entry.id.localeCompare(b.entry.id);
+    })
     .slice(0, limit)
     .map((s) => s.entry);
 }

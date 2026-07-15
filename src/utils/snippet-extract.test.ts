@@ -76,6 +76,19 @@ describe("extractSnippets", () => {
     expect(snippets.find((s) => s.code.includes("x=1"))).toBeUndefined();
   });
 
+  it("drops a code block exactly 1 char above MAX_CODE_LENGTH (4001 trimmed chars)", () => {
+    const doc = "# Heading\n\n```text\n" + "x".repeat(4001) + "\n```\n";
+    const snippets = extractSnippets(doc, "lib", "url");
+    expect(snippets.length).toBe(0);
+  });
+
+  it("keeps a code block at exactly MAX_CODE_LENGTH (4000 trimmed chars)", () => {
+    const doc = "# Heading\n\n```text\n" + "x".repeat(4000) + "\n```\n";
+    const snippets = extractSnippets(doc, "lib", "url");
+    expect(snippets.length).toBe(1);
+    expect(snippets[0]?.code.length).toBe(4000);
+  });
+
   it("dedupes by title + code prefix", () => {
     const doubled = SAMPLE_DOC + "\n\n" + SAMPLE_DOC;
     const snippets = extractSnippets(doubled, "react", "url");

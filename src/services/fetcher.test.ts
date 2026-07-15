@@ -3,6 +3,7 @@ import {
   fetchWithTimeout,
   fetchViaJina,
   fetchDocs,
+  fetchAsMarkdownRace,
   fetchGitHubContent,
   fetchGitHubReleases,
   fetchGitHubExamples,
@@ -17,6 +18,12 @@ import {
   isBlockedIP,
   isHtmlBlob,
   isErrorPage,
+  isGarbageContent,
+  isLoginWall,
+  isCloudflareChallenge,
+  isRateLimitPage,
+  isMarketingPage,
+  isEmptySPAShell,
 } from "./fetcher.js";
 import { resetAllCircuits } from "./circuit-breaker.js";
 
@@ -72,6 +79,27 @@ function makeRes(body: string, status = 200): Response {
 
 const LONG = "x".repeat(200); // >100 chars — passes tryFetch threshold
 const JINA_LONG = "y".repeat(300); // >200 chars — passes fetchViaJina threshold
+
+/**
+ * Build a real fetch Response backed by a ReadableStream. makeRes-style plain
+ * objects have no `.body` stream and bypass readBodyCapped's streaming logic
+ * entirely (see fetcher.ts's early-return for bodyless responses) — these
+ * tests need the real streaming path, so they use real Response/ReadableStream
+ * instances instead. fetchWithTimeout wraps these in a pass-through stream,
+ * which is transparent to callers.
+ */
+function makeStreamRes(
+  chunks: Uint8Array[],
+  opts: { status?: number; headers?: Record<string, string> } = {},
+): Response {
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      for (const chunk of chunks) controller.enqueue(chunk);
+      controller.close();
+    },
+  });
+  return new Response(stream, { status: opts.status ?? 200, headers: opts.headers });
+}
 
 beforeEach(async () => {
   vi.stubGlobal("fetch", mockFetch);
@@ -1265,5 +1293,300 @@ describe("fetchSitemapUrls path-scoped discovery", () => {
     });
     const urls = await fetchSitemapUrls("https://docs.example.com/proj/docs/start");
     expect(urls).toEqual(["https://docs.example.com/docs/guide"]);
+  });
+});
+
+// ── Content quality gate sub-detectors (garbage detection hardening) ────────
+
+describe("isCloudflareChallenge", () => {
+  it("detects a Cloudflare browser challenge page", () => {
+    const content = "Checking your browser before accessing example.com.\n\nRay ID: 7f3a9c2b1e4d5678\n\nThis process is automatic. Please wait...";
+    expect(isCloudflareChallenge(content)).toBe(true);
+  });
+});
+
+describe("isRateLimitPage", () => {
+  it("detects a rate-limit response rendered as content", () => {
+    const content = "Rate limit exceeded. Please try again later.";
+    expect(isRateLimitPage(content)).toBe(true);
+  });
+});
+
+describe("isLoginWall", () => {
+  it("detects a login wall on short content (under the 1000-char length gate)", () => {
+    const content = "Please sign in to continue reading this article.";
+    expect(content.length).toBeLessThan(1000);
+    expect(isLoginWall(content)).toBe(true);
+  });
+
+  it("does not flag the same phrase once the document is >=1000 chars (length gate)", () => {
+    const phrase = "You must be logged in to view this content.";
+    const content = phrase + " " + "Additional real documentation text explaining various API endpoints and usage patterns in detail. ".repeat(20);
+    expect(content.length).toBeGreaterThanOrEqual(1000);
+    expect(isLoginWall(content)).toBe(false);
+  });
+});
+
+describe("isMarketingPage", () => {
+  it("returns false when a code fence is present, even with 2+ marketing signal words", () => {
+    const content = "```js\nconst x = 1;\n```\n" +
+      "Start your free trial today. Book a demo with our team. Trusted by thousands of companies. ".repeat(6);
+    expect(content.length).toBeGreaterThanOrEqual(500);
+    expect(isMarketingPage(content)).toBe(false);
+  });
+
+  it("returns true for a >=500-char marketing page without code fences", () => {
+    const content = "Start your free trial today and see the difference. Book a demo with our sales team now. " +
+      "Trusted by thousands of companies worldwide. Check out our enterprise plan and simple pricing options. ".repeat(4);
+    expect(content.length).toBeGreaterThanOrEqual(500);
+    expect(content).not.toContain("```");
+    expect(isMarketingPage(content)).toBe(true);
+  });
+});
+
+describe("isEmptySPAShell", () => {
+  it("detects an unrendered SPA shell (empty root div)", () => {
+    const shell = '<!DOCTYPE html><html><head></head><body><div id="root"></div></body></html>';
+    expect(isEmptySPAShell(shell)).toBe(true);
+  });
+
+  it("returns false when real content has rendered inside the root div", () => {
+    const rendered = `<html><body><div id="root"><p>${"Real rendered documentation content describing the API in detail. ".repeat(5)}</p></div></body></html>`;
+    expect(isEmptySPAShell(rendered)).toBe(false);
+  });
+});
+
+describe("isGarbageContent", () => {
+  it("returns {garbage: false} for a normal documentation page", () => {
+    const content = [
+      "# Getting Started",
+      "",
+      "This is a comprehensive guide explaining how to install and configure the library correctly.",
+      "",
+      "```js",
+      "const x = 1;",
+      "```",
+      "",
+      "## Advanced Usage",
+      "",
+      "More real explanatory text here describing configuration options and typical usage patterns in depth.",
+    ].join("\n");
+    expect(isGarbageContent(content)).toEqual({ garbage: false, reason: "" });
+  });
+});
+
+// ── fetchAsMarkdownRace ──────────────────────────────────────────────────────
+
+describe("fetchAsMarkdownRace", () => {
+  const RACE_CLEAN_TEXT = "Plain text documentation content without any html tags present in this response body at all. ".repeat(3); // >100 chars, 0% tag density
+  const RACE_RAW_MD = "# Docs A\n\nReal markdown content describing feature A in detail so the raw docsify markdown clears the 200-char floor and content-quality gate. ".repeat(2); // >=200 chars, non-garbage
+
+  it("returns clean low-tag-density direct-fetch text for a non-docsify URL", async () => {
+    mockFetch.mockImplementation((url: RequestInfo | URL) => {
+      const u = url.toString();
+      if (u.includes("r.jina.ai")) return Promise.resolve(makeRes("", 404)); // jina target fails
+      return Promise.resolve(makeRes(RACE_CLEAN_TEXT, 200));
+    });
+    const result = await fetchAsMarkdownRace("https://example.com/race-direct");
+    expect(result).toBe(RACE_CLEAN_TEXT);
+  });
+
+  it("returns raw .md content for a docsify hash-route URL", async () => {
+    mockFetch.mockImplementation((url: RequestInfo | URL) => {
+      const u = url.toString();
+      if (u.includes("r.jina.ai")) return Promise.resolve(makeRes("", 404)); // jina fails — only the raw path can win
+      if (u === "https://x.io/docs/a.md") return Promise.resolve(makeRes(RACE_RAW_MD, 200));
+      return Promise.resolve(makeRes("", 404));
+    });
+    const result = await fetchAsMarkdownRace("https://x.io/#/docs/a");
+    expect(result).toBe(RACE_RAW_MD);
+  });
+
+  it("returns null when every arm (docsify raw / direct / jina) fails", async () => {
+    mockFetch.mockResolvedValue(makeRes("", 404));
+    const result = await fetchAsMarkdownRace("https://example.com/race-all-fail");
+    expect(result).toBeNull();
+  });
+});
+
+// ── readBodyCapped 5MB cap enforcement (HARDENING) ───────────────────────────
+// readBodyCapped itself is not exported — exercised indirectly via
+// fetchNpmPackage, which is the simplest exported caller that funnels through
+// tryFetch → readBodyCapped.
+
+describe("readBodyCapped 5MB cap enforcement", () => {
+  it("treats a declared Content-Length over 5MB as a fetch failure", async () => {
+    mockFetch.mockResolvedValueOnce(
+      makeStreamRes([new TextEncoder().encode("small body")], {
+        headers: { "content-length": String(6 * 1024 * 1024) },
+      }),
+    );
+    const result = await fetchNpmPackage("cap-test-declared-oversized");
+    expect(result).toBeNull();
+  });
+
+  it("aborts and treats an undeclared streaming body exceeding 5MB as a failure", async () => {
+    const chunk = new Uint8Array(3 * 1024 * 1024).fill(97); // 3MB of 'a'
+    mockFetch.mockResolvedValueOnce(makeStreamRes([chunk, chunk])); // 6MB total, no content-length header
+    const result = await fetchNpmPackage("cap-test-streamed-oversized");
+    expect(result).toBeNull();
+  });
+
+  it("succeeds for a normal small streamed body under the cap", async () => {
+    const pkg = {
+      name: "cap-test-small-body",
+      description: "A small package body streamed through a real ReadableStream, long enough to clear the 50-char tryFetch threshold.",
+    };
+    mockFetch.mockResolvedValueOnce(makeStreamRes([new TextEncoder().encode(JSON.stringify(pkg))]));
+    const result = await fetchNpmPackage("cap-test-small-body");
+    expect(result).toMatchObject({ name: "cap-test-small-body" });
+  });
+});
+
+// ── HARDENING (a): fetchWithTimeout slow-drip abort ──────────────────────────
+// The abort timer must stay armed until the body stream fully drains, errors,
+// or is cancelled — a body that delivers one chunk then hangs must still be
+// aborted within the configured deadline instead of hanging forever.
+
+describe("HARDENING: fetchWithTimeout slow-drip abort", () => {
+  it("aborts a body stream that delivers one chunk then hangs, within the timeout budget", async () => {
+    mockFetch.mockImplementation((_url: RequestInfo | URL, options?: RequestInit) => {
+      const signal = options?.signal;
+      const stream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode("chunk1"));
+          // Never close — simulates an attacker holding the connection open
+          // (slow-drip). Mirrors how a real HTTP client aborts an in-flight
+          // response body: rejecting the pending read once the signal fires.
+          signal?.addEventListener("abort", () => {
+            controller.error(new DOMException("aborted", "AbortError"));
+          });
+        },
+      });
+      return Promise.resolve(new Response(stream, { status: 200 }));
+    });
+
+    const result = await fetchWithTimeout("https://example.com/slow-drip", 100);
+    const reader = result.body!.getReader();
+    const first = await reader.read();
+    expect(first.done).toBe(false);
+    expect(new TextDecoder().decode(first.value)).toBe("chunk1");
+
+    // Second read hangs until the still-armed abort timer fires (~100ms),
+    // then must reject rather than hang forever.
+    await expect(reader.read()).rejects.toThrow();
+  });
+});
+
+// ── HARDENING (b): fetchViaJina rejects oversized response bodies ───────────
+
+describe("HARDENING: fetchViaJina rejects oversized response bodies", () => {
+  it("returns null when the response declares Content-Length over the 5MB cap", async () => {
+    mockFetch.mockResolvedValueOnce(
+      makeStreamRes([new TextEncoder().encode("small body")], {
+        headers: { "content-length": String(6 * 1024 * 1024) },
+      }),
+    );
+    const result = await fetchViaJina("https://example.com/jina-oversized-declared");
+    expect(result).toBeNull();
+  });
+
+  it("returns null when the response streams over 5MB without a declared Content-Length", async () => {
+    const chunk = new Uint8Array(3 * 1024 * 1024).fill(120); // 3MB of 'x'
+    mockFetch.mockResolvedValueOnce(makeStreamRes([chunk, chunk])); // 6MB total
+    const result = await fetchViaJina("https://example.com/jina-oversized-streamed");
+    expect(result).toBeNull();
+  });
+});
+
+// ── HARDENING (c): tryFetch records a circuit-breaker failure on short bodies ─
+// tryFetch itself is private — driven here via fetchNpmPackage. Default
+// CIRCUIT_BREAKER_THRESHOLD is 3 (src/config.ts): 3 short-body "successes"
+// (<=50 chars) must open the circuit for the domain, so a subsequent call
+// short-circuits to null WITHOUT calling fetch again.
+
+describe("HARDENING: tryFetch short-body responses open the circuit breaker", () => {
+  it("opens the circuit after repeated short-body responses, then short-circuits without fetching", async () => {
+    mockFetch.mockResolvedValue(makeRes("short", 200)); // 5 chars, always under the 50-char floor
+    await fetchNpmPackage("short-body-pkg-1");
+    await fetchNpmPackage("short-body-pkg-2");
+    await fetchNpmPackage("short-body-pkg-3");
+    expect(mockFetch).toHaveBeenCalledTimes(3);
+
+    const result = await fetchNpmPackage("short-body-pkg-4");
+    expect(result).toBeNull();
+    expect(mockFetch).toHaveBeenCalledTimes(3); // circuit open — no new network call
+  });
+});
+
+// ── HARDENING (d): corrupt npm/pypi cache entries fall through to network ────
+
+describe("HARDENING: corrupt npm/pypi cache entries fall through to network", () => {
+  it("fetchNpmPackage: corrupt memory-cache JSON falls through to disk/network and returns fresh data", async () => {
+    const { docCache } = await import("./cache.js");
+    docCache.set("npm:corrupt-mem-pkg", "{not valid json");
+    const fresh = {
+      name: "corrupt-mem-pkg",
+      description: "Freshly fetched package data replacing the corrupt memory cache entry, long enough to clear thresholds.",
+    };
+    mockFetch.mockResolvedValueOnce(makeRes(JSON.stringify(fresh)));
+    const result = await fetchNpmPackage("corrupt-mem-pkg");
+    expect(result).toMatchObject({ name: "corrupt-mem-pkg" });
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("fetchPypiPackage: corrupt disk-cache JSON falls through to network and returns fresh data", async () => {
+    const { diskDocCache } = await import("./cache.js");
+    const disk = diskDocCache as { get: (k: string) => Promise<string | undefined>; set: (k: string, v: string) => Promise<void>; clear: () => void };
+    await disk.set("pypi:corrupt-disk-pkg", "{ this is not json }}}");
+    const fresh = {
+      info: {
+        name: "corrupt-disk-pkg",
+        summary: "Freshly fetched PyPI package data replacing the corrupt disk cache entry, long enough to clear thresholds.",
+      },
+    };
+    mockFetch.mockResolvedValueOnce(makeRes(JSON.stringify(fresh)));
+    const result = await fetchPypiPackage("corrupt-disk-pkg");
+    expect(result).toMatchObject({ info: { name: "corrupt-disk-pkg" } });
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ── HARDENING (e): fetchDocs cache hit reports the original sourceType ──────
+
+describe("HARDENING: fetchDocs cache hit reports the original sourceType", () => {
+  it("memory-cache hit reports the original 'jina' sourceType, not hardcoded llms-txt", async () => {
+    mockFetch.mockImplementation((url: RequestInfo | URL) => {
+      const u = url.toString();
+      if (u.includes("r.jina.ai")) return Promise.resolve(makeRes(JINA_LONG + "cachehit"));
+      return Promise.resolve(makeRes("", 404));
+    });
+    const first = await fetchDocs("https://example.com/jina-sourcetype-cache");
+    expect(first.sourceType).toBe("jina");
+
+    const second = await fetchDocs("https://example.com/jina-sourcetype-cache");
+    expect(second.sourceType).toBe("jina");
+    expect(second.content).toBe(first.content);
+  });
+
+  it("disk-cache hit reports the original 'direct' sourceType, not hardcoded llms-txt", async () => {
+    const { diskDocCache } = await import("./cache.js");
+    const disk = diskDocCache as { get: (k: string) => Promise<string | undefined>; set: (k: string, v: string) => Promise<void>; clear: () => void };
+    await disk.set("docs:https://example.com/direct-disk-sourcetype", LONG);
+    await disk.set("docs:https://example.com/direct-disk-sourcetype:sourceType", "direct");
+    const result = await fetchDocs("https://example.com/direct-disk-sourcetype");
+    expect(result.sourceType).toBe("direct");
+    expect(result.content).toBe(LONG);
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it("falls back to llms-txt sourceType when the companion cache entry is missing (pre-fix cache)", async () => {
+    const { docCache } = await import("./cache.js");
+    docCache.set("docs:https://example.com/legacy-cache-no-companion", LONG);
+    // Intentionally no ":sourceType" companion entry — simulates a cache
+    // file written before this hardening change.
+    const result = await fetchDocs("https://example.com/legacy-cache-no-companion");
+    expect(result.sourceType).toBe("llms-txt");
+    expect(result.content).toBe(LONG);
   });
 });

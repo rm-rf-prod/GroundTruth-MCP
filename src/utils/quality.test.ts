@@ -90,4 +90,22 @@ Access DOM elements directly.
     const b = computeQualityScore(richContent, "react hooks", "llms-txt", []).score;
     expect(a).toBe(b);
   });
+
+  // lengthScore band cutoffs: <200 -> 0.2, <500 -> 0.5, <=15000 -> 1.0, <=30000 -> 0.8, else 0.6.
+  // Topic "" forces topicCoverage=1; sourceType "direct" pins sourceScore=0.5; plain "x" content
+  // has no headings/code/lists/year mentions, holding every other score term constant so only
+  // the length band moves the final score across each cutoff.
+  it.each([
+    [199, 0.55],
+    [200, 0.6],
+    [499, 0.6],
+    [500, 0.67],
+    [15000, 0.67],
+    [15001, 0.64],
+    [30000, 0.64],
+    [30001, 0.61],
+  ])("pins the lengthScore band transition at len=%i", (len, expected) => {
+    const { score } = computeQualityScore("x".repeat(len), "", "direct");
+    expect(score).toBeCloseTo(expected, 5);
+  });
 });

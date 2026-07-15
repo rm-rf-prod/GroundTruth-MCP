@@ -40,6 +40,26 @@ describe("buildCommentMap", () => {
     const afterClose = content.indexOf("const x");
     expect(map.has(afterClose)).toBe(false);
   });
+
+  it("ignores /* inside string literals so following code is still audited", () => {
+    const content = `const glob = "**/*.spec.ts";\neval(userInput);`;
+    const map = buildCommentMap(content);
+    expect(map.has(content.indexOf("eval"))).toBe(false);
+  });
+
+  it("ignores /* inside template literals and // comments", () => {
+    const content = "const g = `src/**/*.ts`;\n// not /* an opener\nconst y = 2;";
+    const map = buildCommentMap(content);
+    expect(map.has(content.indexOf("const y"))).toBe(false);
+    expect(map.size).toBe(0);
+  });
+
+  it("still marks a real block comment that follows a string containing /*", () => {
+    const content = `const glob = "**/*.spec.ts";\n/* real comment */\nconst z = 3;`;
+    const map = buildCommentMap(content);
+    expect(map.has(content.indexOf("real comment"))).toBe(true);
+    expect(map.has(content.indexOf("const z"))).toBe(false);
+  });
 });
 
 // ── Python patterns ───────────────────────────────────────────────────────────
@@ -673,5 +693,35 @@ describe("charOffset is honoured for repeated identical lines", () => {
     // Second occurrence: the old indexOf(line) code would re-inspect offset 0 and
     // wrongly see keyExtractor. With charOffset it inspects the real position and flags it.
     expect(pattern.test(TARGET, content, secondOffset, lines, secondLineIndex)).toBe(TARGET);
+  });
+});
+
+// ── StyleSheet.create pattern — ReDoS guard ───────────────────────────────────
+
+describe("StyleSheet.create pattern ReDoS guard", () => {
+  const pattern = AUDIT_PATTERNS.find((p) => p.title === "StyleSheet.create inside component body");
+
+  it("completes instantly on long builder chains with no arrow function", () => {
+    if (!pattern) throw new Error("pattern not found");
+    // Pre-fix, the ambiguous alternation backtracked exponentially on exactly
+    // this shape (~14s at 26 repeats); 150 repeats would hang for years.
+    const line = "const styles = StyleSheet.create({ a: { flex: 1 } });";
+    const content =
+      "const schema = Yup.object()" + ".shape({a:1})".repeat(150) + ";\nreturn (\n" + line;
+    const lines = content.split("\n");
+    const start = performance.now();
+    pattern.test(line, content, content.indexOf("StyleSheet.create"), lines, lines.length - 1);
+    expect(performance.now() - start).toBeLessThan(200);
+  });
+
+  it("still flags StyleSheet.create inside a component with default-param props", () => {
+    if (!pattern) throw new Error("pattern not found");
+    const line = "  const styles = StyleSheet.create({ x: {} });";
+    const content =
+      "const Component = (props = {}) => {\n  return (\n    <View />\n  );\n" + line + "\n};";
+    const lines = content.split("\n");
+    expect(
+      pattern.test(line, content, content.indexOf("StyleSheet.create"), lines, 4),
+    ).toBe(line);
   });
 });

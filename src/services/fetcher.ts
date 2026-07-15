@@ -239,6 +239,10 @@ export async function fetchWithTimeout(
   await fetchSemaphore.acquire();
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), ms);
+  // Once a successful response is returned, timer ownership moves to the body
+  // stream — clearing it at header-receipt time would let a slow-drip body
+  // hang callers indefinitely past the deadline.
+  let timerHandedOff = false;
   try {
     let currentUrl = url;
     for (let hops = 0; hops <= MAX_REDIRECTS; hops++) {
@@ -257,11 +261,35 @@ export async function fetchWithTimeout(
         }
         continue;
       }
-      return res;
+      const body = (res as { body?: ReadableStream<Uint8Array> | null }).body;
+      if (!body || typeof body.getReader !== "function") return res;
+      const reader = body.getReader();
+      const wrapped = new ReadableStream<Uint8Array>({
+        async pull(c) {
+          try {
+            const { done, value } = await reader.read();
+            if (done) {
+              clearTimeout(id);
+              c.close();
+              return;
+            }
+            if (value) c.enqueue(value);
+          } catch (err) {
+            clearTimeout(id);
+            c.error(err);
+          }
+        },
+        cancel(reason) {
+          clearTimeout(id);
+          return reader.cancel(reason);
+        },
+      });
+      timerHandedOff = true;
+      return new Response(wrapped, { status: res.status, statusText: res.statusText, headers: res.headers });
     }
     throw new Error(`Too many redirects for ${url}`);
   } finally {
-    clearTimeout(id);
+    if (!timerHandedOff) clearTimeout(id);
     fetchSemaphore.release();
   }
 }
@@ -306,6 +334,9 @@ async function tryFetch(url: string, retries = 1, extraHeaders?: Record<string, 
         recordSuccess(domain);
         return text;
       }
+      // Must resolve the circuit like every sibling rejection branch — a
+      // half-open probe landing here would otherwise wedge the breaker.
+      recordFailure(domain);
       log({ level: "debug", msg: "tryFetch.too_short", url, length: text.length });
       return null;
     } catch (err) {
@@ -383,7 +414,12 @@ export async function fetchViaJina(url: string): Promise<string | null> {
           recordFailure(jinaDomain);
           return null;
         }
-        const text = await res.text();
+        const text = await readBodyCapped(res);
+        if (text === null) {
+          recordFailure(jinaDomain);
+          log({ level: "warn", msg: "fetchViaJina.body_too_large", url });
+          return null;
+        }
         if (text.length < 100) return null;
         // Jina answers 200 even when the TARGET page 404'd or is a challenge/login
         // shell — rendered garbage must never be returned or cached as content.
@@ -705,20 +741,37 @@ export async function fetchDocs(
   _topic?: string,
 ): Promise<FetchResult> {
   const cacheKey = `docs:${docsUrl}`;
+  const sourceTypeKey = `${cacheKey}:sourceType`;
+  const VALID_SOURCE_TYPES: ReadonlySet<string> = new Set(["llms-txt", "llms-full-txt", "jina", "direct"]);
 
   function stamp(result: FetchResult): FetchResult {
     return { ...result, contentHash: hashContent(result.content), fetchedAt: new Date().toISOString() };
   }
 
+  // Cache hits must report the ORIGINAL fetch origin, not a hardcoded
+  // "llms-txt" — quality scoring downstream weights source types differently.
+  // Companion entry absent (pre-fix cache files) falls back to llms-txt.
+  function asSourceType(raw: string | null | undefined): FetchResult["sourceType"] {
+    return raw && VALID_SOURCE_TYPES.has(raw) ? (raw as FetchResult["sourceType"]) : "llms-txt";
+  }
+
+  function cacheDocsResult(content: string, ttl: number, sourceType: FetchResult["sourceType"]): void {
+    cacheDoc(cacheKey, content, ttl);
+    docCache.set(sourceTypeKey, sourceType, ttl);
+    void diskDocCache.set(sourceTypeKey, sourceType, ttl);
+  }
+
   const memCached = docCache.get(cacheKey);
   if (memCached) {
-    return stamp({ content: memCached, url: docsUrl, sourceType: "llms-txt" });
+    return stamp({ content: memCached, url: docsUrl, sourceType: asSourceType(docCache.get(sourceTypeKey)) });
   }
 
   const diskCached = await diskDocCache.get(cacheKey);
   if (diskCached) {
     docCache.set(cacheKey, diskCached);
-    return stamp({ content: diskCached, url: docsUrl, sourceType: "llms-txt" });
+    const st = asSourceType(await diskDocCache.get(sourceTypeKey));
+    docCache.set(sourceTypeKey, st);
+    return stamp({ content: diskCached, url: docsUrl, sourceType: st });
   }
 
   // 1. Race llms-full.txt and llms.txt in parallel (both are cheap GETs)
@@ -737,11 +790,11 @@ export async function fetchDocs(
         if (r.sourceType === "llms-txt") {
           const nested = await followNestedLlmsIndex(r.content, r.url);
           if (nested) {
-            cacheDoc(cacheKey, nested.content, CACHE_TTLS.LLMS_TXT);
+            cacheDocsResult(nested.content, CACHE_TTLS.LLMS_TXT, "llms-txt");
             return stamp({ content: nested.content, url: nested.url, sourceType: "llms-txt" });
           }
         }
-        cacheDoc(cacheKey, r.content, CACHE_TTLS.LLMS_TXT);
+        cacheDocsResult(r.content, CACHE_TTLS.LLMS_TXT, r.sourceType);
         return stamp({ content: r.content, url: r.url, sourceType: r.sourceType });
       }
     }
@@ -755,7 +808,7 @@ export async function fetchDocs(
         if (autoDiscovered) {
           const nested = await followNestedLlmsIndex(autoDiscovered, autoUrl);
           const final = nested ?? { content: autoDiscovered, url: autoUrl };
-          cacheDoc(cacheKey, final.content, CACHE_TTLS.LLMS_TXT);
+          cacheDocsResult(final.content, CACHE_TTLS.LLMS_TXT, "llms-txt");
           return stamp({ content: final.content, url: final.url, sourceType: "llms-txt" });
         }
       } catch { /* invalid URL */ }
@@ -812,7 +865,7 @@ export async function fetchDocs(
 
   try {
     const hit = await Promise.any(candidates);
-    cacheDoc(cacheKey, hit.content, CACHE_TTLS.DOCS_PAGE);
+    cacheDocsResult(hit.content, CACHE_TTLS.DOCS_PAGE, hit.sourceType);
     return stamp(hit);
   } catch {
     // All candidates failed — fall through to error
@@ -1000,12 +1053,19 @@ export async function fetchNpmPackage(packageName: string): Promise<unknown> {
   const cacheKey = `npm:${packageName}`;
 
   const memCached = docCache.get(cacheKey);
-  if (memCached) return JSON.parse(memCached) as unknown;
+  if (memCached) {
+    try {
+      return JSON.parse(memCached) as unknown;
+    } catch { /* corrupt cache entry — fall through to disk/network */ }
+  }
 
   const diskCached = await diskDocCache.get(cacheKey);
   if (diskCached) {
-    docCache.set(cacheKey, diskCached);
-    return JSON.parse(diskCached) as unknown;
+    try {
+      const parsed = JSON.parse(diskCached) as unknown;
+      docCache.set(cacheKey, diskCached);
+      return parsed;
+    } catch { /* corrupt cache entry — fall through to network */ }
   }
 
   const content = await tryFetch(url);
@@ -1247,12 +1307,19 @@ export async function fetchPypiPackage(packageName: string): Promise<unknown> {
   const cacheKey = `pypi:${packageName}`;
 
   const memCached = docCache.get(cacheKey);
-  if (memCached) return JSON.parse(memCached) as unknown;
+  if (memCached) {
+    try {
+      return JSON.parse(memCached) as unknown;
+    } catch { /* corrupt cache entry — fall through to disk/network */ }
+  }
 
   const diskCached = await diskDocCache.get(cacheKey);
   if (diskCached) {
-    docCache.set(cacheKey, diskCached);
-    return JSON.parse(diskCached) as unknown;
+    try {
+      const parsed = JSON.parse(diskCached) as unknown;
+      docCache.set(cacheKey, diskCached);
+      return parsed;
+    } catch { /* corrupt cache entry — fall through to network */ }
   }
 
   const content = await tryFetch(url);

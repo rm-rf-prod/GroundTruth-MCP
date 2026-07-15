@@ -136,6 +136,16 @@ describe("renderBcdTable", () => {
     vi.mocked(fetchWithTimeout).mockResolvedValue(jsonResponse({ data: { nothing: {} } }));
     expect(await renderBcdTable("css.properties.unknown")).toBeNull();
   });
+
+  it("returns null (not a throw) when the underlying fetch rejects", async () => {
+    vi.mocked(fetchWithTimeout).mockRejectedValue(new Error("network down"));
+    await expect(renderBcdTable("javascript.builtins.Array.at")).resolves.toBeNull();
+  });
+
+  it("returns null (not a throw) on a non-ok HTTP response (500)", async () => {
+    vi.mocked(fetchWithTimeout).mockResolvedValue(jsonResponse({}, false, 500));
+    await expect(renderBcdTable("javascript.builtins.Array.at")).resolves.toBeNull();
+  });
 });
 
 describe("formatBaseline", () => {

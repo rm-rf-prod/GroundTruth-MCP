@@ -476,6 +476,40 @@ describe("gt_audit handler — fetchBestPractice with registry match", () => {
     expect(calledAny).toBe(true);
     expect(result.structuredContent?.totalIssues).toBeGreaterThan(0);
   });
+
+  it("falls back to fetchGitHubReleases when fetchDocs rejects (catch-and-fallback path)", async () => {
+    // Same react-forwardRef setup as the test above, but fetchDocs rejects this time —
+    // exercises the try/catch around fetchDocs in fetchBestPractice (audit.ts ~1618) that
+    // must fall through to the entry.githubUrl / fetchGitHubReleases fallback branch.
+    const reactContent = `const Btn = React.forwardRef((props, ref) => <button ref={ref} {...props} />);`;
+    await mockFiles([{ name: "button.tsx", content: reactContent }]);
+
+    vi.mocked(lookupById).mockImplementation((id) => {
+      if (id === "facebook/react") {
+        return {
+          id: "facebook/react",
+          name: "React",
+          aliases: ["react"],
+          description: "A JavaScript library for building user interfaces",
+          docsUrl: "https://react.dev",
+          llmsTxtUrl: "https://react.dev/llms.txt",
+          llmsFullTxtUrl: undefined,
+          githubUrl: "https://github.com/facebook/react",
+          language: ["javascript", "typescript"],
+          tags: ["ui", "framework"],
+        };
+      }
+      return undefined;
+    });
+
+    vi.mocked(fetchDocs).mockRejectedValue(new Error("network down"));
+
+    const result = await handler({ ...DEFAULTS, projectPath: PROJECT_PATH });
+
+    expect(fetchGitHubReleases).toHaveBeenCalledWith("https://github.com/facebook/react");
+    // The handler must resolve normally despite fetchDocs rejecting internally.
+    expect(result.structuredContent?.totalIssues).toBeGreaterThan(0);
+  });
 });
 
 describe("gt_audit handler — report header", () => {
