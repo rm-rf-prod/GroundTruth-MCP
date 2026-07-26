@@ -92,7 +92,7 @@ const NAV_FOOTER_PATTERNS: RegExp[] = [
 
   // Classic / versioned-docs navigation chrome (PostgreSQL, Read the Docs, devdocs):
   // version switcher bars and "Prev Up Home Next" pager rows on their own line.
-  /^\[Current\][^\n]*(?:\/[^\n]*)+$/gm,
+  /^\[Current\][^\n/]*(?:\/[^\n/]*)+$/gm,
   /^[ \t]*(?:Prev(?:ious)?|Next|Up|Home)(?:[ \t]+(?:Prev(?:ious)?|Next|Up|Home)){2,}[ \t]*$/gim,
   /^[ \t]*v?\d+(?:\.\d+)*[ \t]*(?:\|[ \t]*v?\d+(?:\.\d+)*[ \t]*){2,}$/gm,
 
