@@ -1,5 +1,14 @@
 # Changelog
 
+## [7.4.1] — 2026-07-29
+
+- fix: scope publish audit gate to production dependencies
+- fix: apply same production-scoped audit gate to Security workflow
+- fix: repair CI audit gate and dead Effect doc URLs
+- chore: bump MCP SDK to 1.30 and dev toolchain
+
+---
+
 ## [7.4.0] — 2026-07-15
 
 - fix: adversarially verified hardening across all 14 tools
