@@ -70,7 +70,7 @@
     "registry": "https://registry.npmjs.org"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "undici": "^8.3.0",
     "zod": "^4.4.3"
   },
@@ -78,11 +78,11 @@
     "path-to-regexp": ">=8.4.0"
   },
   "devDependencies": {
-    "@types/node": "^25.9.1",
-    "@typescript-eslint/eslint-plugin": "^8.60.0",
-    "@typescript-eslint/parser": "^8.60.0",
+    "@types/node": "^26.1.2",
+    "@typescript-eslint/eslint-plugin": "^8.65.0",
+    "@typescript-eslint/parser": "^8.65.0",
     "@vitest/coverage-v8": "^4.1.0",
-    "eslint": "^10.4.1",
+    "eslint": "^10.8.0",
     "javascript-obfuscator": "^5.4.3",
     "tsx": "^4.22.3",
     "typescript": "^6.0.3",
