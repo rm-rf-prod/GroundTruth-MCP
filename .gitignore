@@ -32,16 +32,6 @@ docs/GEO-ANALYSIS.md
 docs/senorit-*.json
 docs/research-*.md
 
-# Claude Code - EXCLUDE EVERYTHING
-.claude/
-.claude
-CLAUDE.md
-CLAUDE*.md
-.claudeignore
-*.claude*
-.claude/*.local.md
-.claude/*.local.json
-
 # local-only draft artifacts (never publish)
 docs/npm-gdpr-request-draft.md
 docs/*.png

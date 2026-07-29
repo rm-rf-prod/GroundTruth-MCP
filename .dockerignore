@@ -7,4 +7,3 @@ docs
 *.test.ts
 coverage
 .env*
-.claude

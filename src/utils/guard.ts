@@ -35,7 +35,7 @@ export function safeguardPath(inputPath: string): string {
     throw new Error(`Access to system path denied: ${resolved}`);
   }
 
-  if (/\/\.[a-z]/i.test(resolved) && !/\/\.(?:git|vscode|cursor|claude|github|eslint|prettier|node-version|env)\b/.test(resolved)) {
+  if (/\/\.[a-z]/i.test(resolved) && !/\/\.(?:git|vscode|cursor|github|eslint|prettier|node-version|env)\b/.test(resolved)) {
     throw new Error(`Access to hidden path denied: ${resolved}`);
   }
 
