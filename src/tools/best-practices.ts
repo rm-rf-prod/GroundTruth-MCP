@@ -195,14 +195,14 @@ const BEST_PRACTICES_URLS: Record<string, string[]> = {
     "https://github.com/jquense/yup#schema-basics",
   ],
   "effect-ts/effect": [
-    "https://effect.website/docs/introduction",
+    "https://effect.website/docs/getting-started/introduction",
     "https://effect.website/docs/error-management/expected-errors",
   ],
   "Effect-TS/effect": [
-    "https://effect.website/docs/introduction",
+    "https://effect.website/docs/getting-started/introduction",
     "https://effect.website/docs/error-management/expected-errors",
     "https://effect.website/docs/concurrency/basic-concurrency",
-    "https://effect.website/docs/guides/configuration",
+    "https://effect.website/docs/configuration",
   ],
 
   // ─── State Management ────────────────────────────────────────────────────
