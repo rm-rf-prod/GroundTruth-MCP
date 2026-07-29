@@ -50,7 +50,10 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
-      - run: npm audit --audit-level=high
+      # Production scope only — devDependency advisories (javascript-obfuscator
+      # tree) never reach consumers of the published package and must not block
+      # a release. Dev advisories stay visible in the CI and Security workflows.
+      - run: npm audit --omit=dev --audit-level=high
 
       # Poll registry up to 90s. Local publish race window covered — if maintainer
       # publishes from CLI around the same time as the tag push, the version will
