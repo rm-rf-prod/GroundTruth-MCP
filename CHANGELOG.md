@@ -1,5 +1,62 @@
 # Changelog
 
+## [7.5.0] — 2026-08-05
+
+The largest quality release so far: a 153-library registry expansion, a retrieval
+fix that repaired thousands of dead documentation URLs, and a full split of the
+codebase into single-responsibility modules. No breaking changes — every tool
+name, argument and response shape is unchanged.
+
+### Retrieval — fewer generic answers
+
+- **fix: registry paths are joined to the docs base, not the origin.** `supabase.com/docs` + `/guides/auth` produced `supabase.com/guides/auth`, a 404. This affected 46 entries and every guessed topic URL on a sub-path docs site. First-path reachability went from 409/575 (71%) to 571/575 (99%).
+- **fix: 24 dead `docsUrl` and 21 dead `llmsTxtUrl` entries repaired or removed.** Every entry was probed live; a dead `llmsTxtUrl` was a guaranteed 404 on every call for that library.
+- **fix: 62 of 231 curated best-practice URL keys were unreachable dead data** — keyed by names that matched no registry entry, so the curated pages silently never served. All 215 remaining keys now resolve, guarded by a test that fails the build if one rots.
+- **fix: evidence matching no longer counts mid-word noise.** `rls` matched every `urls`, `api` matched `rapid`, `auth` matched `coauthor`. Matching is word-start anchored and camelCase-aware, so `reportPerformance()` still counts for "performance".
+- **feat: acronym-aware topic matching.** An `rls` query is answered by a page that says "row level security"; `jwt`, `rsc`, `ssr`, `csp`, `cors`, `a11y`, `i18n`, `ppr`, `cwv` and 11 more behave the same way.
+- **feat: honest miss on name-drop-only content.** A page that mentions the topic once in passing, with no heading and no code, now returns an explicit miss instead of being served as the answer.
+- **fix: `gt_search`'s registry stage is evidence-gated.** It was the one sourcing stage with no check — a loose fuzzy match could take the first result slot with an off-topic page and block every later stage.
+- **fix: oversized sections no longer truncate extraction.** One section too large for the budget ended packing entirely, shipping a half-empty response while smaller relevant sections went unsent.
+
+### Registry — 445 to 598 entries
+
+- 42 Expo SDK modules, 13 Radix primitives, React Native community packages, TanStack, Tiptap, drizzle-kit, `@supabase/ssr`, testing and accessibility tooling, backend security middleware, build tooling.
+- Angular, Flutter, TensorFlow, Motion, ElevenLabs, Deepgram, AssemblyAI, Stability AI, Cohere, Mistral, Fireworks, Chroma, Weaviate, n8n, Starlight, node-redis, Claude Agent SDK, Gemini API, Google Cloud Node, Google Maps JS, Material Web, OpenAI Python, nanoid.
+- 230 entries had their `bestPracticesPaths` repaired.
+
+### Reliability and performance
+
+- **fix: expected 404s no longer trip the circuit breaker.** Three auto-discovery misses opened the circuit for an entire domain for 60 seconds. A 4xx is a definitive answer about one URL, not a sick host.
+- **feat: 404 negative cache** — auto-discovery probes a fixed set of candidate paths per domain; known-dead URLs are no longer re-fetched on every cache miss.
+- **feat: full-jitter exponential backoff**, and 500/502/504 joined 429/503 as retryable. Fixed delays made all concurrent fetches retry in lockstep, re-creating the burst that caused the throttle.
+- **feat: per-host bulkhead** under the global concurrency cap, so one slow-dripping domain cannot starve a fan-out.
+- **feat: single-flight `fetchDocs`** — two concurrent calls for the same library ran the full llms.txt → discovery → Jina → GitHub chain twice.
+- **perf: `gt_compat` fetches its six MDN candidates in one round** instead of sequentially. Six 10-second timeouts could reach 60s, past the tool's own ceiling, so slow MDN responses timed the whole call out. `gt_migration`'s web-search candidates got the same treatment.
+- **feat: telemetry and a timeout ceiling on all 14 tools** (was 7). A hung call now returns an actionable next step instead of an MCP-level timeout.
+- **feat: hourly disk-cache prune.** A boot-only prune never brought a long-lived stdio session back under the file cap.
+- **fix: `server.instructions` cut from 5268 to 1657 bytes.** Claude Code truncates around 2 KB, so the routing table — the most useful part — was being dropped.
+
+### Fixes
+
+- **fix: the `gt://docs/{libraryId}` MCP resource never worked.** Every registry ID is `owner/name`, and RFC 6570 simple expansion stops at `/`, so `gt://docs/facebook/react` matched no template and single-segment URIs failed the lookup. Now uses reserved expansion with an alias fallback: `gt://docs/facebook/react`, `gt://docs/react` and `gt://docs/colinhacks/zod` all resolve.
+- **fix: library names containing "list" are no longer refused.** The bulk-enumeration guard rejected `flash-list`, `@shopify/flash-list` and `expo-media-library` as extraction attempts.
+- **fix: growing the registry no longer breaks intent routing.** Adding `expo-build-properties` made "how to build a rest api" fuzzy-match a library and route to `gt_best_practices` instead of `gt_search`. A stop-word guard plus a 4-character floor prevents ordinary English words from resolving to libraries.
+- **fix: `gt_changelog` cache hits return full structured content.** Caching only the rendered text meant every cache hit dropped `displayName`, `sourceUrl`, `qualityScore` and `content`.
+- **fix: `gt_examples` skips the guaranteed-401 GitHub call when `GT_GITHUB_TOKEN` is unset** and serves documentation-derived examples instead.
+- **fix: version-aware quality scoring in `gt_get_docs`.** A pinned request whose content never names the target version scored ~0.9 on content from a different release.
+
+### Dependencies
+
+- **security: four advisories cleared in the shipped dependency tree**, three of them high severity and all in the HTTP path this server runs on. `undici` 8.7.0 → 8.10.0 (response desync, CRLF injection via blob body type, cookie attribute injection), `ip-address` 10.2.0 → 10.4.0 (three SSRF trust-boundary bypasses: octal octet decoding, CIDR-suffix suppression of special-use classification, IPv4-mapped/NAT64 misclassification), `fast-uri` 3.1.4 → 3.1.5 (host confusion via backslash authority introducer), `hono` 4.12.28 → 4.13.0 (ReDoS in CORS middleware). `npm audit --omit=dev` reports zero vulnerabilities.
+
+### Internals
+
+- **refactor: every source file is under 200 lines**, split by responsibility. `search.ts` 1997 → 132, `audit.ts` 1944 → 141, `best-practices.ts` 1692 → 134, `fetcher.ts` 1461 → a 28-line barrel over `http/`, `content-guards`, `doc-fetch`, `github`, `packages`, `sitemap` and `llms-index`. Embedded data tables moved to `src/sources/`. Public import paths are unchanged.
+- **test: 1394 tests across 167 files**, up from 1358 across 48. New coverage for URL joining, curated best-practice key resolution, negative caching, the honest-miss path, and the MCP resource templates.
+- **fix: release tooling counts from the new module layout**, and a hand-written changelog section is no longer overwritten by the auto-generated one.
+
+---
+
 ## [7.4.1] — 2026-07-29
 
 - fix: scope publish audit gate to production dependencies

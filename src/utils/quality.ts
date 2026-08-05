@@ -1,5 +1,5 @@
 import { substantiveTokens } from "./extract.js";
-import { stripUrlNoise } from "./evidence.js";
+import { countTokenHits, normalizeForMatching, stripUrlNoise } from "./evidence.js";
 
 export interface QualityResult {
   score: number;
@@ -53,8 +53,11 @@ export function computeQualityScore(
   if (topicTokens.length > 0) {
     // Same URL stripping as checkEvidence — a token appearing only inside link
     // hrefs must not inflate qualityScore while the evidence gate reports a miss.
-    const contentLower = stripUrlNoise(content).toLowerCase();
-    const found = topicTokens.filter((t) => contentLower.includes(t)).length;
+    // Word-start matching, identical to checkEvidence — a substring hit inside
+    // an unrelated word ("rls" in "urls") must not inflate the quality score
+    // while the evidence footer reports the same term as missing.
+    const contentLower = normalizeForMatching(stripUrlNoise(content));
+    const found = topicTokens.filter((t) => countTokenHits(contentLower, t) > 0).length;
     topicCoverage = found / topicTokens.length;
   }
 

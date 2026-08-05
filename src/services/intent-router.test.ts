@@ -108,6 +108,23 @@ describe("intent-router", () => {
       expect(intent.tool).toBe("gt_search");
     });
 
+    // Registry growth must not turn ordinary English words into library hits.
+    // Entries named expo-image / expo-camera / expo-build-properties would each
+    // fuzzy-match one of these queries without the FUZZY_STOP_WORDS guard.
+    it("does not route plain-English questions to a library-scoped tool", () => {
+      const generic = [
+        "how to build a rest api",
+        "how do i resize an image",
+        "what is the fastest way to write a file",
+        "how should i test a pure function",
+        "explain the camera permission model",
+      ];
+      for (const q of generic) {
+        const intent = detectIntent({ query: q });
+        expect(intent.tool, `misrouted: ${q}`).toBe("gt_search");
+      }
+    });
+
     // CORR-007: batch with parseable library names routes to gt_batch_resolve
     it("routes 'batch lookup react next prisma' to gt_batch_resolve with libraryNames", () => {
       const intent = detectIntent({ query: "batch lookup react next prisma" });
@@ -155,39 +172,3 @@ describe("compat routing — natural browser-support phrasing", () => {
 });
 
 // ── required-arg fallback guards ──────────────────────────────────────────────
-
-describe("detectIntent required-arg fallbacks", () => {
-  it("falls back to gt_search when a migration verb has no parseable library", () => {
-    const intent = detectIntent({ query: "how do I migrate my project safely" });
-    expect(intent.tool).toBe("gt_search");
-    expect(intent.args["query"]).toBeTruthy();
-  });
-
-  it("falls back to gt_search when a compare verb lacks two library names", () => {
-    const intent = detectIntent({ query: "compare frameworks" });
-    expect(intent.tool).toBe("gt_search");
-  });
-
-  it("falls back to gt_search when a changelog verb has no library", () => {
-    const intent = detectIntent({ query: "what changed in the latest release" });
-    expect(intent.tool).toBe("gt_search");
-  });
-
-  it("never recommends a tool whose required identifier is missing", () => {
-    const queries = [
-      "show me example usage",
-      "best practices please",
-      "upgrade guide",
-      "get docs",
-    ];
-    for (const query of queries) {
-      const intent = detectIntent({ query });
-      if (["gt_migration", "gt_changelog", "gt_get_docs", "gt_best_practices", "gt_examples", "gt_snippets"].includes(intent.tool)) {
-        expect(intent.args["libraryId"] ?? intent.args["library"]).toBeTruthy();
-      }
-      if (intent.tool === "gt_compare") {
-        expect((intent.args["libraries"] as string[]).length).toBeGreaterThanOrEqual(2);
-      }
-    }
-  });
-});

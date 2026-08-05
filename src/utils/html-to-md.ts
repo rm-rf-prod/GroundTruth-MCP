@@ -9,91 +9,10 @@
 
 import { decodeHtmlEntities } from "./decode-entities.js";
 
-/** Remove elements that add noise: nav, footer, sidebar, scripts, styles, ads */
-function stripNoisyElements(html: string): string {
-  // Remove script and style blocks entirely (including content)
-  let cleaned = html.replace(/<script[\s\S]*?<\/script>/gi, "");
-  cleaned = cleaned.replace(/<style[\s\S]*?<\/style>/gi, "");
-  cleaned = cleaned.replace(/<noscript[\s\S]*?<\/noscript>/gi, "");
+import { stripNoisyElements, extractMainContent } from "./html/clean.js";
+import { stripTags, normalizeHref, isSafeHref } from "./html/links.js";
+import { convertTable } from "./html/table.js";
 
-  // Remove common noisy elements by tag
-  const noisyTags = ["nav", "footer", "aside", "header"];
-  for (const tag of noisyTags) {
-    // Non-greedy: match the outermost tag (handles simple nesting)
-    const re = new RegExp(`<${tag}[^>]*>[\\s\\S]*?<\\/${tag}>`, "gi");
-    cleaned = cleaned.replace(re, "");
-  }
-
-  // Remove elements by class/id that are typically noise
-  const noisePatterns = [
-    /<[^>]+class="[^"]*(?:sidebar|cookie|banner|newsletter|popup|modal|ad-|ads-|social|share|footer|nav|menu|breadcrumb|toc|table-of-contents)[^"]*"[^>]*>[\s\S]*?<\/[\w-]+>/gi,
-    /<[^>]+id="[^"]*(?:sidebar|cookie|banner|newsletter|popup|modal|social|share|footer|nav|menu|breadcrumb|toc|table-of-contents)[^"]*"[^>]*>[\s\S]*?<\/[\w-]+>/gi,
-    /<[^>]+role="(?:navigation|banner|contentinfo|complementary)"[^>]*>[\s\S]*?<\/[\w-]+>/gi,
-  ];
-
-  for (const pattern of noisePatterns) {
-    cleaned = cleaned.replace(pattern, "");
-  }
-
-  return cleaned;
-}
-
-/**
- * Find the opening <div> matching openTagRegex, then scan forward tracking
- * <div>/</div> depth to return the fully balanced inner content. A lazy
- * [\s\S]*?<\/div> match stops at the FIRST nested close tag (a TOC box, a
- * callout) and silently drops the entire article after it. Returns null when
- * no balanced close exists (malformed HTML) so callers fall through.
- */
-function extractBalancedDivContent(html: string, openTagRegex: RegExp): string | null {
-  const openMatch = openTagRegex.exec(html);
-  if (!openMatch) return null;
-  const start = openMatch.index + openMatch[0].length;
-  const tagScanner = /<div\b[^>]*>|<\/div>/gi;
-  tagScanner.lastIndex = start;
-  let depth = 1;
-  let m: RegExpExecArray | null;
-  while ((m = tagScanner.exec(html)) !== null) {
-    depth += m[0][1] === "/" ? -1 : 1;
-    if (depth === 0) return html.slice(start, m.index);
-  }
-  return null;
-}
-
-/** Extract the main content area from HTML */
-function extractMainContent(html: string): string {
-  // <main>/<article> close tags don't nest with themselves in practice, so a
-  // lazy match is safe for them.
-  const tagPatterns = [
-    /<main[^>]*>([\s\S]*?)<\/main>/i,
-    /<article[^>]*>([\s\S]*?)<\/article>/i,
-  ];
-  for (const pattern of tagPatterns) {
-    const match = pattern.exec(html);
-    if (match) {
-      const content = match[1] ?? "";
-      if (content.length > 200) return content;
-    }
-  }
-
-  // Content-area divs need depth tracking (see extractBalancedDivContent).
-  const divOpenPatterns = [
-    /<div[^>]+(?:class|id)="[^"]*(?:content|main|docs|documentation|article|post|entry|page-content|markdown-body|prose)[^"]*"[^>]*>/i,
-    /<div[^>]+role="main"[^>]*>/i,
-  ];
-  for (const pattern of divOpenPatterns) {
-    const content = extractBalancedDivContent(html, pattern);
-    if (content !== null && content.length > 200) return content;
-  }
-
-  // Fallback: use the body
-  const bodyMatch = /<body[^>]*>([\s\S]*?)<\/body>/i.exec(html);
-  if (bodyMatch?.[1]) return bodyMatch[1];
-
-  return html;
-}
-
-/** Convert HTML tags to markdown equivalents */
 function htmlToMarkdown(html: string): string {
   let md = html;
 
@@ -182,82 +101,6 @@ function htmlToMarkdown(html: string): string {
   return md.trim();
 }
 
-function stripTags(html: string): string {
-  return html.replace(/<[^>]+>/g, "");
-}
-
-// Schemes safe to render as links in extracted markdown. Allowlist beats denylist:
-// new schemes (e.g. intent:, file:, about:, vbscript:, livescript:, data:) auto-reject.
-const SAFE_URL_SCHEMES = new Set(["http", "https", "mailto", "tel"]);
-
-/**
- * Normalize an href captured from raw HTML before scheme inspection:
- *  - decode HTML entities (defeats `java&#x73;cript:` style bypass)
- *  - strip C0 control bytes (\x00-\x1F) + DEL (\x7F); browsers ignore TAB/LF/CR
- *    when resolving the scheme, so `java\tscript:` would otherwise pass
- *  - trim whitespace
- */
-function normalizeHref(rawHref: string): string {
-  return decodeHtmlEntities(rawHref)
-    .replace(/[\x00-\x1F\x7F]/g, "")
-    .trim();
-}
-
-/**
- * Allowlist-based URL safety check. Caller must pass the normalized href.
- * Accepts: relative URLs, root-relative paths, fragments, http(s):, mailto:, tel:
- * Rejects: javascript:, data:, vbscript:, file:, about:, and any other scheme.
- */
-function isSafeHref(normalized: string): boolean {
-  if (normalized === "") return false;
-  if (normalized.startsWith("/") || normalized.startsWith("?") || normalized.startsWith("#")) {
-    return true;
-  }
-  const colonIdx = normalized.indexOf(":");
-  if (colonIdx === -1) return true; // relative URL, no scheme
-  const slashIdx = normalized.indexOf("/");
-  // Path segment with a literal colon before the first slash → treat as relative
-  if (slashIdx !== -1 && slashIdx < colonIdx) return true;
-  const scheme = normalized.slice(0, colonIdx).toLowerCase();
-  return SAFE_URL_SCHEMES.has(scheme);
-}
-
-function convertTable(tableHtml: string): string {
-  const rows: string[][] = [];
-
-  // Extract rows
-  const rowRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
-  let rowMatch;
-  while ((rowMatch = rowRegex.exec(tableHtml)) !== null) {
-    const cellRegex = /<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/gi;
-    const cells: string[] = [];
-    let cellMatch;
-    while ((cellMatch = cellRegex.exec(rowMatch[1] ?? "")) !== null) {
-      cells.push(stripTags(cellMatch[1] ?? "").trim());
-    }
-    if (cells.length > 0) rows.push(cells);
-  }
-
-  if (rows.length === 0) return "";
-
-  // Build markdown table
-  const colCount = Math.max(...rows.map((r) => r.length));
-  const lines: string[] = [];
-
-  for (let i = 0; i < rows.length; i++) {
-    const row = rows[i]!;
-    const padded = Array.from({ length: colCount }, (_, j) => row[j] ?? "");
-    lines.push(`| ${padded.join(" | ")} |`);
-
-    // Add separator after first row (header)
-    if (i === 0) {
-      lines.push(`| ${padded.map(() => "---").join(" | ")} |`);
-    }
-  }
-
-  return "\n" + lines.join("\n") + "\n";
-}
-
 /**
  * Convert raw HTML to readable markdown documentation.
  * Extracts the main content area, strips noise, and converts to markdown.
@@ -291,3 +134,4 @@ export function convertHtmlToMarkdown(html: string): string {
 
   return markdown;
 }
+

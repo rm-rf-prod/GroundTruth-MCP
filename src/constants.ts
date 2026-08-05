@@ -4,7 +4,7 @@ export const SERVER_NAME = "GroundTruth";
 export const SERVER_VERSION = "7.4.1";
 
 // Known size of the full private registry (updated with each release that adds entries)
-export const REGISTRY_BADGE_SIZE = 445;
+export const REGISTRY_BADGE_SIZE = 598;
 
 // Number of MCP tools registered in index.ts — single source of truth for the
 // --health / `/health` payloads and the server-instructions header, so the count

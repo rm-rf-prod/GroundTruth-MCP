@@ -16,14 +16,14 @@
   <a href="https://www.npmjs.com/package/@groundtruth-mcp/gt-mcp"><img src="https://img.shields.io/npm/v/@groundtruth-mcp/gt-mcp?color=00d4aa&label=npm" alt="npm version" /></a>
   <a href="https://github.com/rm-rf-prod/GroundTruth-MCP/actions/workflows/ci.yml"><img src="https://github.com/rm-rf-prod/GroundTruth-MCP/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-ELv2-orange" alt="Elastic License 2.0" /></a>
-  <img src="https://img.shields.io/badge/libraries-445%2B-teal" alt="445+ curated libraries" />
+  <img src="https://img.shields.io/badge/libraries-598%2B-teal" alt="598+ curated libraries" />
   <img src="https://img.shields.io/badge/audit_patterns-107%2B-red" alt="107+ audit patterns" />
-  <img src="https://img.shields.io/badge/tests-1358-brightgreen" alt="1358 tests" />
+  <img src="https://img.shields.io/badge/tests-1389-brightgreen" alt="1389 tests" />
   <img src="https://img.shields.io/badge/tools-14-blue" alt="14 tools" />
   <img src="https://img.shields.io/badge/node-%3E%3D24-green" alt="Node 24+" />
 </p>
 
-<h4 align="center">Self-hosted MCP server. 445+ libraries. 14 tools. A dispatch tool routes "use gt mcp" to the right call.<br/>SSRF and Unicode-injection hardened. Per-tool telemetry. Atomic disk cache. No rate limits, no API keys.</h4>
+<h4 align="center">Self-hosted MCP server. 598+ libraries. 14 tools. A dispatch tool routes "use gt mcp" to the right call.<br/>Every answer is checked against your question before you get it — no generic filler.<br/>SSRF and Unicode-injection hardened. Per-tool telemetry. Atomic disk cache. No rate limits, no API keys.</h4>
 
 ---
 
@@ -31,7 +31,7 @@
 
 Your model doesn't know that React 19 killed `forwardRef`, that Next.js made `cookies()` async, or that Tailwind v4 nuked `@tailwind` directives. It writes deprecated patterns with full confidence. It hands you SQL injection dressed up as a query builder and uses `any` in TypeScript like it's a feature.
 
-**GroundTruth runs on your machine.** Fetches docs from the source — `llms.txt`, Jina Reader, GitHub — right when you ask. 445+ curated libraries, plus npm, PyPI, crates.io, and pkg.go.dev as fallback. The audit tool reads your actual files, finds issues at exact `file:line` locations, and fetches the current fix from the real spec.
+**GroundTruth runs on your machine.** Fetches docs from the source — `llms.txt`, Jina Reader, GitHub — right when you ask. 598+ curated libraries, plus npm, PyPI, crates.io, and pkg.go.dev as fallback. The audit tool reads your actual files, finds issues at exact `file:line` locations, and fetches the current fix from the real spec.
 
 ---
 
@@ -229,9 +229,25 @@ For every request, GroundTruth tries sources in order and stops at the first one
 
 ---
 
+## Evidence, not vibes
+
+The failure mode of every docs tool is the confident non-answer: you ask about row-level security, the tool hands back the Postgres landing page, and your model writes something plausible from it.
+
+GroundTruth checks the content it fetched against the question you asked before returning it. The check measures how many of your topic's terms appear, how often, and whether they show up in a heading or inside a code block. Link targets and URL query strings don't count — a 404 page whose nav links happen to contain your topic doesn't pass.
+
+Three things follow from that:
+
+- **Weak coverage triggers a second, topic-targeted fetch** rather than shipping the first page that loaded.
+- **Zero coverage returns an explicit miss.** You get the sources that were checked, an outline of what those pages *do* cover, and what to try next. Treat it as a true negative, not a failure.
+- **Every successful answer carries an `## Evidence` footer** — source URLs, fetch date, and topic-coverage stats — so you can audit where it came from.
+
+Docs vocabulary rarely matches yours, so the check is synonym-aware: an `rls` query is satisfied by a page that says "row level security", and a page found by expanding "migration" to "upgrade guide" isn't then failed for lacking the literal word.
+
+---
+
 ## Library coverage
 
-445+ curated entries with 100% best-practices and URL pattern coverage, plus automatic fallback to npm, PyPI, crates.io, and pkg.go.dev. Any public package in any major ecosystem is resolvable.
+598+ curated entries with 100% best-practices and URL pattern coverage, plus automatic fallback to npm, PyPI, crates.io, and pkg.go.dev. Any public package in any major ecosystem is resolvable.
 
 | Ecosystem | Libraries |
 |---|---|
@@ -249,7 +265,7 @@ For every request, GroundTruth tries sources in order and stops at the first one
 | Cloud | Vercel, Cloudflare Workers, AWS SDK, Firebase, Google Cloud |
 | Monitoring | Sentry, PostHog, OpenTelemetry |
 
-Full list in the [documentation](./docs/DOCUMENTATION.md).
+The full curated list is the registry source itself: [`src/sources/registry.ts`](./src/sources/registry.ts).
 
 ---
 
@@ -263,13 +279,14 @@ Context7 is solid. Here's why I reach for this instead.
 | Rate limits | None | 1,000 free/month ($10/seat for 5,000) |
 | Transport | Stdio + Streamable HTTP | Stdio + Streamable HTTP |
 | Source priority | llms.txt -> Jina -> GitHub -> npm/PyPI | Vector DB with proprietary crawl pipeline |
+| Answer verification | Evidence gate on every topic query; explicit miss when unverifiable | No |
 | Tools | 14 specialized tools | 2 tools |
 | Code audit | 107+ patterns, 18 categories, file:line, live fixes | No |
 | Freeform search | OWASP, MDN, AI docs, Google APIs, web standards | Library docs only |
 | Changelog, compat, compare, examples, migration | Yes | No |
 | MCP Resources + Prompts | 2 resources, 8 prompts | No |
 | Lockfile detection | Reads exact versions from lockfiles | No |
-| Libraries | 445+ curated + npm/PyPI/crates.io/Go fallback | Undisclosed (claims "thousands") |
+| Libraries | 598+ curated + npm/PyPI/crates.io/Go fallback | Undisclosed (claims "thousands") |
 | API key required | No | No |
 
 Context7 indexes docs into a vector database — fast lookups, but with indexing lag on new releases. GroundTruth fetches from the source at query time, prioritizes `llms.txt`, and scores content quality so your model knows when to retry.
@@ -301,7 +318,7 @@ Issues and requests: [github.com/rm-rf-prod/GroundTruth-MCP/issues](https://gith
 
 ## Active development
 
-GroundTruth is under active development. New curated registry entries, audit patterns, search topics, and features are added regularly. The registry covers 445+ libraries with 100% bestPracticesPaths and urlPatterns coverage. Automatic fallback to npm, PyPI, crates.io, and pkg.go.dev means any public package is resolvable out of the box.
+GroundTruth is under active development. New curated registry entries, audit patterns, search topics, and features are added regularly. The registry covers 598+ libraries with 100% bestPracticesPaths and urlPatterns coverage. Automatic fallback to npm, PyPI, crates.io, and pkg.go.dev means any public package is resolvable out of the box.
 
 To stay updated:
 - **Star and watch** the [GitHub repo](https://github.com/rm-rf-prod/GroundTruth-MCP) for release notifications
@@ -310,11 +327,18 @@ To stay updated:
 
 ---
 
-## Full documentation
+## Reference
 
-Tool schemas, audit pattern details, architecture, caching internals, and the complete library list:
+Every tool ships its own full schema and description — your MCP client lists them, and `gt_dispatch` explains which one it would pick for a given phrasing and why.
 
-**[Read the full docs](./docs/DOCUMENTATION.md)**
+| What | Where |
+|---|---|
+| Tool schemas and parameter docs | `tools/list` in any MCP client, or [`src/tools/`](./src/tools/) |
+| Complete library list | [`src/sources/registry.ts`](./src/sources/registry.ts) |
+| Audit rules — 107 patterns, 18 categories | [`src/sources/audit-patterns.ts`](./src/sources/audit-patterns.ts) |
+| Routing table | `npx @groundtruth-mcp/gt-mcp --routing-table` |
+| Health, telemetry, circuit-breaker state | `npx @groundtruth-mcp/gt-mcp --health`, or `/health` in HTTP mode |
+| Release history | [CHANGELOG.md](./CHANGELOG.md) |
 
 ---
 

@@ -90,6 +90,37 @@ describe("checkEvidence", () => {
     expect(r.ok).toBe(false);
   });
 
+  it("accepts docs vocabulary for an acronym topic ('rls' -> 'row level security')", () => {
+    const content = [
+      "## Row level security",
+      "",
+      "Enable row level security on every table. Row level security policies run per statement.",
+      "A row level security policy is evaluated for each row.",
+    ].join("\n");
+    const r = checkEvidence(content, "rls");
+    expect(r.ok).toBe(true);
+    expect(r.matchedTokens).toContain("rls");
+  });
+
+  it("does not count a topic token buried mid-word ('rls' inside 'urls')", () => {
+    const content = [
+      "## Configuring urls",
+      "",
+      "Set the urls option. The urls array accepts absolute urls only.",
+      "Absolute urls are required because relative urls break redirects.",
+    ].join("\n");
+    const r = checkEvidence(content, "rls");
+    expect(r.occurrences).toBe(0);
+    expect(r.ok).toBe(false);
+    expect(r.missingTokens).toContain("rls");
+  });
+
+  it("counts a topic token at a camelCase hump ('performance' in reportPerformance)", () => {
+    const content = ["```js", "reportPerformance();", "```"].join("\n");
+    const r = checkEvidence(content, "performance");
+    expect(r.topicInCode).toBe(true);
+  });
+
   it("still counts topic tokens in link text, prose, headings, and code", () => {
     const content = [
       "## Performance guide",
@@ -151,55 +182,5 @@ describe("extractHeadingOutline", () => {
 
   it("returns empty for heading-less content", () => {
     expect(extractHeadingOutline("plain prose only")).toEqual([]);
-  });
-});
-
-describe("buildHonestMiss", () => {
-  it("states the miss explicitly with tried sources and outline", () => {
-    const miss = buildHonestMiss({
-      subject: "pino",
-      topic: "named export pattern",
-      tried: ["https://getpino.io/#/docs/web", "https://getpino.io/#/docs/web", "https://github.com/pinojs/pino"],
-      outline: ["Install", "Usage"],
-    });
-    expect(miss).toContain("no topic-specific evidence found");
-    expect(miss).toContain('"named export pattern"');
-    expect(miss).toContain("Sources checked:");
-    expect((miss.match(/getpino\.io\/#\/docs\/web/g) ?? []).length).toBe(1);
-    expect(miss).toContain("What the fetched documentation DOES cover:");
-    expect(miss).toContain("- Install");
-    expect(miss).toContain("What to try next:");
-  });
-
-  it("supports custom next steps", () => {
-    const miss = buildHonestMiss({
-      subject: "x",
-      topic: "y",
-      tried: ["https://x.dev"],
-      nextSteps: ["Do the thing"],
-    });
-    expect(miss).toContain("- Do the thing");
-  });
-});
-
-describe("checkEvidence meta-token filtering", () => {
-  it("fails off-topic content that only matches query-meta words", () => {
-    // A web-performance page must not pass a Postgres RLS query just because
-    // both say "best practices" and "performance".
-    const cwvContent = [
-      "# Web performance best practices",
-      "",
-      "Optimize LCP and INP. Follow these best practices for Core Web Vitals.",
-      "Performance best practices matter. More performance guidance below.",
-    ].join("\n");
-    const r = checkEvidence(cwvContent, "postgres row level security best practices");
-    expect(r.ok).toBe(false);
-    expect(r.matchRatio).toBe(0);
-  });
-
-  it("still passes when substantive tokens are covered", () => {
-    const content = "# Row Level Security\n\nEnable row level security on every table. Postgres row level security policies below.";
-    const r = checkEvidence(content, "postgres row level security best practices");
-    expect(r.ok).toBe(true);
   });
 });

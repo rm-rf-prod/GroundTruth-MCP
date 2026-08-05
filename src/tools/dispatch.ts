@@ -23,6 +23,7 @@ import { z } from "zod";
 import { detectIntent, renderRoutingTable } from "../services/intent-router.js";
 import { withNotice, safeguardPath } from "../utils/guard.js";
 import { withTelemetry } from "../services/telemetry.js";
+import { ROUTING_RATIONALE, ROUTING_FALLBACK } from "../sources/routing-rationale.js";
 
 const InputSchema = z.object({
   query: z
@@ -109,77 +110,7 @@ export function registerDispatchTool(server: McpServer): void {
         lines.push("");
         lines.push("## Why this routing?");
 
-        switch (intent.tool) {
-          case "gt_auto_scan":
-            lines.push(
-              "Your message looks like a project-wide invocation (no specific library named). `gt_auto_scan` walks the dependency manifests in the given project path and fetches the latest best practices for every detected library in one round-trip.",
-            );
-            break;
-          case "gt_best_practices":
-            lines.push(
-              "You named a specific library, so `gt_best_practices` is the lowest-friction tool — it returns current production patterns, performance, security, and testing guidance for that one library.",
-            );
-            break;
-          case "gt_get_docs":
-            lines.push(
-              "You provided either a URL or asked for direct docs. `gt_get_docs` fetches the raw library documentation, optionally filtered by topic. It chains after `gt_resolve_library` if needed.",
-            );
-            break;
-          case "gt_audit":
-            lines.push(
-              "You asked for code-level issues. `gt_audit` scans the project source tree against 18+ issue categories (security, performance, accessibility, etc.) and returns each finding with a live, official-doc-sourced fix.",
-            );
-            break;
-          case "gt_migration":
-            lines.push(
-              "You mentioned an upgrade or migration. `gt_migration` pulls the official migration guide plus breaking-change list for the named library, scoped by version range when supplied.",
-            );
-            break;
-          case "gt_changelog":
-            lines.push(
-              "You asked for what's new / release notes. `gt_changelog` reads GitHub Releases first, then CHANGELOG.md, then the docs site for the most recent entries.",
-            );
-            break;
-          case "gt_compare":
-            lines.push(
-              "Two or more libraries detected. `gt_compare` fetches each one's docs and presents them side-by-side scoped by criteria such as performance, TypeScript support, or bundle size.",
-            );
-            break;
-          case "gt_compat":
-            lines.push(
-              "You're asking about browser / runtime compatibility. `gt_compat` merges MDN and caniuse data for the feature you named.",
-            );
-            break;
-          case "gt_examples":
-            lines.push(
-              "You want real-world code. `gt_examples` searches public GitHub for usage of the library/pattern you named and returns the highest-quality snippets.",
-            );
-            break;
-          case "gt_search":
-            lines.push(
-              "No specific library or scope detected. `gt_search` is the catch-all: any topic, any web standard, any best-practice page.",
-            );
-            break;
-          case "gt_resolve_library":
-            lines.push(
-              "Resolution-only intent detected. `gt_resolve_library` confirms the library exists and returns the canonical ID + docs URL — call `gt_best_practices` or `gt_get_docs` next.",
-            );
-            break;
-          case "gt_snippets":
-            lines.push(
-              "You asked for ranked code snippets. `gt_snippets` builds a Context7-compatible snippet index per library + version with disk caching.",
-            );
-            break;
-          case "gt_batch_resolve":
-            lines.push(
-              "Multi-library lookup detected. `gt_batch_resolve` resolves up to 20 names in a single call.",
-            );
-            break;
-          default:
-            lines.push("Routing fallback — call the recommended tool above.");
-            break;
-        }
-
+        lines.push(ROUTING_RATIONALE[intent.tool] ?? ROUTING_FALLBACK);
         lines.push("");
         lines.push("## Next step");
         lines.push(
@@ -204,3 +135,4 @@ export function registerDispatchTool(server: McpServer): void {
     },
   );
 }
+

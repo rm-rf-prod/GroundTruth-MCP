@@ -1,7 +1,25 @@
 import { describe, it, expect } from "vitest";
-import { buildServerInstructions } from "./server-instructions.js";
+import { buildServerInstructions, INSTRUCTIONS_BYTE_BUDGET } from "./server-instructions.js";
 
 describe("buildServerInstructions", () => {
+  // Claude Code truncates server instructions around 2 KB. At 5.3 KB the whole
+  // routing table fell off the end and never reached the model.
+  it("fits inside the client instruction budget", () => {
+    const bytes = Buffer.byteLength(buildServerInstructions(14), "utf8");
+    expect(bytes, `server.instructions is ${bytes}B`).toBeLessThanOrEqual(INSTRUCTIONS_BYTE_BUDGET);
+  });
+
+  it("keeps every tool name inside the budgeted window", () => {
+    const result = buildServerInstructions(14).slice(0, INSTRUCTIONS_BYTE_BUDGET);
+    for (const tool of [
+      "gt_dispatch", "gt_resolve_library", "gt_get_docs", "gt_best_practices",
+      "gt_auto_scan", "gt_search", "gt_audit", "gt_changelog", "gt_compat",
+      "gt_compare", "gt_examples", "gt_migration", "gt_batch_resolve", "gt_snippets",
+    ]) {
+      expect(result, `${tool} truncated away`).toContain(tool);
+    }
+  });
+
   it("includes '# Tools (14)' heading when called with 14", () => {
     const result = buildServerInstructions(14);
     expect(result).toContain("# Tools (14)");

@@ -38,3 +38,13 @@ docs/*.png
 
 # Internal docs — local-only (purged from public history 2026-05-31)
 docs/
+
+# Claude Code - EXCLUDE EVERYTHING
+.claude/
+.claude
+CLAUDE.md
+CLAUDE*.md
+.claudeignore
+*.claude*
+.claude/*.local.md
+.claude/*.local.json

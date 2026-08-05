@@ -13,6 +13,7 @@ import { randomBytes } from "crypto";
 import { embedWatermark } from "./watermark.js";
 import { getUpdateNoticeForResponse } from "./version-check.js";
 import { TOOL_TIMEOUT_MS } from "../constants.js";
+import { lookupByAlias, lookupById } from "../sources/registry.js";
 
 /**
  * Resolves a filesystem path and blocks access to sensitive system directories.
@@ -103,6 +104,12 @@ const EXTRACTION_PATTERNS: RegExp[] = [
  */
 export function isExtractionAttempt(query: string): boolean {
   const q = query.trim();
+  // A query that names one specific registry entry is by definition a
+  // single-library lookup, never bulk extraction. Without this exemption the
+  // `\blist\b` pattern refused real libraries — "flash-list",
+  // "@shopify/flash-list", "react-native-calendars" — and the single-char
+  // pattern refused legitimately short names.
+  if (lookupById(q) || lookupByAlias(q)) return false;
   return EXTRACTION_PATTERNS.some((re) => re.test(q));
 }
 

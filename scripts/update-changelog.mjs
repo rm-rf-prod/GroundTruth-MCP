@@ -5,6 +5,11 @@
  * Collects git commits since the previous tag, formats them as bullet points,
  * and inserts a new `## [X.Y.Z] — YYYY-MM-DD` section at the top of the file.
  *
+ * A hand-written section for the target version always wins: release notes
+ * written before the bump would otherwise be shadowed by an auto-generated
+ * duplicate, and create-release.mjs reads the FIRST matching section for the
+ * GitHub release body.
+ *
  * Called by: npm version X.Y.Z (via version lifecycle hook)
  */
 
@@ -17,6 +22,14 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 const version = process.env.npm_new_version ?? JSON.parse(readFileSync(join(root, "package.json"), "utf-8")).version;
 const today = new Date().toISOString().slice(0, 10);
+
+const changelogPath = join(root, "CHANGELOG.md");
+const existing = readFileSync(changelogPath, "utf-8");
+
+if (new RegExp(`^## \\[${version.replace(/\./g, "\\.")}\\]`, "m").test(existing)) {
+  console.log(`changelog: section for v${version} already written by hand — left untouched`);
+  process.exit(0);
+}
 
 // Get commits since the previous tag
 let commits = [];
@@ -45,9 +58,6 @@ const bulletLines = commits.length
   : "- See diff for changes.";
 
 const newSection = `## [${version}] — ${today}\n\n${bulletLines}\n\n---\n\n`;
-
-const changelogPath = join(root, "CHANGELOG.md");
-const existing = readFileSync(changelogPath, "utf-8");
 
 // Insert after the "# Changelog" header line
 const updated = existing.replace(/^(# Changelog\n+)/, `$1${newSection}`);

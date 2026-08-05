@@ -1,51 +1,11 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import { withTelemetry } from "../services/telemetry.js";
 import { fetchWithTimeout, githubAuthHeaders } from "../services/fetcher.js";
 import { docCache, diskDocCache } from "../services/cache.js";
-import { isExtractionAttempt, withNotice, EXTRACTION_REFUSAL } from "../utils/guard.js";
-import { sanitizeContent } from "../utils/sanitize.js";
-import { lookupById, lookupByAlias } from "../sources/registry.js";
-import { buildIndex } from "./snippets.js";
-import { rankSnippets, renderSnippets } from "../utils/snippet-extract.js";
-
-/**
- * GitHub code search is auth-only — without GT_GITHUB_TOKEN it always returns
- * 401. Instead of dead-ending, serve ranked code examples from the library's
- * official documentation and say so.
- */
-async function docsExamplesFallback(
-  library: string,
-  pattern: string | undefined,
-  maxResults: number,
-  reason: string,
-): Promise<{ text: string; sourceUrl: string; count: number } | null> {
-  const entry = lookupById(library) ?? lookupByAlias(library);
-  if (!entry) return null;
-  const index = await buildIndex(
-    entry.id,
-    undefined,
-    entry.docsUrl,
-    entry.llmsTxtUrl,
-    entry.llmsFullTxtUrl,
-    entry.githubUrl,
-    pattern ?? "",
-  ).catch(() => null);
-  if (!index || index.snippets.length === 0) return null;
-  const ranked = rankSnippets(index.snippets, pattern ?? "", undefined, maxResults);
-  if (ranked.length === 0) return null;
-  const text = withNotice(
-    [
-      `# Code Examples: ${library}${pattern ? ` — ${pattern}` : ""}`,
-      `> ${reason} Showing examples from the official documentation instead.`,
-      `> Source: ${index.sourceUrl}`,
-      "",
-      "---",
-      "",
-      renderSnippets(ranked),
-    ].join("\n"),
-  );
-  return { text, sourceUrl: index.sourceUrl, count: ranked.length };
-}
+import { isExtractionAttempt, EXTRACTION_REFUSAL, withToolTimeout } from "../utils/guard.js";
+import { docsFallbackResponse } from "./examples-fallback.js";
+import { renderCodeSearch, type CodeSearchItem } from "./examples-render.js";
 
 const InputSchema = z.object({
   library: z.string().min(1).max(200)
@@ -58,20 +18,20 @@ const InputSchema = z.object({
     .describe("Number of code examples to return (default: 5, max: 10)"),
 });
 
-interface CodeSearchItem {
-  name: string;
-  path: string;
-  html_url: string;
-  repository: {
-    full_name: string;
-    description?: string;
-    stargazers_count?: number;
-    html_url: string;
-  };
-  text_matches?: Array<{
-    fragment: string;
-    matches: Array<{ text: string; indices: number[] }>;
-  }>;
+/** Returned when the whole pipeline exceeds the tool timeout — an actionable
+ *  next step beats a hung call or an MCP-level timeout error. */
+const TIMEOUT_RESPONSE = {
+  content: [{ type: "text" as const, text: "Example search timed out. Retry, or call gt_get_docs with the same pattern as the topic." }],
+};
+
+function buildQuery(library: string, pattern: string | undefined, language: string | undefined): string {
+  const parts = [pattern ? `${library} ${pattern}` : `import ${library}`];
+  if (language) parts.push(`language:${language}`);
+  parts.push("-path:test -path:__test__ -path:spec -path:node_modules -path:.next");
+  // Exclude documentation/markdown files — gt_examples is for real code, not
+  // READMEs/API.md (which GitHub code search otherwise returns as top hits).
+  parts.push("-extension:md -extension:mdx -extension:markdown -extension:rst -extension:txt");
+  return parts.join(" ");
 }
 
 export function registerExamplesTool(server: McpServer): void {
@@ -93,181 +53,81 @@ Source: open-source GitHub repositories (not the library's own docs). Use this w
       },
     },
     async ({ library, pattern, language, maxResults }) => {
-      if (isExtractionAttempt(library)) {
-        return { content: [{ type: "text", text: EXTRACTION_REFUSAL }] };
-      }
-
-      const queryParts: string[] = [];
-      const searchTerm = pattern ? `${library} ${pattern}` : `import ${library}`;
-      queryParts.push(searchTerm);
-      if (language) queryParts.push(`language:${language}`);
-      queryParts.push("-path:test -path:__test__ -path:spec -path:node_modules -path:.next");
-      // Exclude documentation/markdown files — gt_examples is for real code, not
-      // READMEs/API.md (which GitHub code search otherwise returns as top hits).
-      queryParts.push("-extension:md -extension:mdx -extension:markdown -extension:rst -extension:txt");
-
-      const query = queryParts.join(" ");
-      const cacheKey = `gh-code-examples:${query}:${maxResults}`;
-
-      const memCached = docCache.get(cacheKey);
-      if (typeof memCached === "string") {
-        return { content: [{ type: "text", text: memCached }] };
-      }
-
-      const diskCached = await diskDocCache.get(cacheKey);
-      if (diskCached) {
-        docCache.set(cacheKey, diskCached);
-        return { content: [{ type: "text", text: diskCached }] };
-      }
-
-      try {
-        const searchUrl = `https://api.github.com/search/code?q=${encodeURIComponent(query)}&per_page=${maxResults}&sort=indexed`;
-        const headers = {
-          ...githubAuthHeaders(),
-          Accept: "application/vnd.github.text-match+json",
-        };
-
-        const res = await fetchWithTimeout(searchUrl, 15_000, headers);
-
-        if (!res.ok) {
-          const reason =
-            res.status === 403 || res.status === 429
-              ? "GitHub API rate limit reached (set GT_GITHUB_TOKEN for 5000 req/hr)."
-              : `GitHub code search unavailable (HTTP ${res.status} — it requires GT_GITHUB_TOKEN).`;
-          const fallback = await docsExamplesFallback(library, pattern, maxResults, reason);
-          if (fallback) {
-            return {
-              content: [{ type: "text", text: fallback.text }],
-              structuredContent: {
-                library,
-                pattern,
-                language,
-                totalCount: fallback.count,
-                source: "official-docs-fallback",
-                sourceUrl: fallback.sourceUrl,
-              },
-            };
+      return withTelemetry("gt_examples", async (ctx) => {
+        ctx.resolved = true;
+        return withToolTimeout(async () => {
+          if (isExtractionAttempt(library)) {
+            return { content: [{ type: "text", text: EXTRACTION_REFUSAL }] };
           }
-          return {
-            content: [{
-              type: "text",
-              text: `${reason} No documentation-based examples found either — try gt_snippets with a registry libraryId, or set GT_GITHUB_TOKEN.`,
-            }],
-          };
-        }
 
-        const data = await res.json() as {
-          total_count: number;
-          items: CodeSearchItem[];
-        };
+          const query = buildQuery(library, pattern, language);
+          const cacheKey = `gh-code-examples:${query}:${maxResults}`;
 
-        if (!data.items || data.items.length === 0) {
-          const fallback = await docsExamplesFallback(
-            library,
-            pattern,
-            maxResults,
-            "GitHub code search returned no results.",
-          );
-          if (fallback) {
-            return {
-              content: [{ type: "text", text: fallback.text }],
-              structuredContent: {
-                library,
-                pattern,
-                language,
-                totalCount: fallback.count,
-                source: "official-docs-fallback",
-                sourceUrl: fallback.sourceUrl,
-              },
-            };
+          const memCached = docCache.get(cacheKey);
+          if (typeof memCached === "string") {
+            return { content: [{ type: "text", text: memCached }] };
           }
-          return {
-            content: [{
-              type: "text",
-              text: `No code examples found for "${library}"${pattern ? ` with pattern "${pattern}"` : ""}. Try a different search term.`,
-            }],
-          };
-        }
+          const diskCached = await diskDocCache.get(cacheKey);
+          if (diskCached) {
+            docCache.set(cacheKey, diskCached);
+            return { content: [{ type: "text", text: diskCached }] };
+          }
 
-        const lines: string[] = [
-          `# Code Examples: ${library}${pattern ? ` — ${pattern}` : ""}`,
-          `> Found ${data.total_count} results, showing top ${data.items.length}`,
-          "",
-          "---",
-          "",
-        ];
+          const fallback = (reason: string, emptyText?: string) =>
+            docsFallbackResponse({
+              library, pattern, language, maxResults, reason,
+              ...(emptyText !== undefined ? { emptyText } : {}),
+            });
 
-        for (const item of data.items) {
-          const repo = item.repository;
-          const stars = repo.stargazers_count ?? 0;
+          // GitHub code search is authenticated-only: without a token the call
+          // is a guaranteed 401/403. Skip straight to the docs-derived path
+          // instead of spending a round trip to be told so.
+          if (!process.env.GT_GITHUB_TOKEN) {
+            return fallback("GitHub code search needs GT_GITHUB_TOKEN — showing documentation-derived examples instead.");
+          }
 
-          lines.push(`## ${repo.full_name} ${stars > 0 ? `(${stars} stars)` : ""}`);
-          lines.push(`> File: [\`${item.path}\`](${item.html_url})`);
-          if (repo.description) lines.push(`> ${repo.description}`);
-          lines.push("");
+          try {
+            const searchUrl = `https://api.github.com/search/code?q=${encodeURIComponent(query)}&per_page=${maxResults}&sort=indexed`;
+            const res = await fetchWithTimeout(searchUrl, 15_000, {
+              ...githubAuthHeaders(),
+              Accept: "application/vnd.github.text-match+json",
+            });
 
-          if (item.text_matches && item.text_matches.length > 0) {
-            for (const match of item.text_matches.slice(0, 2)) {
-              const lang = language ?? (item.name.endsWith(".py") ? "python" : "typescript");
-              lines.push("```" + lang);
-              lines.push(sanitizeContent(match.fragment));
-              lines.push("```");
-              lines.push("");
+            if (!res.ok) {
+              return fallback(
+                res.status === 403 || res.status === 429
+                  ? "GitHub API rate limit reached (set GT_GITHUB_TOKEN for 5000 req/hr)."
+                  : `GitHub code search unavailable (HTTP ${res.status} — it requires GT_GITHUB_TOKEN).`,
+              );
             }
-          }
 
-          lines.push("---");
-          lines.push("");
-        }
+            const data = await res.json() as { total_count: number; items: CodeSearchItem[] };
+            if (!data.items || data.items.length === 0) {
+              return fallback(
+                "GitHub code search returned no results.",
+                `No code examples found for "${library}"${pattern ? ` with pattern "${pattern}"` : ""}. Try a different search term.`,
+              );
+            }
 
-        const result = withNotice(lines.join("\n"));
-
-        const ttl = 60 * 60 * 1000;
-        docCache.set(cacheKey, result, ttl);
-        void diskDocCache.set(cacheKey, result, ttl);
-
-        return {
-          content: [{ type: "text", text: result }],
-          structuredContent: {
-            library,
-            pattern,
-            language,
-            totalCount: data.total_count,
-            results: data.items.map((i) => ({
-              repo: i.repository.full_name,
-              file: i.path,
-              url: i.html_url,
-              stars: i.repository.stargazers_count,
-            })),
-          },
-        };
-      } catch {
-        const fallback = await docsExamplesFallback(
-          library,
-          pattern,
-          maxResults,
-          "GitHub code search failed (network error).",
-        ).catch(() => null);
-        if (fallback) {
-          return {
-            content: [{ type: "text", text: fallback.text }],
-            structuredContent: {
+            const { text, response } = renderCodeSearch({
               library,
               pattern,
               language,
-              totalCount: fallback.count,
-              source: "official-docs-fallback",
-              sourceUrl: fallback.sourceUrl,
-            },
-          };
-        }
-        return {
-          content: [{
-            type: "text",
-            text: `Failed to search GitHub for "${library}" examples. Check network and GT_GITHUB_TOKEN.`,
-          }],
-        };
-      }
+              totalCount: data.total_count,
+              items: data.items,
+            });
+            const ttl = 60 * 60 * 1000;
+            docCache.set(cacheKey, text, ttl);
+            void diskDocCache.set(cacheKey, text, ttl);
+            return response;
+          } catch {
+            return fallback(
+              "GitHub code search failed (network error).",
+              `Failed to search GitHub for "${library}" examples. Check network and GT_GITHUB_TOKEN.`,
+            );
+          }
+        }, TIMEOUT_RESPONSE);
+      });
     },
   );
 }

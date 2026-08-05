@@ -2,7 +2,7 @@
   "name": "@groundtruth-mcp/gt-mcp",
   "mcpName": "io.github.rm-rf-prod/groundtruth",
   "version": "7.4.1",
-  "description": "Enterprise-grade MCP server for live docs, best practices, code audit. Context7 alternative — 445+ libraries, smart dispatch (use gt mcp), plain-text intent routing, telemetry, SSRF-hardened multi-source fetcher, atomic disk cache, IPv6 + Unicode-homoglyph defenses.",
+  "description": "Enterprise-grade MCP server for live docs, best practices, code audit. Context7 alternative — 598+ libraries, evidence-verified answers (never generic), smart dispatch (use gt mcp), plain-text intent routing, telemetry, SSRF-hardened multi-source fetcher, atomic disk cache, IPv6 + Unicode-homoglyph defenses.",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
@@ -71,7 +71,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",
-    "undici": "^8.3.0",
+    "undici": "^8.10.0",
     "zod": "^4.4.3"
   },
   "overrides": {
