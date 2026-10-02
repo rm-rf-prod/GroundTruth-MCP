@@ -48,3 +48,12 @@ CLAUDE*.md
 *.claude*
 .claude/*.local.md
 .claude/*.local.json
+
+# Generated and local-only files
+*.log
+*:Zone.Identifier
+.DS_Store
+.dev.vars*
+.wrangler/
+playwright-report/
+test-results/
