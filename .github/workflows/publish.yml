@@ -26,10 +26,11 @@ jobs:
         with:
           fetch-depth: 0
 
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: ".node-version"
-          cache: "npm"
+          cache: "pnpm"
           registry-url: "https://registry.npmjs.org"
 
       - name: Upgrade npm to latest (trusted publishing requires 11.5.1+)
@@ -53,16 +54,14 @@ jobs:
             echo "Manual dispatch from $GITHUB_REF_NAME — publishing package.json version $PKG_VERSION"
           fi
 
-      - run: npm ci
-      - name: Install rolldown native binding (workaround npm/cli#4828)
-        run: npm install --no-save --force @rolldown/binding-linux-x64-gnu
-      - run: npm run lint
-      - run: npm run typecheck
-      - run: npm test
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run lint
+      - run: pnpm run typecheck
+      - run: pnpm test
       # Production scope only — devDependency advisories (javascript-obfuscator
       # tree) never reach consumers of the published package and must not block
       # a release. Dev advisories stay visible in the CI and Security workflows.
-      - run: npm audit --omit=dev --audit-level=high
+      - run: pnpm audit --prod --audit-level high
 
       # Poll registry up to 90s. Local publish race window covered — if maintainer
       # publishes from CLI around the same time as the tag push, the version will

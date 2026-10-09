@@ -33,7 +33,7 @@
     "release:major": "npm run typecheck && npm run test && npm version major && npm publish --access public && mcp-publisher publish"
   },
   "engines": {
-    "node": ">=22"
+    "node": "26.x"
   },
   "keywords": [
     "mcp",
@@ -71,21 +71,19 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",
-    "undici": "^8.10.0",
-    "zod": "^4.4.3"
-  },
-  "overrides": {
-    "path-to-regexp": ">=8.4.0"
+    "undici": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@types/node": "^26.1.2",
-    "@typescript-eslint/eslint-plugin": "^8.65.0",
-    "@typescript-eslint/parser": "^8.65.0",
+    "@typescript-eslint/eslint-plugin": "catalog:",
+    "@typescript-eslint/parser": "catalog:",
     "@vitest/coverage-v8": "^4.1.0",
     "eslint": "^10.8.0",
-    "javascript-obfuscator": "^5.4.3",
-    "tsx": "^4.22.3",
+    "javascript-obfuscator": "catalog:",
+    "tsx": "catalog:",
     "typescript": "^6.0.3",
     "vitest": "^4.1.0"
-  }
+  },
+  "packageManager": "pnpm@12.10.1"
 }

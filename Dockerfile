@@ -1,17 +1,17 @@
-FROM node:24-alpine AS builder
+FROM node:26-alpine AS builder
 WORKDIR /app
-COPY package*.json ./
-RUN npm ci
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml postinstall.mjs ./
+# pnpm version comes from packageManager in package.json (shared stack).
+RUN npm install -g "$(node -p "require('./package.json').packageManager")" && pnpm install --frozen-lockfile
 COPY . .
-RUN npm run build
+RUN pnpm run build
 
-FROM node:24-alpine
+FROM node:26-alpine
 RUN addgroup -S gt && adduser -S gt -G gt
 WORKDIR /app
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/postinstall.mjs ./
-RUN npm ci --omit=dev && npm cache clean --force
+COPY --from=builder /app/package.json /app/pnpm-lock.yaml /app/pnpm-workspace.yaml /app/postinstall.mjs ./
+RUN npm install -g "$(node -p "require('./package.json').packageManager")" && pnpm install --frozen-lockfile --prod && pnpm store prune
 USER gt
 EXPOSE 3100
 HEALTHCHECK CMD wget -qO- http://localhost:3100/health || exit 1
