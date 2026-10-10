@@ -28,8 +28,11 @@ export function sweepVersions(oldVersion, newVersion) {
     `=${newVersion}`,
   ];
 
+  // Dependency manifests hold OTHER packages' versions ("ws@>=8.0.0", "file-entry-cache@8.0.0"),
+  // which the @ and = patterns would rewrite.
+  const SKIP = /(^|\/)(pnpm-lock\.yaml|pnpm-workspace\.yaml|package-lock\.json|yarn\.lock|CHANGELOG\.md)$/;
   let swept = 0;
-  for (const rel of findSourceFiles(".")) {
+  for (const rel of findSourceFiles(".").filter((f) => !SKIP.test(f))) {
     const abs = join(root, rel);
     const before = readFileSync(abs, "utf-8");
     let after = before;
