@@ -4,7 +4,7 @@
 
 GroundTruth is a Model Context Protocol (MCP) server that fetches documentation from official sources at query time. It tries llms.txt first, then Jina Reader for JS-rendered pages, then GitHub. It covers 793+ curated libraries and falls back to npm, PyPI, crates.io, and pkg.go.dev for any public package. Every topic-targeted answer is verified against the request before it is returned: when no fetched source actually covers the topic, GroundTruth says so and lists what it checked rather than substituting generic content. Unlike cloud-hosted documentation tools, GroundTruth runs on your machine. No rate limits. No API keys.
 
-v8.0.0 expands the registry to 598 libraries, repairs documentation URL joining (first-path reachability 71% to 99%), anchors evidence matching at word starts, and adds a 404 negative cache, per-host bulkheads, and full-jitter retry backoff. Earlier releases added the dispatch tool for plain-text intent routing, per-tool telemetry, an SSRF-hardened multi-source fetcher, atomic disk cache writes, and Unicode-homoglyph injection defenses.
+v8.0.1 expands the registry to 598 libraries, repairs documentation URL joining (first-path reachability 71% to 99%), anchors evidence matching at word starts, and adds a 404 negative cache, per-host bulkheads, and full-jitter retry backoff. Earlier releases added the dispatch tool for plain-text intent routing, per-tool telemetry, an SSRF-hardened multi-source fetcher, atomic disk cache writes, and Unicode-homoglyph injection defenses.
 
 ## Install
 
@@ -62,7 +62,7 @@ For Cursor, VS Code, or Claude Desktop, add to your MCP config:
 - Node.js 24 or later.
 - 793+ curated libraries, plus unlimited ecosystem fallbacks.
 - 107 code audit patterns across 18 categories.
-- 2062 tests across 267 files.
+- 2063 tests across 267 files.
 - Evidence gate on every topic-targeted response: token coverage, occurrence depth, heading and code presence. An unverifiable answer is reported as a miss, never substituted.
 - Self-hosted. No cloud dependency. No rate limits.
 - Fetches from llms.txt, Jina Reader, GitHub, npm, PyPI, crates.io, pkg.go.dev.

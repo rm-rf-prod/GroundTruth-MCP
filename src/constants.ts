@@ -1,7 +1,7 @@
 import { config } from "./config.js";
 
 export const SERVER_NAME = "GroundTruth";
-export const SERVER_VERSION = "8.0.0";
+export const SERVER_VERSION = "8.0.1";
 
 // Entry count of src/sources/registry.ts, the full registry that ships; rewritten
 // by scripts/lib/readme-stats.mjs (npm run update-stats), never edited by hand.
