@@ -43,7 +43,7 @@ describe("DiskCache", () => {
     delete process.env.GT_CACHE_DIR;
   });
 
-  it("prune() deletes corrupt (malformed-but-parseable) cache files (TS-011)", async () => {
+  it("get() deletes corrupt (malformed-but-parseable) cache files (TS-011)", async () => {
     const cache = await makeDiskCache(tmpDir);
     const { createHash } = await import("crypto");
 
@@ -59,8 +59,8 @@ describe("DiskCache", () => {
     const corrupt2Path = join(tmpDir, `${corrupt2Hash}.json`);
     await writeFile(corrupt2Path, JSON.stringify({ data: "x", expiresAt: "not-a-number" }), "utf-8");
 
-    const removed = await cache.prune(1000);
-    expect(removed).toBe(2);
+    expect(await cache.get(corruptKey)).toBeUndefined();
+    expect(await cache.get(corrupt2Key)).toBeUndefined();
     // Both corrupt files must be deleted
     await expect(import("fs/promises").then((fs) => fs.access(corruptPath))).rejects.toThrow();
     await expect(import("fs/promises").then((fs) => fs.access(corrupt2Path))).rejects.toThrow();

@@ -93,12 +93,9 @@ export function renderSnippetResult(params: {
     language ? `> Language: ${language}` : "",
     `> Source: ${sourceUrl}`,
     `> Indexed: ${builtAt}${fromCache ? " (cache)" : ""}`,
-    "",
-    "---",
-    "",
   ]
     .filter(Boolean)
-    .join("\n");
+    .join("\n") + "\n\n---\n\n";
 
   return {
     content: [{ type: "text", text: withNotice(header + renderSnippets(snippets)) }],

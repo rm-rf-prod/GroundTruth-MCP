@@ -6,7 +6,7 @@ export { LRUCache } from "./lru-cache.js";
 export { DiskCache } from "./disk-cache.js";
 
 // Shared cache instances
-export const docCache = new LRUCache<string>(200);
+export const docCache = new LRUCache<string>(200, 32_000_000);
 export const resolveCache = new LRUCache<LibraryMatch>(500);
 export const llmsProbeCache = new LRUCache<{ llmsTxtUrl?: string; llmsFullTxtUrl?: string }>(500);
 

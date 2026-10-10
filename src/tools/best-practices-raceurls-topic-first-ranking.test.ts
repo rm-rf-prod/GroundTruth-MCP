@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/server";
 import { registerBestPracticesTool, raceUrls } from "./best-practices.js";
 
 // ── Dependency mocks ────────────────────────────────────────────────────────
@@ -147,7 +147,9 @@ describe("raceUrls topic-first ranking", () => {
     );
     expect(hit).not.toBeNull();
     expect(hit!.url).toBe("https://vitest.dev/guide/mocking");
-    expect(hit!.extraUrls).toContain("https://vitest.dev/guide/snapshot");
+    // Zero topic score is below half the best page's score: filler, not a second source.
+    expect(hit!.extraUrls).not.toContain("https://vitest.dev/guide/snapshot");
+    expect(hit!.content).not.toContain("Snapshot section");
   });
 
   it("falls back to quality ranking when no topic is given", async () => {

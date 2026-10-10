@@ -1,5 +1,5 @@
 import { lookupById, lookupByAlias } from "../../sources/registry.js";
-import { resolveDynamic, probeLlmsTxt } from "../resolve.js";
+import { resolveDynamic } from "../resolve.js";
 
 export interface BestPracticesTarget {
   docsUrl: string;
@@ -8,6 +8,7 @@ export interface BestPracticesTarget {
   githubUrl: string | undefined;
   displayName: string;
   bestPracticesPaths: string[] | undefined;
+  urlPatterns: string[] | undefined;
   resolvedId: string;
 }
 
@@ -20,21 +21,16 @@ export async function resolveBestPracticesTarget(libraryId: string): Promise<Bes
   const entry = lookupById(libraryId) ?? lookupByAlias(libraryId);
 
   if (entry) {
-    let llmsTxtUrl = entry.llmsTxtUrl;
-    let llmsFullTxtUrl = entry.llmsFullTxtUrl;
-    // Lazy llms.txt discovery for registry entries missing the URL
-    if (!llmsTxtUrl && !llmsFullTxtUrl) {
-      const probed = await probeLlmsTxt(entry.docsUrl);
-      if (probed.llmsTxtUrl) llmsTxtUrl = probed.llmsTxtUrl;
-      if (probed.llmsFullTxtUrl) llmsFullTxtUrl = probed.llmsFullTxtUrl;
-    }
+    // Entries without llms URLs are not probed here: fetchDocs discovers llms
+    // files in parallel with the page fetch, where a probe first was serial.
     return {
       docsUrl: entry.docsUrl,
-      llmsTxtUrl,
-      llmsFullTxtUrl,
+      llmsTxtUrl: entry.llmsTxtUrl,
+      llmsFullTxtUrl: entry.llmsFullTxtUrl,
       githubUrl: entry.githubUrl,
       displayName: entry.name,
       bestPracticesPaths: entry.bestPracticesPaths,
+      urlPatterns: entry.urlPatterns,
       resolvedId: entry.id,
     };
   }
@@ -48,6 +44,7 @@ export async function resolveBestPracticesTarget(libraryId: string): Promise<Bes
     githubUrl: resolved.githubUrl,
     displayName: resolved.displayName,
     bestPracticesPaths: undefined,
+    urlPatterns: undefined,
     resolvedId: libraryId,
   };
 }

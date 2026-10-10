@@ -1,11 +1,13 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { normalizeQueryYear } from "../utils/extract.js";
 import { checkEvidence, buildEvidenceBlock } from "../utils/evidence.js";
-import { DEFAULT_TOKEN_LIMIT, MAX_TOKEN_LIMIT } from "../constants.js";
+import { CACHE_TTLS, DEFAULT_TOKEN_LIMIT, MAX_TOKEN_LIMIT } from "../constants.js";
 import { withTelemetry } from "../services/telemetry.js";
+import { docCache, diskDocCache } from "../services/cache.js";
+import { hashContent } from "../services/fetcher.js";
 import { collectSearchSources } from "../services/search/collect.js";
-import { addWebSearchSources } from "../services/search/fetch-topic.js";
+import { addWebSearchSources, type SearchSource } from "../services/search/fetch-topic.js";
 
 // Re-exported so callers that reason about search sourcing (gt_compat, gt_migration)
 // and the existing test mocks keep a single stable import path.
@@ -18,16 +20,13 @@ const InputSchema = z.object({
     .string()
     .min(1)
     .max(500)
-    .describe(
-      "What you want to know. Can be anything: 'latest React best practices', 'WCAG 2.2 focus indicators', 'OWASP SQL injection prevention', 'CSS container queries browser support', 'JWT security', 'HTTP/3 vs HTTP/2', 'Web Workers API'. No library name required.",
-    ),
+    .describe("Topic, e.g. 'WCAG 2.2 focus indicators'"),
   tokens: z
     .number()
     .int()
     .min(1000)
     .max(MAX_TOKEN_LIMIT)
-    .default(DEFAULT_TOKEN_LIMIT)
-    .describe(`Max tokens to return (default: ${DEFAULT_TOKEN_LIMIT}, max: ${MAX_TOKEN_LIMIT})`),
+    .default(DEFAULT_TOKEN_LIMIT),
 });
 
 const NO_RESULTS_HELP = [
@@ -38,37 +37,44 @@ const NO_RESULTS_HELP = [
   "- Try gt_get_docs with a direct URL as the libraryId",
 ].join("\n");
 
+const joined = (results: SearchSource[]): string => results.map((r) => r.content).join("\n\n");
+
+/**
+ * Sources for a query, remembered under its normalized form so a repeat skips
+ * every MDN, web-search and page round trip. A miss is not remembered: a
+ * transient outage must not pin "no results".
+ */
+async function sourcesFor(query: string, tokens: number): Promise<SearchSource[]> {
+  const key = `search-final:${hashContent(query.toLowerCase().replace(/\s+/g, " ").trim())}:${tokens}`;
+  const cached = docCache.get(key) ?? (await diskDocCache.get(key));
+  if (typeof cached === "string") {
+    try {
+      return JSON.parse(cached) as SearchSource[];
+    } catch {
+      // unreadable entry: source again
+    }
+  }
+
+  const { results, webSearched } = await collectSearchSources(query, tokens);
+  // Evidence-driven escalation — sources exist but combined coverage is weak:
+  // add authoritative web sources once instead of shipping a thin answer.
+  if (results.length > 0 && results.length < 3 && !webSearched && !checkEvidence(joined(results), query).ok) {
+    await addWebSearchSources(query, results, Math.floor(tokens / 3), 2);
+  }
+  if (results.length > 0) {
+    const json = JSON.stringify(results);
+    docCache.set(key, json, CACHE_TTLS.SEARCH_RESULT);
+    void diskDocCache.set(key, json, CACHE_TTLS.SEARCH_RESULT);
+  }
+  return results;
+}
+
 export function registerSearchTool(server: McpServer): void {
-  const currentYear = new Date().getFullYear();
   server.registerTool(
     "gt_search",
     {
       title: "Search Any Topic",
-      description: `Search for latest best practices, docs, or guidance on ANY topic — no library name needed.
-
-Current year: ${currentYear}. All searches are normalized to fetch ${currentYear} content.
-
-Works for:
-- Library best practices: "latest React patterns", "Next.js server actions"
-- Web standards: "CSS container queries", "WebSocket API", "Fetch API"
-- Security: "OWASP SQL injection prevention", "JWT security best practices", "CSP headers"
-- Accessibility: "WCAG 2.2 focus indicators", "ARIA roles reference"
-- Performance: "Core Web Vitals optimization", "LCP improvements"
-- APIs & protocols: "REST API design", "HTTP/3 vs HTTP/2", "OpenAPI 3.1"
-- Auth standards: "OAuth 2.1 PKCE", "WebAuthn passkeys", "OIDC"
-- Infrastructure: "Docker best practices", "GitHub Actions CI/CD"
-- Anything else: just ask
-
-If the query names ONE specific library, prefer gt_resolve_library + gt_get_docs/gt_best_practices for version-accurate, registry-backed results — use gt_search for standards, cross-cutting topics, or when no library applies. For browser/runtime feature support use gt_compat; for GitHub code examples use gt_examples.
-
-Say "use gt" or "gt search [topic]" to invoke.
-
-Examples:
-- gt_search({ query: "latest best practices" }) — auto-detects from project context
-- gt_search({ query: "WCAG 2.2 keyboard navigation" })
-- gt_search({ query: "SQL injection prevention ${currentYear}" })
-- gt_search({ query: "CSS container queries browser support" })
-- gt_search({ query: "React Server Components patterns" })`,
+      description: "Official docs and standards for a topic with no single library: web APIs, CSS, security, accessibility, protocols, infrastructure. One library named: gt_best_practices or gt_get_docs. Browser support: gt_compat. Real-world code: gt_examples.",
       inputSchema: InputSchema,
       annotations: {
         readOnlyHint: true,
@@ -80,7 +86,7 @@ Examples:
     async ({ query: rawQuery, tokens }) => {
       return withTelemetry("gt_search", async (ctx) => {
         const query = normalizeQueryYear(rawQuery);
-        const { results, webSearched } = await collectSearchSources(query, tokens);
+        const results = await sourcesFor(query, tokens);
 
         if (results.length === 0) {
           return {
@@ -88,13 +94,7 @@ Examples:
           };
         }
 
-        // Evidence-driven escalation — sources exist but combined coverage is weak:
-        // add authoritative web sources once instead of shipping a thin answer.
-        let combinedCheck = checkEvidence(results.map((r) => r.content).join("\n\n"), query);
-        if (!combinedCheck.ok && !webSearched && results.length < 3) {
-          await addWebSearchSources(query, results, Math.floor(tokens / 3), 2);
-          combinedCheck = checkEvidence(results.map((r) => r.content).join("\n\n"), query);
-        }
+        const combinedCheck = checkEvidence(joined(results), query);
 
         const header = [
           `# Search: ${query}`,

@@ -57,6 +57,7 @@ vi.mock("./cache.js", () => {
       set: async (k: string, v: string, _ttl?: number) => { diskStore.set(k, v); },
       clear: () => { diskStore.clear(); },
     },
+    llmsProbeCache: { get: () => undefined, set: () => {}, clear: () => {} },
     resolveCache: {
       get: () => undefined,
       set: () => {},

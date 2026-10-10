@@ -1,17 +1,29 @@
-import { fetchWithTimeout } from "../fetcher.js";
+import { fetchWithTimeout, hashContent } from "../fetcher.js";
+import { CACHE_TTLS } from "../../constants.js";
 import { extractDDGUrls, extractUrlsFromHtml, scoreDocUrl } from "./url-rank.js";
+import { remembered } from "./remember.js";
+import { discardBody } from "../http/body.js";
+
+/** Repeats of a query reuse the URL lists: every MDN API and search-engine round trip was re-run. */
+export const searchMDN = (query: string): Promise<Array<{ url: string; title: string }>> =>
+  remembered(`mdn-search:${hashContent(query)}`, CACHE_TTLS.WEB_SEARCH, () => mdnSearch(query));
+export const webSearch = (query: string): Promise<string[]> =>
+  remembered(`web-search:${hashContent(query)}`, CACHE_TTLS.WEB_SEARCH, () => multiEngineSearch(query));
 
 /**
  * Search MDN Web Docs via their free JSON API (no auth, no rate limit issues).
  * Returns doc page URLs sorted by relevance. Ideal for web standards, CSS, HTML, JS, HTTP.
  */
-export async function searchMDN(query: string): Promise<Array<{ url: string; title: string }>> {
+async function mdnSearch(query: string): Promise<Array<{ url: string; title: string }>> {
   try {
     const res = await fetchWithTimeout(
-      `https://developer.mozilla.org/api/v1/search?q=${encodeURIComponent(query)}&locale=en-US&size=5`,
+      `https://developer.mozilla.org/api/v1/search?q=${encodeURIComponent(query)}&locale=en-US&size=10`,
       8000,
     );
-    if (!res.ok) return [];
+    if (!res.ok) {
+      discardBody(res);
+      return [];
+    }
     const data = await res.json() as { documents?: Array<{ mdn_url?: string; title?: string; summary?: string }> };
     if (!Array.isArray(data?.documents)) return [];
     return data.documents
@@ -35,7 +47,10 @@ export async function searchDDGInstant(query: string): Promise<string[]> {
       `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`,
       8000,
     );
-    if (!res.ok) return [];
+    if (!res.ok) {
+      discardBody(res);
+      return [];
+    }
     const data = await res.json() as {
       AbstractURL?: string;
       RelatedTopics?: Array<{ FirstURL?: string; Text?: string }>;
@@ -79,7 +94,10 @@ async function searchSearXNG(query: string): Promise<string[]> {
         `${instance}/search?q=${encodeURIComponent(query)}&format=json&categories=general&language=en`,
         8000,
       );
-      if (!res.ok) continue;
+      if (!res.ok) {
+        discardBody(res);
+        continue;
+      }
       const data = await res.json() as { results?: Array<{ url?: string; title?: string }> };
       if (!Array.isArray(data?.results) || data.results.length === 0) continue;
       return data.results
@@ -91,6 +109,14 @@ async function searchSearXNG(query: string): Promise<string[]> {
     }
   }
   return [];
+}
+
+/** A search engine's HTML result page; null, with the body discarded, when it answered non-ok. */
+async function fetchHtml(url: string): Promise<string | null> {
+  const res = await fetchWithTimeout(url, 10_000, { Accept: "text/html", "User-Agent": BROWSER_UA });
+  if (res.ok) return res.text();
+  discardBody(res);
+  return null;
 }
 
 /**
@@ -105,20 +131,15 @@ async function searchSearXNG(query: string): Promise<string[]> {
  * - Bing returns Cloudflare PoW challenges for server-side requests
  * - Brave uses SvelteKit CSR — no results in SSR HTML
  */
-export async function webSearch(query: string): Promise<string[]> {
+async function multiEngineSearch(query: string): Promise<string[]> {
   const docsHint = "official docs documentation guide reference";
   const searchQuery = `${query} ${docsHint}`;
   const encoded = encodeURIComponent(searchQuery);
 
   // 1. DuckDuckGo HTML — uddg= parameter extraction (stable 4+ years)
   try {
-    const res = await fetchWithTimeout(
-      `https://html.duckduckgo.com/html/?q=${encoded}`,
-      10_000,
-      { Accept: "text/html", "User-Agent": BROWSER_UA },
-    );
-    if (res.ok) {
-      const html = await res.text();
+    const html = await fetchHtml(`https://html.duckduckgo.com/html/?q=${encoded}`);
+    if (html !== null) {
       const urls = extractDDGUrls(html);
       if (urls.length > 0) {
         return urls
@@ -134,13 +155,8 @@ export async function webSearch(query: string): Promise<string[]> {
 
   // 2. DuckDuckGo Lite — even simpler HTML, same uddg= pattern
   try {
-    const res = await fetchWithTimeout(
-      `https://lite.duckduckgo.com/lite/?q=${encoded}`,
-      10_000,
-      { Accept: "text/html", "User-Agent": BROWSER_UA },
-    );
-    if (res.ok) {
-      const html = await res.text();
+    const html = await fetchHtml(`https://lite.duckduckgo.com/lite/?q=${encoded}`);
+    if (html !== null) {
       const urls = extractDDGUrls(html);
       if (urls.length > 0) {
         return urls
@@ -164,13 +180,8 @@ export async function webSearch(query: string): Promise<string[]> {
 
   // 4. Mojeek — independent search engine, direct URLs (no redirect wrappers)
   try {
-    const res = await fetchWithTimeout(
-      `https://www.mojeek.com/search?q=${encoded}`,
-      10_000,
-      { Accept: "text/html", "User-Agent": BROWSER_UA },
-    );
-    if (res.ok) {
-      const html = await res.text();
+    const html = await fetchHtml(`https://www.mojeek.com/search?q=${encoded}`);
+    if (html !== null) {
       // Mojeek uses direct hrefs — no redirect wrapping
       const urls = extractUrlsFromHtml(html);
       if (urls.length > 0) {

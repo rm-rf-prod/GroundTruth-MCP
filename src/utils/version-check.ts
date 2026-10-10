@@ -1,4 +1,5 @@
 import { SERVER_VERSION, NPM_REGISTRY_URL, FETCH_TIMEOUT_MS } from "../constants.js";
+import { discardBody } from "../services/http/body.js";
 
 let cachedLatest: { version: string; checkedAt: number } | null = null;
 const CHECK_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
@@ -8,15 +9,15 @@ export async function getLatestVersion(): Promise<string | null> {
     return cachedLatest.version;
   }
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), Math.min(5_000, FETCH_TIMEOUT_MS));
-    const res = await fetch(`${NPM_REGISTRY_URL}/@groundtruth-mcp/gt-mcp/latest`, {
-      signal: controller.signal,
-      redirect: "manual",
-      headers: { Accept: "application/json" },
+    // Lazy: request.js pulls in the cache and sanitizer, and imports guard.ts, which imports this file.
+    const { fetchWithTimeout } = await import("../services/http/request.js");
+    const res = await fetchWithTimeout(`${NPM_REGISTRY_URL}/@groundtruth-mcp/gt-mcp/latest`, Math.min(5_000, FETCH_TIMEOUT_MS), {
+      Accept: "application/json",
     });
-    clearTimeout(timeout);
-    if (!res.ok) return null;
+    if (!res.ok) {
+      discardBody(res);
+      return null;
+    }
     const data = (await res.json()) as { version?: string };
     if (typeof data.version === "string" && /^\d+\.\d+\.\d+/.test(data.version)) {
       cachedLatest = { version: data.version, checkedAt: Date.now() };

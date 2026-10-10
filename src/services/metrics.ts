@@ -1,30 +1,42 @@
+import { SERVER_VERSION } from "../constants.js";
+
 interface ToolMetrics {
   invocations: number;
   totalMs: number;
   errors: number;
+  /** Calls that returned without throwing but delivered no content (soft failures). */
+  unresolved: number;
   cacheHits: number;
   cacheMisses: number;
   latencies: number[];
+  /** Cumulative counts per DURATION_BUCKETS_S entry, Prometheus-style. */
+  buckets: number[];
 }
 
 const RING_SIZE = 100;
+const DURATION_BUCKETS_S = [0.01, 0.05, 0.1, 0.5, 1, 5, 15, 30, 60];
 const metricsStore = new Map<string, ToolMetrics>();
 const startTime = Date.now();
 
 function getOrCreate(tool: string): ToolMetrics {
   let m = metricsStore.get(tool);
   if (!m) {
-    m = { invocations: 0, totalMs: 0, errors: 0, cacheHits: 0, cacheMisses: 0, latencies: [] };
+    m = { invocations: 0, totalMs: 0, errors: 0, unresolved: 0, cacheHits: 0, cacheMisses: 0, latencies: [], buckets: DURATION_BUCKETS_S.map(() => 0) };
     metricsStore.set(tool, m);
   }
   return m;
 }
 
-export function recordToolCall(tool: string, durationMs: number, cacheHit: boolean, error: boolean): void {
+export function recordToolCall(tool: string, durationMs: number, cacheHit: boolean, error: boolean, resolved = true): void {
   const m = getOrCreate(tool);
   m.invocations++;
   m.totalMs += durationMs;
   if (error) m.errors++;
+  else if (!resolved) m.unresolved++;
+  const seconds = durationMs / 1000;
+  DURATION_BUCKETS_S.forEach((le, i) => {
+    if (seconds <= le) m.buckets[i] = (m.buckets[i] ?? 0) + 1;
+  });
   if (cacheHit) m.cacheHits++;
   else m.cacheMisses++;
   m.latencies.push(durationMs);
@@ -83,6 +95,25 @@ export function formatPrometheus(): string {
     lines.push(`gt_tool_errors_total{tool="${tool}"} ${metricsStore.get(tool)?.errors ?? 0}`);
   }
 
+  lines.push("# HELP gt_tool_unresolved_total Calls that returned without error but delivered no content");
+  lines.push("# TYPE gt_tool_unresolved_total counter");
+  for (const [tool, m] of metricsStore) {
+    lines.push(`gt_tool_unresolved_total{tool="${tool}"} ${m.unresolved}`);
+  }
+
+  // The p50/p95 gauges below cover only the last RING_SIZE calls per replica; the
+  // histogram aggregates across replicas and time windows (histogram_quantile).
+  lines.push("# HELP gt_tool_duration_seconds Tool call duration in seconds");
+  lines.push("# TYPE gt_tool_duration_seconds histogram");
+  for (const [tool, m] of metricsStore) {
+    DURATION_BUCKETS_S.forEach((le, i) => {
+      lines.push(`gt_tool_duration_seconds_bucket{tool="${tool}",le="${le}"} ${m.buckets[i]}`);
+    });
+    lines.push(`gt_tool_duration_seconds_bucket{tool="${tool}",le="+Inf"} ${m.invocations}`);
+    lines.push(`gt_tool_duration_seconds_sum{tool="${tool}"} ${m.totalMs / 1000}`);
+    lines.push(`gt_tool_duration_seconds_count{tool="${tool}"} ${m.invocations}`);
+  }
+
   lines.push("# HELP gt_tool_latency_p50_ms Median latency per tool");
   lines.push("# TYPE gt_tool_latency_p50_ms gauge");
   for (const [tool, m] of Object.entries(summary)) {
@@ -104,6 +135,10 @@ export function formatPrometheus(): string {
   lines.push(`# HELP gt_uptime_seconds Server uptime in seconds`);
   lines.push(`# TYPE gt_uptime_seconds gauge`);
   lines.push(`gt_uptime_seconds ${getUptimeSeconds()}`);
+
+  lines.push("# HELP gt_build_info Server build information");
+  lines.push("# TYPE gt_build_info gauge");
+  lines.push(`gt_build_info{version="${SERVER_VERSION}"} 1`);
 
   return lines.join("\n") + "\n";
 }

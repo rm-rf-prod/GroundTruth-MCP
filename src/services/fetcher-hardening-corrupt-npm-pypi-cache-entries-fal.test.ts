@@ -57,6 +57,7 @@ vi.mock("./cache.js", () => {
       set: async (k: string, v: string, _ttl?: number) => { diskStore.set(k, v); },
       clear: () => { diskStore.clear(); },
     },
+    llmsProbeCache: { get: () => undefined, set: () => {}, clear: () => {} },
     resolveCache: {
       get: () => undefined,
       set: () => {},
@@ -156,6 +157,8 @@ describe("HARDENING: fetchDocs cache hit reports the original sourceType", () =>
     mockFetch.mockImplementation((url: RequestInfo | URL) => {
       const u = url.toString();
       if (u.includes("r.jina.ai")) return Promise.resolve(makeRes(JINA_LONG + "cachehit"));
+      // Bot-blocked direct fetch (not a 404): Jina is the only way in.
+      if (u === "https://example.com/jina-sourcetype-cache") return Promise.resolve(makeRes("", 403));
       return Promise.resolve(makeRes("", 404));
     });
     const first = await fetchDocs("https://example.com/jina-sourcetype-cache");

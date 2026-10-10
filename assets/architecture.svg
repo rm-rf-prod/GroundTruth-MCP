@@ -1,0 +1,117 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="architecture-title architecture-desc">
+<title id="architecture-title">GroundTruth request flow</title>
+<desc id="architecture-desc">01 Client (any MCP agent over stdio or HTTP, or the gt-mcp CLI) calls one of 14 tools. 03 Resolve maps the name through the registry of 793 libraries, npm, PyPI, crates.io or Go modules. 04 Fetch chain tries llms.txt, Markdown negotiation, HTML to Markdown, GitHub docs, Reader fallback; the first good hit wins, with a memory LRU and disk cache beside it. 05 Sanitize filters prompt injection, blocks SSRF and strips boilerplate. 06 BM25 ranks sections against the topic within a token budget. 07 Evidence gate requires the topic terms in the source text or reports an honest miss. 08 The answer returns to the client with ranked excerpts, sources, fetch date and topic coverage.</desc>
+<defs>
+<style>
+text { font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Ubuntu Sans', 'Helvetica Neue', Ubuntu, Arial, sans-serif; }
+.m { font-family: 'JetBrains Mono', 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Ubuntu Sans Mono', 'Ubuntu Mono', 'DejaVu Sans Mono', monospace; }
+.t { font-variant-numeric: tabular-nums; }
+</style>
+<marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto"><path d="M0,1 L9,5 L0,9 Z" fill="#66736e"/></marker>
+<marker id="ahs" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,1 L9,5 L0,9 Z" fill="#66736e"/></marker>
+<marker id="aht" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto"><path d="M0,1 L9,5 L0,9 Z" fill="#00d4aa"/></marker>
+<filter id="glow" x="-100%" y="-100%" width="300%" height="300%">
+<feGaussianBlur in="SourceGraphic" stdDeviation="6" result="b"/>
+<feComponentTransfer in="b" result="g"><feFuncA type="linear" slope="0.9"/></feComponentTransfer>
+<feMerge><feMergeNode in="g"/><feMergeNode in="SourceGraphic"/></feMerge>
+</filter>
+</defs>
+<rect width="1600" height="900" fill="#0a0d0c"/>
+<text x="72" y="104" font-size="36" font-weight="600" fill="#f1f5f3">How a request flows</text>
+<text x="72" y="144" font-size="21" fill="#a9b5b0">Every answer is fetched from the official source at request time, then cleaned, ranked and checked.</text>
+<rect x="72.5" y="214.5" width="215" height="199" rx="14" fill="#111715" stroke="#2b3833" stroke-width="1"/>
+<text x="96" y="244" font-size="16" fill="#808d88" class="m">01</text>
+<text x="96" y="274" font-size="25" font-weight="600" fill="#f1f5f3">Client</text>
+<text x="96" y="318" font-size="21" fill="#a9b5b0">Any MCP agent</text>
+<text x="96" y="351" font-size="21" fill="#a9b5b0">stdio or HTTP</text>
+<text x="96" y="384" font-size="21" fill="#a9b5b0">gt-mcp CLI</text>
+<rect x="324.5" y="214.5" width="347" height="331" rx="14" fill="#111715" stroke="#2b3833" stroke-width="1"/>
+<text x="348" y="244" font-size="16" fill="#808d88" class="m">02</text>
+<text x="348" y="274" font-size="25" font-weight="600" fill="#f1f5f3">14 tools</text>
+<text x="648" y="244" font-size="16" fill="#808d88" text-anchor="end" class="m">gt_*</text>
+<text x="348" y="318" font-size="17" fill="#a9b5b0" class="m">audit</text>
+<text x="348" y="351" font-size="17" fill="#a9b5b0" class="m">auto_scan</text>
+<text x="348" y="384" font-size="17" fill="#a9b5b0" class="m">batch_resolve</text>
+<text x="348" y="417" font-size="17" fill="#a9b5b0" class="m">best_practices</text>
+<text x="348" y="450" font-size="17" fill="#a9b5b0" class="m">changelog</text>
+<text x="348" y="483" font-size="17" fill="#a9b5b0" class="m">compare</text>
+<text x="348" y="516" font-size="17" fill="#a9b5b0" class="m">compat</text>
+<text x="514" y="318" font-size="17" fill="#a9b5b0" class="m">dispatch</text>
+<text x="514" y="351" font-size="17" fill="#a9b5b0" class="m">examples</text>
+<text x="514" y="384" font-size="17" fill="#a9b5b0" class="m">get_docs</text>
+<text x="514" y="417" font-size="17" fill="#a9b5b0" class="m">migration</text>
+<text x="514" y="450" font-size="17" fill="#a9b5b0" class="m">resolve_library</text>
+<text x="514" y="483" font-size="17" fill="#a9b5b0" class="m">search</text>
+<text x="514" y="516" font-size="17" fill="#a9b5b0" class="m">snippets</text>
+<rect x="708.5" y="214.5" width="231" height="273" rx="14" fill="#111715" stroke="#2b3833" stroke-width="1"/>
+<text x="732" y="244" font-size="16" fill="#808d88" class="m">03</text>
+<text x="732" y="274" font-size="25" font-weight="600" fill="#f1f5f3">Resolve</text>
+<text x="732" y="318" font-size="21" fill="#f1f5f3">Registry</text>
+<text x="916" y="318" font-size="18" fill="#00d4aa" text-anchor="end" class="m">793</text>
+<text x="732" y="353" font-size="21" fill="#a9b5b0">npm</text>
+<text x="732" y="388" font-size="21" fill="#a9b5b0">PyPI</text>
+<text x="732" y="423" font-size="21" fill="#a9b5b0">crates.io</text>
+<text x="732" y="458" font-size="21" fill="#a9b5b0">Go modules</text>
+<rect x="976.5" y="214.5" width="339" height="301" rx="14" fill="#111715" stroke="#2b3833" stroke-width="1"/>
+<text x="1000" y="244" font-size="16" fill="#808d88" class="m">04</text>
+<text x="1000" y="274" font-size="25" font-weight="600" fill="#f1f5f3">Fetch chain</text>
+<text x="1292" y="244" font-size="16" fill="#808d88" text-anchor="end" class="m">first good hit wins</text>
+<line x1="1012" y1="312" x2="1012" y2="480" stroke="#2b3833"/>
+<circle cx="1012" cy="312" r="11" fill="#161e1b" stroke="#2b3833"/>
+<text x="1012" y="317" font-size="13" fill="#a9b5b0" text-anchor="middle" class="m">1</text>
+<text x="1038" y="318" font-size="21" fill="#a9b5b0">llms.txt</text>
+<circle cx="1012" cy="354" r="11" fill="#161e1b" stroke="#2b3833"/>
+<text x="1012" y="359" font-size="13" fill="#a9b5b0" text-anchor="middle" class="m">2</text>
+<text x="1038" y="360" font-size="21" fill="#a9b5b0">Markdown negotiation</text>
+<circle cx="1012" cy="396" r="11" fill="#161e1b" stroke="#2b3833"/>
+<text x="1012" y="401" font-size="13" fill="#a9b5b0" text-anchor="middle" class="m">3</text>
+<text x="1038" y="402" font-size="21" fill="#a9b5b0">HTML to Markdown</text>
+<circle cx="1012" cy="438" r="11" fill="#161e1b" stroke="#2b3833"/>
+<text x="1012" y="443" font-size="13" fill="#a9b5b0" text-anchor="middle" class="m">4</text>
+<text x="1038" y="444" font-size="21" fill="#a9b5b0">GitHub docs</text>
+<circle cx="1012" cy="480" r="11" fill="#161e1b" stroke="#2b3833"/>
+<text x="1012" y="485" font-size="13" fill="#a9b5b0" text-anchor="middle" class="m">5</text>
+<text x="1038" y="486" font-size="21" fill="#a9b5b0">Reader fallback</text>
+<rect x="1352.5" y="266.5" width="171" height="198" rx="14" fill="#111715" stroke="#2b3833" stroke-width="1"/>
+<text x="1376" y="326" font-size="25" font-weight="600" fill="#f1f5f3">Cache</text>
+<text x="1376" y="296" font-size="16" fill="#808d88" class="m">checked first</text>
+<text x="1376" y="370" font-size="21" fill="#a9b5b0">Memory LRU</text>
+<text x="1376" y="403" font-size="21" fill="#a9b5b0">Disk</text>
+<text x="1376" y="433" font-size="15" fill="#808d88" class="m">~/.gt-mcp-cache</text>
+<path d="M1320,365.5 H1348" stroke="#66736e" stroke-width="1.5" marker-start="url(#ahs)" marker-end="url(#ah)"/>
+<path d="M292,266 L318,266" stroke="#66736e" stroke-width="1.5" fill="none" marker-end="url(#ah)"/>
+<path d="M676,266 L702,266" stroke="#66736e" stroke-width="1.5" fill="none" marker-end="url(#ah)"/>
+<path d="M944,266 L970,266" stroke="#66736e" stroke-width="1.5" fill="none" marker-end="url(#ah)"/>
+<path d="M1146,520 L1146,604" stroke="#66736e" stroke-width="1.5" fill="none" marker-end="url(#ah)"/>
+<rect x="976.5" y="610.5" width="339" height="199" rx="14" fill="#111715" stroke="#2b3833" stroke-width="1"/>
+<text x="1000" y="640" font-size="16" fill="#808d88" class="m">05</text>
+<text x="1000" y="670" font-size="25" font-weight="600" fill="#f1f5f3">Sanitize</text>
+<text x="1000" y="714" font-size="21" fill="#a9b5b0">Prompt-injection filter</text>
+<text x="1000" y="747" font-size="21" fill="#a9b5b0">SSRF guard</text>
+<text x="1000" y="780" font-size="21" fill="#a9b5b0">Boilerplate stripped</text>
+<rect x="708.5" y="610.5" width="231" height="199" rx="14" fill="#111715" stroke="#2b3833" stroke-width="1"/>
+<text x="732" y="640" font-size="16" fill="#808d88" class="m">06</text>
+<text x="732" y="670" font-size="25" font-weight="600" fill="#f1f5f3">BM25 ranking</text>
+<text x="732" y="714" font-size="21" fill="#a9b5b0">Scores sections</text>
+<text x="732" y="747" font-size="21" fill="#a9b5b0">for the topic</text>
+<text x="732" y="780" font-size="21" fill="#a9b5b0">Fits a token budget</text>
+<rect x="324.5" y="610.5" width="347" height="199" rx="14" fill="#111715" stroke="#2b3833" stroke-width="1"/>
+<text x="348" y="640" font-size="16" fill="#808d88" class="m">07</text>
+<text x="348" y="670" font-size="25" font-weight="600" fill="#f1f5f3">Evidence gate</text>
+<text x="348" y="714" font-size="21" fill="#a9b5b0">Topic terms must appear</text>
+<text x="348" y="747" font-size="21" fill="#a9b5b0">in the source text,</text>
+<text x="348" y="780" font-size="21" fill="#a9b5b0">or it reports a miss</text>
+<rect x="72.5" y="610.5" width="215" height="199" rx="14" fill="none" stroke="#00d4aa" stroke-width="1" opacity="0.6" filter="url(#glow)"/>
+<rect x="72.5" y="610.5" width="215" height="199" rx="14" fill="#111715" stroke="#00d4aa" stroke-width="1"/>
+<text x="96" y="640" font-size="16" fill="#808d88" class="m">08</text>
+<text x="96" y="670" font-size="25" font-weight="600" fill="#f1f5f3">Answer</text>
+<text x="96" y="714" font-size="21" fill="#a9b5b0">Ranked excerpts</text>
+<text x="96" y="747" font-size="21" fill="#a9b5b0">Sources + date</text>
+<text x="96" y="780" font-size="21" fill="#a9b5b0">Topic coverage</text>
+<path d="M972,662 L946,662" stroke="#66736e" stroke-width="1.5" fill="none" marker-end="url(#ah)"/>
+<path d="M704,662 L678,662" stroke="#66736e" stroke-width="1.5" fill="none" marker-end="url(#ah)"/>
+<path d="M320,662 L294,662" stroke="#00d4aa" stroke-width="1.5" fill="none" marker-end="url(#aht)"/>
+<path d="M112,604 L112,422" stroke="#00d4aa" stroke-width="1.5" fill="none" marker-end="url(#aht)"/>
+<text x="130" y="508" font-size="17" fill="#00d4aa" class="m">returned</text>
+<text x="130" y="532" font-size="17" fill="#00d4aa" class="m">with sources</text>
+</svg>

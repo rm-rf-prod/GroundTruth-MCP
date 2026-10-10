@@ -126,7 +126,7 @@ describe("DiskCache", () => {
 
   // ── prune() ───────────────────────────────────────────────────────────────────
 
-  it("prune() removes expired-past-SWR entries and returns correct removed count", async () => {
+  it("prune() under the cap removes nothing; get() deletes the expired-past-SWR entry", async () => {
     const cache = await makeDiskCache(tmpDir);
     const { createHash } = await import("crypto");
 
@@ -142,8 +142,8 @@ describe("DiskCache", () => {
     const deadEntry = { data: "dead", expiresAt: Date.now() - (61 * 60 * 1000) };
     await writeFile(join(tmpDir, `${deadHash}.json`), JSON.stringify(deadEntry), "utf-8");
 
-    const removed = await cache.prune(1000);
-    expect(removed).toBe(1);
+    expect(await cache.prune(1000)).toBe(0);
+    expect(await cache.get(deadKey)).toBeUndefined();
     // Dead file must be gone
     await expect(import("fs/promises").then((fs) => fs.access(join(tmpDir, `${deadHash}.json`)))).rejects.toThrow();
     // Fresh file must still exist

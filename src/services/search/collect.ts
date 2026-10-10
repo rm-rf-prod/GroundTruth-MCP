@@ -1,4 +1,4 @@
-import { fuzzySearch, lookupById } from "../../sources/registry.js";
+import { lookupById } from "../../sources/registry.js";
 import { fetchDocs, fetchDevDocs } from "../fetcher.js";
 import { deepFetchForTopic } from "../deep-fetch.js";
 import { extractRelevantContent } from "../../utils/extract.js";
@@ -7,36 +7,8 @@ import { sanitizeContent } from "../../utils/sanitize.js";
 import { findTopicUrls } from "./topic-match.js";
 import { buildDirectDocsUrls, buildJinaFallbackUrls } from "./candidates.js";
 import { searchMDN, searchDDGInstant } from "./engines.js";
-import { fetchTopicContent, addWebSearchSources, type SearchSource } from "./fetch-topic.js";
-
-/** Push every fulfilled candidate not already collected, stopping at `limit` sources. */
-function absorb(
-  settled: Array<PromiseSettledResult<SearchSource>>,
-  results: SearchSource[],
-  limit: number,
-): void {
-  for (const r of settled) {
-    if (r.status !== "fulfilled") continue;
-    if (results.some((existing) => existing.url === r.value.url)) continue;
-    results.push(r.value);
-    if (results.length >= limit) break;
-  }
-}
-
-/** Fetch a batch of candidate URLs in parallel, keeping only pages with real content. */
-function fetchAll(
-  candidates: Array<{ url: string; source: string }>,
-  query: string,
-  tokens: number,
-): Promise<Array<PromiseSettledResult<SearchSource>>> {
-  return Promise.allSettled(
-    candidates.map(async ({ url, source }) => {
-      const content = await fetchTopicContent(url, query, tokens);
-      if (content.length > 200) return { source, url, content };
-      throw new Error("no content");
-    }),
-  );
-}
+import { fetchTopicContent, addWebSearchSources, absorb, fetchAll, type SearchSource } from "./fetch-topic.js";
+import { registryMatches } from "./registry-match.js";
 
 /**
  * Sourcing pipeline for gt_search: registry docs, then curated topic URLs, then
@@ -50,21 +22,21 @@ export async function collectSearchSources(
   const results: SearchSource[] = [];
 
   // 1. Check registry (library-based query)
-  for (const match of fuzzySearch(query, 3)) {
-    const entry = lookupById(match.id);
+  for (const { id, topic } of registryMatches(query)) {
+    const entry = lookupById(id);
     if (!entry) continue;
     try {
-      let fetchResult = await fetchDocs(entry.docsUrl, entry.llmsTxtUrl, entry.llmsFullTxtUrl);
+      let fetchResult = await fetchDocs(entry.docsUrl, entry.llmsTxtUrl, entry.llmsFullTxtUrl, topic);
       // llms.txt is usually an index of links — traverse it to the actual
       // topic pages instead of extracting from the link list itself.
-      fetchResult = await deepFetchForTopic(fetchResult, query, entry.docsUrl, entry.urlPatterns);
+      fetchResult = await deepFetchForTopic(fetchResult, topic, entry.docsUrl, entry.urlPatterns);
       const safe = sanitizeContent(fetchResult.content);
-      const { text } = extractRelevantContent(safe, query, Math.floor(tokens / 2));
+      const { text } = extractRelevantContent(safe, topic, Math.floor(tokens / 2));
       // Evidence gate, same bar the topic-map stage already applies. This
       // was the one sourcing stage with no check: a loose fuzzy match could
       // take the first result slot with a page that never covers the query,
       // and the `break` stopped every later stage from replacing it.
-      if (text.length > 200 && checkEvidence(text, query).ok) {
+      if (text.length > 200 && checkEvidence(text, topic).ok) {
         results.push({ source: entry.name, url: fetchResult.url, content: text });
         break; // one registry match is enough for freeform search
       }
@@ -81,6 +53,7 @@ export async function collectSearchSources(
     // specificity gate in findTopicUrls this stops nav-only pages being fetched.
     if (results.length >= 2) break;
     for (const url of topic.urls.slice(0, 2)) {
+      if (results.some((r) => r.url === url)) break; // the registry stage already has it
       const content = await fetchTopicContent(url, query, Math.floor(tokens / (topicMatches.length + 1)));
       if (content.length > 200) {
         results.push({ source: topic.name, url, content });
@@ -116,6 +89,8 @@ export async function collectSearchSources(
           mdnResults.slice(0, 3).map((m) => ({ url: m.url, source: `MDN: ${m.title}` })),
           query,
           Math.floor(tokens / 2),
+          // MDN search is fuzzy: as a second source it must cover most of the query.
+          results.length > 0 ? 0.75 : 0,
         ),
         results,
         2,

@@ -57,6 +57,7 @@ vi.mock("./cache.js", () => {
       set: async (k: string, v: string, _ttl?: number) => { diskStore.set(k, v); },
       clear: () => { diskStore.clear(); },
     },
+    llmsProbeCache: { get: () => undefined, set: () => {}, clear: () => {} },
     resolveCache: {
       get: () => undefined,
       set: () => {},
@@ -121,7 +122,7 @@ beforeEach(async () => {
 describe("fetchDocs", () => {
   it("returns from memory cache without fetching", async () => {
     const { docCache } = await import("./cache.js");
-    docCache.set("docs:https://example.com/docs", LONG);
+    docCache.set("docs:https://example.com/docs|https://example.com/llms.txt|", LONG);
     const result = await fetchDocs("https://example.com/docs", "https://example.com/llms.txt");
     expect(result.content).toBe(LONG);
     expect(mockFetch).not.toHaveBeenCalled();
@@ -130,7 +131,7 @@ describe("fetchDocs", () => {
   it("returns from disk cache without fetching", async () => {
     const { diskDocCache } = await import("./cache.js");
     const disk = diskDocCache as { get: (k: string) => Promise<string | undefined>; set: (k: string, v: string) => Promise<void>; clear: () => void };
-    await disk.set("docs:https://example.com/docs", LONG);
+    await disk.set("docs:https://example.com/docs|https://example.com/llms.txt|", LONG);
     const result = await fetchDocs("https://example.com/docs", "https://example.com/llms.txt");
     expect(result.content).toBe(LONG);
     expect(mockFetch).not.toHaveBeenCalled();
@@ -188,11 +189,12 @@ describe("fetchDocs", () => {
       .mockImplementation((url: RequestInfo | URL) => {
         const u = url.toString();
         if (u.includes("r.jina.ai")) return Promise.resolve(makeRes(JINA_LONG + "jina"));
+        // Bot-blocked direct fetch (not a 404): Jina is the only way in.
+        if (u === "https://example.com/docs") return Promise.resolve(makeRes("", 403));
         return Promise.resolve(makeRes("", 404));
       });
     const result = await fetchDocs("https://example.com/docs");
     expect(result.sourceType).toBe("jina");
     expect(result.content).toBe(JINA_LONG + "jina");
   });
-
 });

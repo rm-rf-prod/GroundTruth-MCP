@@ -80,11 +80,11 @@ async function fetchFromCuratedDocs(query: string, tokens: number): Promise<stri
   return "";
 }
 
-/** Python findings check the security sheet and the style guide in parallel. */
+/** Security findings check the security page and the style guide in parallel; others only the style guide. */
 async function fetchPythonGuidance(query: string, tokens: number): Promise<string> {
   if (!PYTHON_FIX_URLS.match.test(query)) return "";
   const [security, style] = await Promise.allSettled([
-    fetchGuidance(PYTHON_FIX_URLS.security, query, tokens),
+    PYTHON_FIX_URLS.securityMatch.test(query) ? fetchGuidance(PYTHON_FIX_URLS.security, query, tokens) : "",
     fetchGuidance(PYTHON_FIX_URLS.style, query, tokens),
   ]);
   const securityText = security.status === "fulfilled" ? security.value : "";

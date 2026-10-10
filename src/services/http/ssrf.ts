@@ -1,7 +1,4 @@
-import dns from "dns";
-import type { LookupAddress } from "dns";
 import { isIPv4, isIPv6 } from "net";
-import { Agent, setGlobalDispatcher } from "undici";
 
 export function isBlockedIP(address: string): boolean {
   if (isIPv4(address)) {
@@ -19,7 +16,10 @@ export function isBlockedIP(address: string): boolean {
       ((int & 0xffff0000) >>> 0) === 0xc0a80000 || // 192.168.0.0/16 private
       ((int & 0xffc00000) >>> 0) === 0x64400000 || // 100.64.0.0/10 CGNAT (RFC6598 — Alibaba metadata 100.100.100.200)
       ((int & 0xffff0000) >>> 0) === 0xa9fe0000 || // 169.254.0.0/16 link-local (cloud metadata)
-      ((int & 0xf0000000) >>> 0) === 0xe0000000    // 224.0.0.0/4 multicast
+      ((int & 0xffffff00) >>> 0) === 0xc0000000 || // 192.0.0.0/24 IETF protocol assignments
+      ((int & 0xfffe0000) >>> 0) === 0xc6120000 || // 198.18.0.0/15 benchmarking
+      ((int & 0xf0000000) >>> 0) === 0xe0000000 || // 224.0.0.0/4 multicast
+      ((int & 0xf0000000) >>> 0) === 0xf0000000    // 240.0.0.0/4 reserved, incl. 255.255.255.255
     );
   }
   if (isIPv6(address)) {
@@ -52,10 +52,13 @@ export function isBlockedIP(address: string): boolean {
         // IPv4-mapped IPv6 (::ffff:a.b.c.d) — recheck against IPv4 rules
         const isV4Mapped = groups.slice(0, 5).every((g) => g === 0) && groups[5] === 0xffff;
         if (isLoopback || isUnspecified) return true;
-        if (isV4Mapped) {
-          const v4 = `${(groups[6]! >> 8) & 0xff}.${groups[6]! & 0xff}.${(groups[7]! >> 8) & 0xff}.${groups[7]! & 0xff}`;
-          return isBlockedIP(v4);
-        }
+        const v4 = (hi: number, lo: number) => `${(hi >> 8) & 0xff}.${hi & 0xff}.${(lo >> 8) & 0xff}.${lo & 0xff}`;
+        // IPv4 carried inside IPv6 is routed to that IPv4 host — recheck it against the IPv4 rules:
+        // mapped ::ffff:0:0/96, compatible ::/96, NAT64 64:ff9b::/96, 6to4 2002::/16.
+        const isV4Compat = groups.slice(0, 6).every((g) => g === 0);
+        const isNat64 = groups[0] === 0x64 && groups[1] === 0xff9b && groups.slice(2, 6).every((g) => g === 0);
+        if (isV4Mapped || isV4Compat || isNat64) return isBlockedIP(v4(groups[6]!, groups[7]!));
+        if (groups[0] === 0x2002) return isBlockedIP(v4(groups[1]!, groups[2]!));
         // ULA fc00::/7 → first byte high bit pattern 1111110x
         if ((groups[0]! & 0xfe00) === 0xfc00) return true;
         // Link-local fe80::/10
@@ -71,34 +74,3 @@ export function isBlockedIP(address: string): boolean {
   }
   return true;
 }
-
-setGlobalDispatcher(new Agent({
-  connect: {
-    lookup(hostname, options, callback) {
-      dns.lookup(hostname, { ...options, all: true }, (err, addresses) => {
-        if (err) return callback(err, "", 4);
-        // all:true always yields an array; the fallback branch is dead code kept only for exhaustive typing.
-        const entries: LookupAddress[] = Array.isArray(addresses) ? addresses : [{ address: String(addresses), family: 4 }];
-        const safe = entries.filter((entry) => !isBlockedIP(entry.address));
-        if (safe.length === 0) {
-          return callback(new Error(`SSRF blocked: ${hostname} resolves to private/blocked IP`), "", 4);
-        }
-        // Undici expects array format when options.all is true, single entry otherwise
-        if (options.all) {
-          // net.LookupFunction type omits the all-addresses overload; cast is required.
-          return (callback as unknown as (err: null, addrs: LookupAddress[]) => void)(null, safe);
-        }
-        const first = safe[0]!;
-        callback(null, first.address, first.family);
-      });
-    },
-  },
-  // Network-layer timeouts — defense in depth alongside fetchWithTimeout's AbortController
-  headersTimeout: 15_000,
-  bodyTimeout: 30_000,
-  // Keep-alive tuning for parallel doc fetches
-  keepAliveTimeout: 4_000,
-  keepAliveMaxTimeout: 10_000,
-  pipelining: 1,
-  connections: 50,
-}));

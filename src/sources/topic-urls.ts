@@ -424,8 +424,8 @@ export const TOPIC_URL_MAP: TopicUrlEntry[] = [
   {
     patterns: ['next.js caching', 'nextjs cache', 'use cache', 'cache components', 'next.js rendering'],
     urls: [
-      'https://nextjs.org/docs/app/guides/caching',
-      'https://nextjs.org/docs/app/getting-started/caching-and-revalidating',
+      'https://nextjs.org/docs/app/getting-started/caching',
+      'https://nextjs.org/docs/app/getting-started/revalidating',
     ],
     name: 'Next.js Caching & Rendering',
   },
@@ -1166,7 +1166,7 @@ export const TOPIC_URL_MAP: TopicUrlEntry[] = [
   {
     patterns: ["rag", "retrieval augmented generation", "vector search"],
     urls: [
-      "https://python.langchain.com/docs/tutorials/rag/",
+      "https://docs.langchain.com/oss/python/deepagents/rag",
     ],
     name: "RAG / Retrieval Augmented Generation",
   },

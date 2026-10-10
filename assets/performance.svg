@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="performance-title performance-desc">
+<title id="performance-title">GroundTruth performance, before and after</title>
+<desc id="performance-desc">Paired horizontal bars per metric, each row on its own scale. Startup (--version): before 1,130 ms, after 40 ms, 28x faster. Spawn to MCP ready: before 1,074 ms, after 186 ms, 5.8x faster. Next.js caching, cold cache: before 6,893 ms, after 259 ms, 27x faster. Next.js caching, next day (20 h old cache): before 6,684 ms, after 92 ms, 73x faster. Repeat search, new session: before 86 ms, after 2 ms, 43x faster. Tool list sent per session: before 23,638 bytes, after 11,560 bytes, 2.0x smaller. Memory at startup: before 194 MB, after 54 MB, 3.6x smaller.</desc>
+<defs>
+<style>
+text { font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Ubuntu Sans', 'Helvetica Neue', Ubuntu, Arial, sans-serif; }
+.m { font-family: 'JetBrains Mono', 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Ubuntu Sans Mono', 'Ubuntu Mono', 'DejaVu Sans Mono', monospace; }
+.t { font-variant-numeric: tabular-nums; }
+</style>
+
+</defs>
+<rect width="1600" height="900" fill="#0a0d0c"/>
+<text x="72" y="104" font-size="36" font-weight="600" fill="#f1f5f3">Before and after</text>
+<text x="72" y="144" font-size="21" fill="#a9b5b0">Bars are scaled per row. Lower is better unless a row says otherwise.</text>
+<text x="1467.18" y="104" font-size="19" fill="#a9b5b0">After</text>
+<rect x="1441.18" y="89" width="16" height="16" rx="4" fill="#00ae8b"/>
+<text x="1342.29" y="104" font-size="19" fill="#a9b5b0">Before</text>
+<rect x="1316.29" y="89" width="16" height="16" rx="4" fill="#5d6b66"/>
+<text x="72" y="248.71428571428572" font-size="21" fill="#f1f5f3">Startup (--version)</text>
+<g><title>Startup (--version), before: 1,130 ms</title>
+<path d="M400,217H1224Q1228,217 1228,221V235Q1228,239 1224,239H400Z" fill="#5d6b66"/>
+<text x="1240" y="234" font-size="18" fill="#a9b5b0">1,130 ms</text>
+</g>
+<g><title>Startup (--version), after: 40 ms</title>
+<path d="M400,245H425Q429,245 429,249V263Q429,267 425,267H400Z" fill="#00ae8b"/>
+<text x="441" y="262" font-size="18" font-weight="600" fill="#f1f5f3">40 ms</text>
+</g>
+<text x="1528" y="251.71428571428572" font-size="16" fill="#f1f5f3" text-anchor="end"><tspan fill="#f1f5f3" font-weight="700" font-size="30">28x</tspan><tspan fill="#a9b5b0" font-size="20"> faster</tspan></text>
+<line x1="72" y1="287.92857142857144" x2="1528" y2="287.92857142857144" stroke="#1f2925"/>
+<text x="72" y="340.14285714285717" font-size="21" fill="#f1f5f3">Spawn to MCP ready</text>
+<g><title>Spawn to MCP ready, before: 1,074 ms</title>
+<path d="M400,308H1224Q1228,308 1228,312V326Q1228,330 1224,330H400Z" fill="#5d6b66"/>
+<text x="1240" y="325" font-size="18" fill="#a9b5b0">1,074 ms</text>
+</g>
+<g><title>Spawn to MCP ready, after: 186 ms</title>
+<path d="M400,336H539Q543,336 543,340V354Q543,358 539,358H400Z" fill="#00ae8b"/>
+<text x="555" y="353" font-size="18" font-weight="600" fill="#f1f5f3">186 ms</text>
+</g>
+<text x="1528" y="343.14285714285717" font-size="16" fill="#f1f5f3" text-anchor="end"><tspan fill="#f1f5f3" font-weight="700" font-size="30">5.8x</tspan><tspan fill="#a9b5b0" font-size="20"> faster</tspan></text>
+<line x1="72" y1="379.3571428571429" x2="1528" y2="379.3571428571429" stroke="#1f2925"/>
+<text x="72" y="431.5714285714286" font-size="21" fill="#f1f5f3">Next.js caching, cold cache</text>
+<g><title>Next.js caching, cold cache, before: 6,893 ms</title>
+<path d="M400,400H1224Q1228,400 1228,404V418Q1228,422 1224,422H400Z" fill="#5d6b66"/>
+<text x="1240" y="417" font-size="18" fill="#a9b5b0">6,893 ms</text>
+</g>
+<g><title>Next.js caching, cold cache, after: 259 ms</title>
+<path d="M400,428H427Q431,428 431,432V446Q431,450 427,450H400Z" fill="#00ae8b"/>
+<text x="443" y="445" font-size="18" font-weight="600" fill="#f1f5f3">259 ms</text>
+</g>
+<text x="1528" y="434.5714285714286" font-size="16" fill="#f1f5f3" text-anchor="end"><tspan fill="#f1f5f3" font-weight="700" font-size="30">27x</tspan><tspan fill="#a9b5b0" font-size="20"> faster</tspan></text>
+<line x1="72" y1="470.7857142857143" x2="1528" y2="470.7857142857143" stroke="#1f2925"/>
+<text x="72" y="509" font-size="21" fill="#f1f5f3">Next.js caching, next day</text>
+<text x="72" y="537" font-size="21" fill="#f1f5f3">(20 h old cache)</text>
+<g><title>Next.js caching, next day (20 h old cache), before: 6,684 ms</title>
+<path d="M400,491H1224Q1228,491 1228,495V509Q1228,513 1224,513H400Z" fill="#5d6b66"/>
+<text x="1240" y="508" font-size="18" fill="#a9b5b0">6,684 ms</text>
+</g>
+<g><title>Next.js caching, next day (20 h old cache), after: 92 ms</title>
+<path d="M400,519H407Q411,519 411,523V537Q411,541 407,541H400Z" fill="#00ae8b"/>
+<text x="423" y="536" font-size="18" font-weight="600" fill="#f1f5f3">92 ms</text>
+</g>
+<text x="1528" y="526" font-size="16" fill="#f1f5f3" text-anchor="end"><tspan fill="#f1f5f3" font-weight="700" font-size="30">73x</tspan><tspan fill="#a9b5b0" font-size="20"> faster</tspan></text>
+<line x1="72" y1="562.2142857142858" x2="1528" y2="562.2142857142858" stroke="#1f2925"/>
+<text x="72" y="614.4285714285714" font-size="21" fill="#f1f5f3">Repeat search, new session</text>
+<g><title>Repeat search, new session, before: 86 ms</title>
+<path d="M400,582H1224Q1228,582 1228,586V600Q1228,604 1224,604H400Z" fill="#5d6b66"/>
+<text x="1240" y="599" font-size="18" fill="#a9b5b0">86 ms</text>
+</g>
+<g><title>Repeat search, new session, after: 2 ms</title>
+<path d="M400,610H415Q419,610 419,614V628Q419,632 415,632H400Z" fill="#00ae8b"/>
+<text x="431" y="627" font-size="18" font-weight="600" fill="#f1f5f3">2 ms</text>
+</g>
+<text x="1528" y="617.4285714285714" font-size="16" fill="#f1f5f3" text-anchor="end"><tspan fill="#f1f5f3" font-weight="700" font-size="30">43x</tspan><tspan fill="#a9b5b0" font-size="20"> faster</tspan></text>
+<line x1="72" y1="653.6428571428571" x2="1528" y2="653.6428571428571" stroke="#1f2925"/>
+<text x="72" y="705.8571428571428" font-size="21" fill="#f1f5f3">Tool list sent per session</text>
+<g><title>Tool list sent per session, before: 23,638 bytes</title>
+<path d="M400,674H1224Q1228,674 1228,678V692Q1228,696 1224,696H400Z" fill="#5d6b66"/>
+<text x="1240" y="691" font-size="18" fill="#a9b5b0">23,638 bytes</text>
+</g>
+<g><title>Tool list sent per session, after: 11,560 bytes</title>
+<path d="M400,702H801Q805,702 805,706V720Q805,724 801,724H400Z" fill="#00ae8b"/>
+<text x="817" y="719" font-size="18" font-weight="600" fill="#f1f5f3">11,560 bytes</text>
+</g>
+<text x="1528" y="708.8571428571428" font-size="16" fill="#f1f5f3" text-anchor="end"><tspan fill="#f1f5f3" font-weight="700" font-size="30">2.0x</tspan><tspan fill="#a9b5b0" font-size="20"> smaller</tspan></text>
+<line x1="72" y1="745.0714285714286" x2="1528" y2="745.0714285714286" stroke="#1f2925"/>
+<text x="72" y="797.2857142857142" font-size="21" fill="#f1f5f3">Memory at startup</text>
+<g><title>Memory at startup, before: 194 MB</title>
+<path d="M400,765H1224Q1228,765 1228,769V783Q1228,787 1224,787H400Z" fill="#5d6b66"/>
+<text x="1240" y="782" font-size="18" fill="#a9b5b0">194 MB</text>
+</g>
+<g><title>Memory at startup, after: 54 MB</title>
+<path d="M400,793H626Q630,793 630,797V811Q630,815 626,815H400Z" fill="#00ae8b"/>
+<text x="642" y="810" font-size="18" font-weight="600" fill="#f1f5f3">54 MB</text>
+</g>
+<text x="1528" y="800.2857142857142" font-size="16" fill="#f1f5f3" text-anchor="end"><tspan fill="#f1f5f3" font-weight="700" font-size="30">3.6x</tspan><tspan fill="#a9b5b0" font-size="20"> smaller</tspan></text>
+<line x1="400.5" y1="208" x2="400.5" y2="824" stroke="#2b3833"/>
+</svg>

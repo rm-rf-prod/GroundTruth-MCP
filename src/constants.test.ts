@@ -60,3 +60,20 @@ describe("GT_CACHE_DIR system directory validation", () => {
     await expect(import("./constants.js")).resolves.toBeDefined();
   });
 });
+
+// ── ENT-05: root users without GT_CACHE_DIR ────────────────────────────────────
+
+describe("DISK_CACHE_DIR default for root users", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
+  it("uses $HOME/.gt-mcp-cache for HOME=/root when GT_CACHE_DIR is unset", async () => {
+    vi.stubEnv("GT_CACHE_DIR", undefined);
+    vi.stubEnv("HOME", "/root");
+    vi.resetModules();
+    const { DISK_CACHE_DIR } = await import("./constants.js");
+    expect(DISK_CACHE_DIR).toBe("/root/.gt-mcp-cache");
+  });
+});

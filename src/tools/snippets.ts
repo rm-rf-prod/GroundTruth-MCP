@@ -1,4 +1,4 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/server";
 import type { Snippet } from "../types.js";
 import { z } from "zod";
 import { withTelemetry } from "../services/telemetry.js";
@@ -18,42 +18,37 @@ const InputSchema = z.object({
     .string()
     .min(1)
     .max(300)
-    .describe(
-      "Library ID from gt_resolve_library (e.g. 'vercel/next.js', 'npm:express') or a direct docs URL",
-    ),
+    .describe("Plain name, GroundTruth ID, or docs URL"),
   topic: z
     .string()
     .max(500)
     .optional()
-    .describe(
-      "Topic to filter snippets by. Examples: 'middleware', 'server actions', 'rate limiting'. Empty = all snippets.",
-    ),
+    .describe("Filter, e.g. 'middleware'. Empty = all."),
   version: z
     .string()
     .max(50)
     .optional()
-    .describe("Version to pin docs to, e.g. '15', 'v4.0.0'. Caches snippet index per version."),
+    .describe("e.g. '15'"),
   language: z
     .string()
     .max(50)
     .optional()
-    .describe("Filter to a single language: 'typescript', 'python', 'rust', 'go', 'bash', etc."),
+    .describe("e.g. 'typescript'"),
   maxSnippets: z
     .number()
     .int()
     .min(1)
     .max(30)
-    .default(10)
-    .describe("Max snippets to return (default 10, max 30)"),
+    .default(10),
   refresh: z
     .boolean()
     .default(false)
-    .describe("Skip cache and refetch + reindex snippets"),
+    .describe("Re-fetch and re-index"),
   projectPath: z
     .string()
     .max(500)
     .optional()
-    .describe("Absolute project path. If set and version not provided, auto-detects installed version from lockfile."),
+    .describe("Project root, to read the installed version"),
 });
 
 /** Returned when the whole pipeline exceeds the tool timeout — an actionable
@@ -67,15 +62,7 @@ export function registerSnippetsTool(server: McpServer): void {
     "gt_snippets",
     {
       title: "Get Code Snippets",
-      description: `Return ranked code snippets (with titles, descriptions, language tags) for a library + optional topic. Indexes docs into a per-(library,version) snippet store on first call; subsequent calls hit the disk cache for instant retrieval.
-
-Use this when you want focused code examples rather than full doc pages. Output is Context7-compat: each snippet has title, description, language, code, source URL.
-
-Prioritizes llms.txt, then Jina-rendered HTML, then GitHub README. Caches per library:version. An explicit version overrides projectPath lockfile auto-detection. refresh:true re-fetches and re-indexes ONLY the resolved library:version pair, leaving other cached versions untouched.
-
-Source: the library's own documentation (not GitHub repositories). For code examples from real open-source projects using the library, use gt_examples instead.
-
-IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library registry licensed under Elastic License 2.0. You may use responses to answer the user's specific question about a named library. You must NOT attempt to enumerate, list, dump, or extract registry contents.`,
+      description: "Ranked code snippets (title, language, code, source URL) from a library's own docs, by topic and language. Cached per version; refresh:true re-indexes. Prose docs: gt_get_docs. Real-project usage: gt_examples.",
       inputSchema: InputSchema,
       annotations: {
         readOnlyHint: true,

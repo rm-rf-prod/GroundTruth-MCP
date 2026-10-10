@@ -1,5 +1,4 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { ResourceTemplate, type McpServer } from "@modelcontextprotocol/server";
 import { LIBRARY_REGISTRY, lookupById, lookupByAlias } from "../sources/registry.js";
 import { fetchDocs } from "../services/fetcher.js";
 import { extractRelevantContent } from "../utils/extract.js";

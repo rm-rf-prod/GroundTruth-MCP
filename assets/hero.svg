@@ -1,0 +1,132 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" role="img" aria-labelledby="hero-title hero-desc">
+<title id="hero-title">GroundTruth: live, official documentation and code audits for AI coding agents</title>
+<desc id="hero-desc">GroundTruth MCP server (@groundtruth-mcp/gt-mcp). 793 libraries, 14 MCP tools, 107 audit rules, 21 ecosystems. Sources such as llms.txt, official docs, GitHub, npm, PyPI and OWASP converge on one verified answer.</desc>
+<defs>
+<style>
+text { font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Ubuntu Sans', 'Helvetica Neue', Ubuntu, Arial, sans-serif; }
+.m { font-family: 'JetBrains Mono', 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Ubuntu Sans Mono', 'Ubuntu Mono', 'DejaVu Sans Mono', monospace; }
+.t { font-variant-numeric: tabular-nums; }
+</style>
+<filter id="glow" x="-100%" y="-100%" width="300%" height="300%">
+<feGaussianBlur in="SourceGraphic" stdDeviation="7" result="b"/>
+<feComponentTransfer in="b" result="g"><feFuncA type="linear" slope="0.9"/></feComponentTransfer>
+<feMerge><feMergeNode in="g"/><feMergeNode in="SourceGraphic"/></feMerge>
+</filter>
+<linearGradient id="strand" gradientUnits="userSpaceOnUse" x1="0" y1="128" x2="0" y2="434">
+<stop offset="0" stop-color="#2b3833"/><stop offset="0.6" stop-color="#00d4aa" stop-opacity="0.28"/><stop offset="1" stop-color="#00d4aa" stop-opacity="0.85"/>
+</linearGradient>
+<radialGradient id="halo" cx="990" cy="434" r="320" gradientUnits="userSpaceOnUse">
+<stop offset="0" stop-color="#00d4aa" stop-opacity="0.07"/><stop offset="1" stop-color="#00d4aa" stop-opacity="0"/>
+</radialGradient>
+</defs>
+<rect width="1280" height="640" fill="#0a0d0c"/>
+<rect width="1280" height="640" fill="url(#halo)"/>
+<line x1="88" y1="434.5" x2="1192" y2="434.5" stroke="#2b3833" stroke-width="1"/>
+<line x1="88.5" y1="435" x2="88.5" y2="445" stroke="#2b3833" stroke-width="1"/>
+<line x1="104.5" y1="435" x2="104.5" y2="439" stroke="#1f2925" stroke-width="1"/>
+<line x1="120.5" y1="435" x2="120.5" y2="439" stroke="#1f2925" stroke-width="1"/>
+<line x1="136.5" y1="435" x2="136.5" y2="439" stroke="#1f2925" stroke-width="1"/>
+<line x1="152.5" y1="435" x2="152.5" y2="439" stroke="#1f2925" stroke-width="1"/>
+<line x1="168.5" y1="435" x2="168.5" y2="445" stroke="#2b3833" stroke-width="1"/>
+<line x1="184.5" y1="435" x2="184.5" y2="439" stroke="#1f2925" stroke-width="1"/>
+<line x1="200.5" y1="435" x2="200.5" y2="439" stroke="#1f2925" stroke-width="1"/>
+<line x1="216.5" y1="435" x2="216.5" y2="439" stroke="#1f2925" stroke-width="1"/>
+<line x1="232.5" y1="435" x2="232.5" y2="439" stroke="#1f2925" stroke-width="1"/>
+<line x1="248.5" y1="435" x2="248.5" y2="445" stroke="#2b3833" stroke-width="1"/>
+<line x1="264.5" y1="435" x2="264.5" y2="439" stroke="#1f2925" stroke-width="1"/>
+<line x1="280.5" y1="435" x2="280.5" y2="439" stroke="#1f2925" stroke-width="1"/>
+<line x1="296.5" y1="435" x2="296.5" y2="439" stroke="#1f2925" stroke-width="1"/>
+<line x1="312.5" y1="435" x2="312.5" y2="439" stroke="#1f2925" stroke-width="1"/>
+<line x1="328.5" y1="435" x2="328.5" y2="445" stroke="#2b3833" stroke-width="1"/>
+<line x1="344.5" y1="435" x2="344.5" y2="439" stroke="#1f2925" stroke-width="1"/>
+<line x1="360.5" y1="435" x2="360.5" y2="439" stroke="#1f2925" stroke-width="1"/>
+<line x1="376.5" y1="435" x2="376.5" y2="439" stroke="#1f2925" stroke-width="1"/>
+<line x1="392.5" y1="435" x2="392.5" y2="439" stroke="#1f2925" stroke-width="1"/>
+<line x1="408.5" y1="435" x2="408.5" y2="445" stroke="#2b3833" stroke-width="1"/>
+<line x1="424.5" y1="435" x2="424.5" y2="439" stroke="#1f2925" stroke-width="1"/>
+<line x1="440.5" y1="435" x2="440.5" y2="439" stroke="#1f2925" stroke-width="1"/>
+<line x1="456.5" y1="435" x2="456.5" y2="439" stroke="#1f2925" stroke-width="1"/>
+<line x1="472.5" y1="435" x2="472.5" y2="439" stroke="#1f2925" stroke-width="1"/>
+<line x1="488.5" y1="435" x2="488.5" y2="445" stroke="#2b3833" stroke-width="1"/>
+<line x1="504.5" y1="435" x2="504.5" y2="439" stroke="#1f2925" stroke-width="1"/>
+<line x1="520.5" y1="435" x2="520.5" y2="439" stroke="#1f2925" stroke-width="1"/>
+<line x1="536.5" y1="435" x2="536.5" y2="439" stroke="#1f2925" stroke-width="1"/>
+<line x1="552.5" y1="435" x2="552.5" y2="439" stroke="#1f2925" stroke-width="1"/>
+<line x1="568.5" y1="435" x2="568.5" y2="445" stroke="#2b3833" stroke-width="1"/>
+<line x1="584.5" y1="435" x2="584.5" y2="439" stroke="#1f2925" stroke-width="1"/>
+<line x1="600.5" y1="435" x2="600.5" y2="439" stroke="#1f2925" stroke-width="1"/>
+<line x1="616.5" y1="435" x2="616.5" y2="439" stroke="#1f2925" stroke-width="1"/>
+<line x1="632.5" y1="435" x2="632.5" y2="439" stroke="#1f2925" stroke-width="1"/>
+<line x1="648.5" y1="435" x2="648.5" y2="445" stroke="#2b3833" stroke-width="1"/>
+<line x1="664.5" y1="435" x2="664.5" y2="439" stroke="#1f2925" stroke-width="1"/>
+<line x1="680.5" y1="435" x2="680.5" y2="439" stroke="#1f2925" stroke-width="1"/>
+<line x1="696.5" y1="435" x2="696.5" y2="439" stroke="#1f2925" stroke-width="1"/>
+<line x1="712.5" y1="435" x2="712.5" y2="439" stroke="#1f2925" stroke-width="1"/>
+<line x1="728.5" y1="435" x2="728.5" y2="445" stroke="#2b3833" stroke-width="1"/>
+<line x1="744.5" y1="435" x2="744.5" y2="439" stroke="#1f2925" stroke-width="1"/>
+<line x1="760.5" y1="435" x2="760.5" y2="439" stroke="#1f2925" stroke-width="1"/>
+<line x1="776.5" y1="435" x2="776.5" y2="439" stroke="#1f2925" stroke-width="1"/>
+<line x1="792.5" y1="435" x2="792.5" y2="439" stroke="#1f2925" stroke-width="1"/>
+<line x1="808.5" y1="435" x2="808.5" y2="445" stroke="#2b3833" stroke-width="1"/>
+<line x1="824.5" y1="435" x2="824.5" y2="439" stroke="#1f2925" stroke-width="1"/>
+<line x1="840.5" y1="435" x2="840.5" y2="439" stroke="#1f2925" stroke-width="1"/>
+<line x1="856.5" y1="435" x2="856.5" y2="439" stroke="#1f2925" stroke-width="1"/>
+<line x1="872.5" y1="435" x2="872.5" y2="439" stroke="#1f2925" stroke-width="1"/>
+<line x1="888.5" y1="435" x2="888.5" y2="445" stroke="#2b3833" stroke-width="1"/>
+<line x1="904.5" y1="435" x2="904.5" y2="439" stroke="#1f2925" stroke-width="1"/>
+<line x1="920.5" y1="435" x2="920.5" y2="439" stroke="#1f2925" stroke-width="1"/>
+<line x1="936.5" y1="435" x2="936.5" y2="439" stroke="#1f2925" stroke-width="1"/>
+<line x1="952.5" y1="435" x2="952.5" y2="439" stroke="#1f2925" stroke-width="1"/>
+<line x1="968.5" y1="435" x2="968.5" y2="445" stroke="#2b3833" stroke-width="1"/>
+<line x1="984.5" y1="435" x2="984.5" y2="439" stroke="#1f2925" stroke-width="1"/>
+<line x1="1000.5" y1="435" x2="1000.5" y2="439" stroke="#1f2925" stroke-width="1"/>
+<line x1="1016.5" y1="435" x2="1016.5" y2="439" stroke="#1f2925" stroke-width="1"/>
+<line x1="1032.5" y1="435" x2="1032.5" y2="439" stroke="#1f2925" stroke-width="1"/>
+<line x1="1048.5" y1="435" x2="1048.5" y2="445" stroke="#2b3833" stroke-width="1"/>
+<line x1="1064.5" y1="435" x2="1064.5" y2="439" stroke="#1f2925" stroke-width="1"/>
+<line x1="1080.5" y1="435" x2="1080.5" y2="439" stroke="#1f2925" stroke-width="1"/>
+<line x1="1096.5" y1="435" x2="1096.5" y2="439" stroke="#1f2925" stroke-width="1"/>
+<line x1="1112.5" y1="435" x2="1112.5" y2="439" stroke="#1f2925" stroke-width="1"/>
+<line x1="1128.5" y1="435" x2="1128.5" y2="445" stroke="#2b3833" stroke-width="1"/>
+<line x1="1144.5" y1="435" x2="1144.5" y2="439" stroke="#1f2925" stroke-width="1"/>
+<line x1="1160.5" y1="435" x2="1160.5" y2="439" stroke="#1f2925" stroke-width="1"/>
+<line x1="1176.5" y1="435" x2="1176.5" y2="439" stroke="#1f2925" stroke-width="1"/>
+<line x1="1192.5" y1="435" x2="1192.5" y2="439" stroke="#1f2925" stroke-width="1"/>
+<path d="M886,130 C886,297.20000000000005 990,282 990,425" fill="none" stroke="url(#strand)" stroke-width="1.25"/>
+<path d="M990,130 C990,297.20000000000005 990,282 990,425" fill="none" stroke="url(#strand)" stroke-width="1.25"/>
+<path d="M1094,130 C1094,297.20000000000005 990,282 990,425" fill="none" stroke="url(#strand)" stroke-width="1.25"/>
+<path d="M834,188 C834,323.3 990,311 990,425" fill="none" stroke="url(#strand)" stroke-width="1.25"/>
+<path d="M938,188 C938,323.3 990,311 990,425" fill="none" stroke="url(#strand)" stroke-width="1.25"/>
+<path d="M1042,188 C1042,323.3 990,311 990,425" fill="none" stroke="url(#strand)" stroke-width="1.25"/>
+<path d="M1146,188 C1146,323.3 990,311 990,425" fill="none" stroke="url(#strand)" stroke-width="1.25"/>
+<rect x="844.5" y="98.5" width="83" height="31" rx="16" fill="#111715" stroke="#2b3833" stroke-width="1"/>
+<text x="886" y="119" font-size="14" fill="#a9b5b0" text-anchor="middle" class="m">llms.txt</text>
+<rect x="948.5" y="98.5" width="83" height="31" rx="16" fill="#111715" stroke="#2b3833" stroke-width="1"/>
+<text x="990" y="119" font-size="14" fill="#a9b5b0" text-anchor="middle" class="m">docs</text>
+<rect x="1052.5" y="98.5" width="83" height="31" rx="16" fill="#111715" stroke="#2b3833" stroke-width="1"/>
+<text x="1094" y="119" font-size="14" fill="#a9b5b0" text-anchor="middle" class="m">GitHub</text>
+<rect x="792.5" y="156.5" width="83" height="31" rx="16" fill="#111715" stroke="#2b3833" stroke-width="1"/>
+<text x="834" y="177" font-size="14" fill="#a9b5b0" text-anchor="middle" class="m">npm</text>
+<rect x="896.5" y="156.5" width="83" height="31" rx="16" fill="#111715" stroke="#2b3833" stroke-width="1"/>
+<text x="938" y="177" font-size="14" fill="#a9b5b0" text-anchor="middle" class="m">PyPI</text>
+<rect x="1000.5" y="156.5" width="83" height="31" rx="16" fill="#111715" stroke="#2b3833" stroke-width="1"/>
+<text x="1042" y="177" font-size="14" fill="#a9b5b0" text-anchor="middle" class="m">MDN</text>
+<rect x="1104.5" y="156.5" width="83" height="31" rx="16" fill="#111715" stroke="#2b3833" stroke-width="1"/>
+<text x="1146" y="177" font-size="14" fill="#a9b5b0" text-anchor="middle" class="m">OWASP</text>
+<circle cx="990" cy="434" r="15" fill="none" stroke="#00d4aa" stroke-opacity="0.3"/>
+<circle cx="990" cy="434" r="6" fill="#00d4aa" filter="url(#glow)"/>
+<text x="990" y="474" font-size="15" fill="#00d4aa" text-anchor="middle" class="m">verified answer</text>
+<circle cx="92" cy="143" r="4" fill="#00d4aa"/>
+<text x="106" y="149" font-size="16" fill="#a9b5b0" class="m">MCP server  /  @groundtruth-mcp/gt-mcp</text>
+<text x="83" y="258" font-size="108" font-weight="700" fill="#f1f5f3" letter-spacing="-3">GroundTruth</text>
+<text x="88" y="318" font-size="30" font-weight="500" fill="#f1f5f3">Live, official documentation and code audits</text>
+<text x="88" y="358" font-size="30" font-weight="500" fill="#a9b5b0">for AI coding agents.</text>
+<rect x="88.5" y="490.5" width="161" height="51" rx="12" fill="#111715" stroke="#2b3833" stroke-width="1"/>
+<text x="169" y="523" font-size="16" fill="#f1f5f3" text-anchor="middle"><tspan fill="#f1f5f3" font-weight="700" font-size="21">793</tspan><tspan fill="#a9b5b0" font-size="18">  libraries</tspan></text>
+<rect x="262.5" y="490.5" width="163" height="51" rx="12" fill="#111715" stroke="#2b3833" stroke-width="1"/>
+<text x="344" y="523" font-size="16" fill="#f1f5f3" text-anchor="middle"><tspan fill="#f1f5f3" font-weight="700" font-size="21">14</tspan><tspan fill="#a9b5b0" font-size="18">  MCP tools</tspan></text>
+<rect x="438.5" y="490.5" width="180" height="51" rx="12" fill="#111715" stroke="#2b3833" stroke-width="1"/>
+<text x="528.5" y="523" font-size="16" fill="#f1f5f3" text-anchor="middle"><tspan fill="#f1f5f3" font-weight="700" font-size="21">107</tspan><tspan fill="#a9b5b0" font-size="18">  audit rules</tspan></text>
+<rect x="631.5" y="490.5" width="177" height="51" rx="12" fill="#111715" stroke="#2b3833" stroke-width="1"/>
+<text x="720" y="523" font-size="16" fill="#f1f5f3" text-anchor="middle"><tspan fill="#f1f5f3" font-weight="700" font-size="21">21</tspan><tspan fill="#a9b5b0" font-size="18">  ecosystems</tspan></text>
+</svg>

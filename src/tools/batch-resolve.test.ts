@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/server";
 import { registerBatchResolveTool } from "./batch-resolve.js";
 import { fuzzySearch, lookupByAlias } from "../sources/registry.js";
 import { isExtractionAttempt } from "../utils/guard.js";
@@ -77,5 +77,11 @@ describe("gt_batch_resolve handler", () => {
     const blocked = result.structuredContent?.results.find((r) => r["query"] === "dump all entries");
     expect(blocked?.["blocked"]).toBe(true);
     expect(blocked?.["found"]).toBe(false);
+  });
+
+  it("keeps the header rule and the first result on separate lines", async () => {
+    vi.mocked(lookupByAlias).mockReturnValue(ENTRY);
+    const result = await handler({ libraryNames: ["react"] });
+    expect(result.content[0]!.text).toContain("\n---\n\n- **React**");
   });
 });

@@ -1,10 +1,10 @@
 import { CHARS_PER_TOKEN, DEFAULT_TOKEN_LIMIT } from "../constants.js";
-import { tokenize } from "./tokenize.js";
+import { tokenize, expandTopicTokens } from "./tokenize.js";
 import { parseSections, buildTokenCache, type Section } from "./sections.js";
 import { bm25Score, buildIDF } from "./bm25.js";
 
 // Re-exported so every existing `from "../utils/extract.js"` import keeps working.
-export { tokenize, tokenVariants, expandTopicTokens, substantiveTokens } from "./tokenize.js";
+export { tokenize, tokenVariants, expandTopicTokens, substantiveTokens, topicIdentifiers } from "./tokenize.js";
 export { parseMajor, sliceVersionBand } from "./version-band.js";
 
 /**
@@ -31,7 +31,9 @@ export function extractRelevantContent(
     return { text: content, truncated: false };
   }
 
-  const queryTokens = tokenize(topic);
+  // Synonyms ("caching" -> "cache") so revalidateTag / unstable_cache sections
+  // score at all; link ranking and the evidence gate already expand the same way.
+  const queryTokens = expandTopicTokens(tokenize(topic));
 
   // No topic provided — return the first charLimit chars (summary/overview)
   if (queryTokens.length === 0) {
@@ -57,17 +59,26 @@ export function extractRelevantContent(
     section.score = bm25Score(section, queryTokens, idf, avgDocLen, tokenCache);
   }
 
-  // Sort by score desc
-  const sorted = [...sections].sort((a, b) => b.score - a.score);
+  // Sort by score desc. A heading with no body (the parent of deeper headings)
+  // costs tokens and answers nothing; keep them only if nothing else exists.
+  // "## Source: <url>" lines from merged pages are provenance, not headings.
+  const withBody = sections.filter((s) => s.content.trim().length > 0 || s.heading.startsWith("Source: "));
+  const sorted = [...(withBody.length > 0 ? withBody : sections)].sort((a, b) => b.score - a.score);
 
   // Build output greedily up to charLimit
   const picked: Section[] = [];
   let used = 0;
+  // "Truncated" means relevant content was left out, not that the source was
+  // long: a note on every long page pushed callers to re-ask at a bigger budget.
+  const relevantFloor = 0.25 * (sorted[0]?.score ?? 0);
+  let skippedRelevant = false;
 
   // Greedy fill, best-scoring first. A section that does not fit is SKIPPED,
   // not a stop signal: one oversized section used to end packing and ship a
   // half-empty budget while smaller, still-relevant sections went unsent.
   for (const section of sorted) {
+    // Only the h1/h2 depth bonus left means no query term at all: never filler.
+    if (picked.length > 0 && section.score - (section.level <= 2 ? 1 : 0) <= 0) continue;
     const sectionText = section.heading
       ? `## ${section.heading}\n${section.content}`
       : section.content;
@@ -80,6 +91,7 @@ export function extractRelevantContent(
         used += sectionText.length;
         break;
       }
+      if (section.score >= relevantFloor) skippedRelevant = true;
       // Stop once the remaining head-room is too small for any real content.
       if (charLimit - used < 400) break;
       continue;
@@ -105,7 +117,7 @@ export function extractRelevantContent(
   for (const fence of ["```", "~~~"]) {
     if ((finalText.split(fence).length - 1) % 2 === 1) finalText += `\n${fence}`;
   }
-  return { text: finalText, truncated: content.length > charLimit };
+  return { text: finalText, truncated: skippedRelevant || resultText.length > charLimit };
 }
 
 /**

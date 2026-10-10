@@ -109,8 +109,8 @@ describe("intent-router", () => {
     });
 
     // Registry growth must not turn ordinary English words into library hits.
-    // Entries named expo-image / expo-camera / expo-build-properties would each
-    // fuzzy-match one of these queries without the FUZZY_STOP_WORDS guard.
+    // Entries named expo-image / expo-camera / expo-build-properties used to
+    // substring-match these; detection now needs a whole alias (see GENERIC_WORDS).
     it("does not route plain-English questions to a library-scoped tool", () => {
       const generic = [
         "how to build a rest api",

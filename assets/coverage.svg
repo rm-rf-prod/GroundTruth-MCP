@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="coverage-title coverage-desc">
+<title id="coverage-title">GroundTruth coverage: 793 libraries across 21 ecosystems</title>
+<desc id="coverage-desc">Horizontal bar chart of registry libraries per language ecosystem; a library that supports several ecosystems counts in each. JavaScript / TypeScript 526, Python 162, Go 50, Rust 34, Java 30, C / C++ 26, Language-agnostic 24, C# 15, Kotlin 12, CSS 10, PHP 9, YAML 9, Elixir 6, Ruby 6, SQL 6, Other (6) 13. Other combines Swift 4, Dart 3, HTML 2, Scala 2, JSON 1, Shell 1.</desc>
+<defs>
+<style>
+text { font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Ubuntu Sans', 'Helvetica Neue', Ubuntu, Arial, sans-serif; }
+.m { font-family: 'JetBrains Mono', 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Ubuntu Sans Mono', 'Ubuntu Mono', 'DejaVu Sans Mono', monospace; }
+.t { font-variant-numeric: tabular-nums; }
+</style>
+
+</defs>
+<rect width="1600" height="900" fill="#0a0d0c"/>
+<text x="72" y="104" font-size="36" font-weight="600" fill="#f1f5f3">793 libraries across 21 ecosystems</text>
+<text x="72" y="144" font-size="21" fill="#a9b5b0">Registry entries per language ecosystem. A library that supports several ecosystems counts in each.</text>
+<g><title>JavaScript / TypeScript: 526</title>
+<text x="314" y="232" font-size="20" fill="#f1f5f3" text-anchor="end">JavaScript / TypeScript</text>
+<path d="M338,213.5H1444Q1448,213.5 1448,217.5V232.5Q1448,236.5 1444,236.5H338Z" fill="#00ae8b"/>
+<text x="1460" y="232" font-size="19" font-weight="600" fill="#f1f5f3">526</text>
+</g>
+<g><title>Python: 162</title>
+<text x="314" y="271" font-size="20" fill="#f1f5f3" text-anchor="end">Python</text>
+<path d="M338,252.5H676Q680,252.5 680,256.5V271.5Q680,275.5 676,275.5H338Z" fill="#00ae8b"/>
+<text x="692" y="271" font-size="19" font-weight="600" fill="#f1f5f3">162</text>
+</g>
+<g><title>Go: 50</title>
+<text x="314" y="310" font-size="20" fill="#f1f5f3" text-anchor="end">Go</text>
+<path d="M338,291.5H440Q444,291.5 444,295.5V310.5Q444,314.5 440,314.5H338Z" fill="#00ae8b"/>
+<text x="456" y="310" font-size="19" font-weight="600" fill="#f1f5f3">50</text>
+</g>
+<g><title>Rust: 34</title>
+<text x="314" y="349" font-size="20" fill="#f1f5f3" text-anchor="end">Rust</text>
+<path d="M338,330.5H406Q410,330.5 410,334.5V349.5Q410,353.5 406,353.5H338Z" fill="#00ae8b"/>
+<text x="422" y="349" font-size="19" font-weight="600" fill="#f1f5f3">34</text>
+</g>
+<g><title>Java: 30</title>
+<text x="314" y="388" font-size="20" fill="#f1f5f3" text-anchor="end">Java</text>
+<path d="M338,369.5H397Q401,369.5 401,373.5V388.5Q401,392.5 397,392.5H338Z" fill="#00ae8b"/>
+<text x="413" y="388" font-size="19" font-weight="600" fill="#f1f5f3">30</text>
+</g>
+<g><title>C / C++: 26</title>
+<text x="314" y="427" font-size="20" fill="#f1f5f3" text-anchor="end">C / C++</text>
+<path d="M338,408.5H389Q393,408.5 393,412.5V427.5Q393,431.5 389,431.5H338Z" fill="#00ae8b"/>
+<text x="405" y="427" font-size="19" font-weight="600" fill="#f1f5f3">26</text>
+</g>
+<g><title>Language-agnostic: 24</title>
+<text x="314" y="466" font-size="20" fill="#f1f5f3" text-anchor="end">Language-agnostic</text>
+<path d="M338,447.5H385Q389,447.5 389,451.5V466.5Q389,470.5 385,470.5H338Z" fill="#00ae8b"/>
+<text x="401" y="466" font-size="19" font-weight="600" fill="#f1f5f3">24</text>
+</g>
+<g><title>C#: 15</title>
+<text x="314" y="505" font-size="20" fill="#f1f5f3" text-anchor="end">C#</text>
+<path d="M338,486.5H366Q370,486.5 370,490.5V505.5Q370,509.5 366,509.5H338Z" fill="#00ae8b"/>
+<text x="382" y="505" font-size="19" font-weight="600" fill="#f1f5f3">15</text>
+</g>
+<g><title>Kotlin: 12</title>
+<text x="314" y="543" font-size="20" fill="#f1f5f3" text-anchor="end">Kotlin</text>
+<path d="M338,524.5H359Q363,524.5 363,528.5V543.5Q363,547.5 359,547.5H338Z" fill="#00ae8b"/>
+<text x="375" y="543" font-size="19" font-weight="600" fill="#f1f5f3">12</text>
+</g>
+<g><title>CSS: 10</title>
+<text x="314" y="582" font-size="20" fill="#f1f5f3" text-anchor="end">CSS</text>
+<path d="M338,563.5H355Q359,563.5 359,567.5V582.5Q359,586.5 355,586.5H338Z" fill="#00ae8b"/>
+<text x="371" y="582" font-size="19" font-weight="600" fill="#f1f5f3">10</text>
+</g>
+<g><title>PHP: 9</title>
+<text x="314" y="621" font-size="20" fill="#f1f5f3" text-anchor="end">PHP</text>
+<path d="M338,602.5H353Q357,602.5 357,606.5V621.5Q357,625.5 353,625.5H338Z" fill="#00ae8b"/>
+<text x="369" y="621" font-size="19" font-weight="600" fill="#f1f5f3">9</text>
+</g>
+<g><title>YAML: 9</title>
+<text x="314" y="660" font-size="20" fill="#f1f5f3" text-anchor="end">YAML</text>
+<path d="M338,641.5H353Q357,641.5 357,645.5V660.5Q357,664.5 353,664.5H338Z" fill="#00ae8b"/>
+<text x="369" y="660" font-size="19" font-weight="600" fill="#f1f5f3">9</text>
+</g>
+<g><title>Elixir: 6</title>
+<text x="314" y="699" font-size="20" fill="#f1f5f3" text-anchor="end">Elixir</text>
+<path d="M338,680.5H347Q351,680.5 351,684.5V699.5Q351,703.5 347,703.5H338Z" fill="#00ae8b"/>
+<text x="363" y="699" font-size="19" font-weight="600" fill="#f1f5f3">6</text>
+</g>
+<g><title>Ruby: 6</title>
+<text x="314" y="738" font-size="20" fill="#f1f5f3" text-anchor="end">Ruby</text>
+<path d="M338,719.5H347Q351,719.5 351,723.5V738.5Q351,742.5 347,742.5H338Z" fill="#00ae8b"/>
+<text x="363" y="738" font-size="19" font-weight="600" fill="#f1f5f3">6</text>
+</g>
+<g><title>SQL: 6</title>
+<text x="314" y="777" font-size="20" fill="#f1f5f3" text-anchor="end">SQL</text>
+<path d="M338,758.5H347Q351,758.5 351,762.5V777.5Q351,781.5 347,781.5H338Z" fill="#00ae8b"/>
+<text x="363" y="777" font-size="19" font-weight="600" fill="#f1f5f3">6</text>
+</g>
+<g><title>Other (6): 13</title>
+<text x="314" y="816" font-size="20" fill="#a9b5b0" text-anchor="end">Other (6)</text>
+<path d="M338,797.5H361Q365,797.5 365,801.5V816.5Q365,820.5 361,820.5H338Z" fill="#5d6b66"/>
+<text x="377" y="816" font-size="19" font-weight="600" fill="#f1f5f3">13</text>
+<text x="421.743" y="815" font-size="16" fill="#808d88" class="m">Swift 4, Dart 3, HTML 2, Scala 2, JSON 1, Shell 1</text>
+</g>
+<line x1="338.5" y1="198" x2="338.5" y2="836" stroke="#2b3833" stroke-width="1"/>
+</svg>

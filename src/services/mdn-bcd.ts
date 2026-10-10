@@ -1,4 +1,5 @@
 import { fetchWithTimeout } from "./fetcher.js";
+import { discardBody } from "./http/body.js";
 import { log } from "../utils/logger.js";
 
 /**
@@ -58,8 +59,9 @@ function docIndexJsonUrl(docUrl: string): string | null {
 
 async function fetchJson(url: string): Promise<unknown> {
   const res = await fetchWithTimeout(url, FETCH_TIMEOUT_MS, { Accept: "application/json" });
-  if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
-  return res.json();
+  if (res.ok) return res.json();
+  discardBody(res);
+  throw new Error(`HTTP ${res.status} for ${url}`);
 }
 
 export async function fetchMdnDocMeta(docUrl: string): Promise<MdnDocMeta | null> {

@@ -21,24 +21,36 @@ export async function readProjectFiles(
 
   const files: SourceFile[] = [];
 
+  async function readSource(fullPath: string): Promise<string | null> {
+    try {
+      const s = await stat(fullPath);
+      if (s.size > 200_000) return null;
+      return await readFile(fullPath, "utf-8");
+    } catch {
+      return null; // unreadable — skip
+    }
+  }
+
   async function walk(dir: string, depth = 0): Promise<void> {
     if (depth > 6 || files.length >= maxFiles) return;
     try {
       const entries = await readdir(dir, { withFileTypes: true });
+      const isSource = (e: (typeof entries)[number]): boolean => e.isFile() && SOURCE_EXT.has(extname(e.name));
+      // Start this directory's reads together, capped at the remaining budget;
+      // consume them in listing order so results match a sequential walk.
+      const pending = new Map<string, Promise<string | null>>();
+      for (const entry of entries) {
+        if (pending.size >= maxFiles - files.length) break;
+        if (isSource(entry)) pending.set(entry.name, readSource(join(dir, entry.name)));
+      }
       for (const entry of entries) {
         if (files.length >= maxFiles) break;
         if (entry.isDirectory()) {
           if (!SKIP_DIRS.has(entry.name)) await walk(join(dir, entry.name), depth + 1);
-        } else if (entry.isFile() && SOURCE_EXT.has(extname(entry.name))) {
+        } else if (isSource(entry)) {
           const fullPath = join(dir, entry.name);
-          try {
-            const s = await stat(fullPath);
-            if (s.size > 200_000) continue;
-            const content = await readFile(fullPath, "utf-8");
-            files.push({ path: relative(projectPath, fullPath), content });
-          } catch {
-            // unreadable — skip
-          }
+          const content = await (pending.get(entry.name) ?? readSource(fullPath));
+          if (content !== null) files.push({ path: relative(projectPath, fullPath), content });
         }
       }
     } catch {

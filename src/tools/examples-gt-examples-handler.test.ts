@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/server";
 import { registerExamplesTool } from "./examples.js";
 
 vi.mock("../services/fetcher.js", () => ({
@@ -38,6 +38,7 @@ vi.mock("../utils/guard.js", () => ({
 
 vi.mock("../utils/sanitize.js", () => ({
   sanitizeContent: vi.fn((text: string) => text),
+  sanitizeInline: vi.fn((text: string) => text),
 }));
 
 import { fetchWithTimeout, githubAuthHeaders } from "../services/fetcher.js";

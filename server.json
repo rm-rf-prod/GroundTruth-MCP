@@ -1,7 +1,7 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.rm-rf-prod/groundtruth",
-  "description": "Live docs MCP server. 598+ libraries, evidence-verified answers, code audit, snippets, dispatch.",
+  "description": "Live docs MCP server. 793+ libraries, evidence-verified answers, code audit, snippets, dispatch.",
   "repository": {
     "url": "https://github.com/rm-rf-prod/GroundTruth-MCP",
     "source": "github"
@@ -22,6 +22,20 @@
           "format": "string",
           "isSecret": true,
           "name": "GT_GITHUB_TOKEN"
+        },
+        {
+          "description": "Disk cache directory (default ~/.gt-mcp-cache)",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false,
+          "name": "GT_CACHE_DIR"
+        },
+        {
+          "description": "Log level written to stderr: debug, info, warn or error (default info)",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false,
+          "name": "GT_LOG_LEVEL"
         }
       ]
     }

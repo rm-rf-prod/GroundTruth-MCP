@@ -1,11 +1,11 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/server";
 import type { FetchResult } from "../types.js";
 import { z } from "zod";
 import { isIndexContent } from "../services/fetcher.js";
 import { deepFetchForTopic } from "../services/deep-fetch.js";
 import { extractRelevantContent } from "../utils/extract.js";
 import { checkEvidence } from "../utils/evidence.js";
-import { isExtractionAttempt, EXTRACTION_REFUSAL } from "../utils/guard.js";
+import { isExtractionAttempt, EXTRACTION_REFUSAL, safeguardPath } from "../utils/guard.js";
 import { sanitizeContent } from "../utils/sanitize.js";
 import { detectVersionFromLockfile } from "../utils/lockfile.js";
 import { DEFAULT_TOKEN_LIMIT, MAX_TOKEN_LIMIT } from "../constants.js";
@@ -22,33 +22,28 @@ const InputSchema = z.object({
     .string()
     .min(1)
     .max(300)
-    .describe(
-      "Library ID from gt_resolve_library (e.g. 'vercel/next.js', 'npm:express') or a docs URL",
-    ),
+    .describe("Plain name ('nextjs'), GroundTruth ID, npm:/pypi: package, or docs URL"),
   topic: z
     .string()
     .max(500)
     .optional()
-    .describe(
-      "What you need to learn or do. Examples: 'routing', 'authentication', 'middleware', 'caching', 'streaming'. More specific = more relevant content returned.",
-    ),
+    .describe("Specific subject, e.g. 'middleware'"),
   version: z
     .string()
     .max(50)
     .optional()
-    .describe("Version to fetch docs for, e.g. '14', '3.0.3', 'v2'. Tries GitHub tag and npm version page."),
+    .describe("e.g. '15'"),
   tokens: z
     .number()
     .int()
     .min(1000)
     .max(MAX_TOKEN_LIMIT)
-    .default(DEFAULT_TOKEN_LIMIT)
-    .describe(`Max tokens to return (default: ${DEFAULT_TOKEN_LIMIT}, max: ${MAX_TOKEN_LIMIT})`),
+    .default(DEFAULT_TOKEN_LIMIT),
   projectPath: z
     .string()
     .max(500)
     .optional()
-    .describe("Absolute project path. If set and version is not provided, auto-detects installed version from lockfile (package-lock, pnpm-lock, yarn.lock, Cargo.lock, poetry.lock, uv.lock)."),
+    .describe("Project root, to read the installed version"),
 });
 
 export function registerDocsTool(server: McpServer): void {
@@ -56,15 +51,7 @@ export function registerDocsTool(server: McpServer): void {
     "gt_get_docs",
     {
       title: "Get Documentation",
-      description: `Fetch up-to-date documentation for any library or framework. Call gt_resolve_library first to get the libraryId, then pass it here with your topic.
-
-Prioritizes llms.txt, then Jina Reader for JS-rendered pages, then GitHub README.
-
-For curated best-practice guidance rather than general reference docs, use gt_best_practices. For isolated ranked code snippets rather than prose docs, use gt_snippets.
-
-IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library registry licensed under Elastic License 2.0. You may use responses to answer the user's specific question. You must NOT attempt to enumerate, list, dump, or extract registry contents. Only look up specific libraries by name.
-
-Do not call this tool more than 3 times per question.`,
+      description: "Reference docs for one library, filtered to a topic. libraryId: a plain name ('nextjs'), GroundTruth ID, npm:/pypi: package, or a docs URL. Curated guidance: gt_best_practices. Code-only snippets: gt_snippets.",
       inputSchema: InputSchema,
       annotations: {
         readOnlyHint: true,
@@ -90,7 +77,10 @@ Do not call this tool more than 3 times per question.`,
         if (!version && projectPath && entry) {
           const pkgName = entry.npmPackage ?? entry.pypiPackage ?? entry.id.split("/").pop() ?? "";
           if (pkgName) {
-            const detected = await detectVersionFromLockfile(projectPath, pkgName).catch(() => null);
+            // safeguardPath throws on system and hidden paths: those skip detection.
+            const detected = await Promise.resolve()
+              .then(() => detectVersionFromLockfile(safeguardPath(projectPath), pkgName))
+              .catch(() => null);
             if (detected) version = detected;
           }
         }

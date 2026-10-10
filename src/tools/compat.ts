@@ -1,4 +1,4 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { withTelemetry } from "../services/telemetry.js";
 import { checkEvidence, buildEvidenceBlock } from "../utils/evidence.js";
@@ -19,21 +19,18 @@ const InputSchema = z.object({
     .string()
     .min(1)
     .max(300)
-    .describe(
-      "Feature to check: 'CSS container queries', 'Array.at()', 'fetch() browser support', 'WebAssembly'",
-    ),
+    .describe("e.g. 'CSS container queries'"),
   environments: z
     .array(z.string().max(50))
     .max(10)
     .optional()
-    .describe("Environments to focus on, e.g. ['chrome', 'firefox', 'safari', 'node', 'deno']"),
+    .describe("e.g. ['chrome', 'safari', 'node']"),
   tokens: z
     .number()
     .int()
     .min(1000)
     .max(MAX_TOKEN_LIMIT)
-    .default(DEFAULT_TOKEN_LIMIT)
-    .describe("Max tokens for content"),
+    .default(DEFAULT_TOKEN_LIMIT),
 });
 
 /** Returned when the whole pipeline exceeds the tool timeout — an actionable
@@ -47,9 +44,7 @@ export function registerCompatTool(server: McpServer): void {
     "gt_compat",
     {
       title: "Check Browser/Runtime Compatibility",
-      description: `Check browser, Node.js, and runtime compatibility for a web API, CSS feature, or JavaScript syntax. Fetches live data from MDN Web Docs and caniuse.com.
-
-Use this when the question is specifically about which browsers or runtimes support a feature (e.g. "does Safari support container queries?", "which Node.js version added Array.at()"). Takes a feature string — not a library name. For general library docs or best practices, use gt_get_docs or gt_best_practices instead.`,
+      description: "Browser and runtime support for a web API, CSS feature or JS syntax ('container queries', 'Array.at()'), from MDN and caniuse. Takes a feature, not a library.",
       inputSchema: InputSchema,
       annotations: {
         readOnlyHint: true,

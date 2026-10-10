@@ -58,10 +58,10 @@ beforeEach(async () => {
 
 describe("probeLlmsTxt — Bug C-3: URL fragment / query normalization", () => {
   it("strips #fragment before concatenating /llms.txt path", async () => {
-    await probeLlmsTxt("https://github.com/lyststen/stenly#readme");
+    await probeLlmsTxt("https://gitlab.com/lyststen/stenly#readme");
     const urls = mockedFetch.mock.calls.map(([u]) => String(u));
-    expect(urls).toContain("https://github.com/lyststen/stenly/llms-full.txt");
-    expect(urls).toContain("https://github.com/lyststen/stenly/llms.txt");
+    expect(urls).toContain("https://gitlab.com/lyststen/stenly/llms-full.txt");
+    expect(urls).toContain("https://gitlab.com/lyststen/stenly/llms.txt");
     for (const u of urls) {
       expect(u).not.toContain("#readme/");
     }

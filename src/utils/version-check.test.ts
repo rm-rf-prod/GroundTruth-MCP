@@ -1,5 +1,9 @@
-import { describe, it, expect } from "vitest";
-import { isNewerVersion, formatUpdateNotice, getUpdateNoticeForResponse, setPendingUpdate } from "./version-check.js";
+import { describe, it, expect, vi } from "vitest";
+
+const fetchWithTimeout = vi.hoisted(() => vi.fn());
+vi.mock("../services/http/request.js", () => ({ fetchWithTimeout }));
+
+import { isNewerVersion, formatUpdateNotice, getUpdateNoticeForResponse, setPendingUpdate, getLatestVersion } from "./version-check.js";
 
 describe("isNewerVersion", () => {
   it("detects major version bump", () => {
@@ -45,5 +49,17 @@ describe("getUpdateNoticeForResponse", () => {
     const notice = getUpdateNoticeForResponse();
     expect(notice).toContain("9.9.9");
     expect(notice).toContain("UPDATE AVAILABLE");
+  });
+});
+
+describe("getLatestVersion", () => {
+  it("goes through fetchWithTimeout, so the SSRF dispatcher guards the startup check too", async () => {
+    fetchWithTimeout.mockResolvedValueOnce(new Response(JSON.stringify({ version: "99.0.0" })));
+    expect(await getLatestVersion()).toBe("99.0.0");
+    expect(fetchWithTimeout).toHaveBeenCalledWith(
+      "https://registry.npmjs.org/@groundtruth-mcp/gt-mcp/latest",
+      expect.any(Number),
+      { Accept: "application/json" },
+    );
   });
 });

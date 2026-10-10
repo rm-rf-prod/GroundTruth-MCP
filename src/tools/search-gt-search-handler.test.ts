@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/server";
 import { registerSearchTool, findTopicUrls } from "./search.js";
 
 // ── Dependency mocks ────────────────────────────────────────────────────────
@@ -7,6 +7,8 @@ import { registerSearchTool, findTopicUrls } from "./search.js";
 vi.mock("../sources/registry.js", () => ({
   fuzzySearch: vi.fn(() => []),
   lookupById: vi.fn(() => null),
+  lookupByAlias: vi.fn(() => undefined),
+  LIBRARY_REGISTRY: [],
 }));
 
 vi.mock("../services/fetcher.js", () => ({
@@ -57,6 +59,7 @@ vi.mock("../services/cache.js", () => ({
     has: vi.fn(() => false),
     clear: vi.fn(),
   },
+  diskDocCache: { get: vi.fn(async () => undefined), set: vi.fn(async () => undefined) },
 }));
 
 // ── Imports after mocks ─────────────────────────────────────────────────────

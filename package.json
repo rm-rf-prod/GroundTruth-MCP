@@ -15,7 +15,7 @@
   ],
   "scripts": {
     "postinstall": "node postinstall.mjs",
-    "build": "tsc && find dist -name '*.js.map' -delete && find dist -name '*.d.ts' -delete && javascript-obfuscator dist --output dist --compact true --string-array true --string-array-encoding rc4 --string-array-threshold 0.9 --split-strings true --split-strings-chunk-length 10",
+    "build": "tsc && find dist -name '*.js.map' -delete && find dist -name '*.d.ts' -delete && javascript-obfuscator dist --output dist --compact true --string-array true --string-array-encoding rc4 --string-array-threshold 0.9 --string-array-rotate false --split-strings false --exclude /sources/",
     "build:publish": "node scripts/swap-private.mjs && npm run build; EXIT=$?; node scripts/revert-private.mjs; exit $EXIT",
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
@@ -33,7 +33,7 @@
     "release:major": "npm run typecheck && npm run test && npm version major && npm publish --access public && mcp-publisher publish"
   },
   "engines": {
-    "node": "26.x"
+    "node": ">=24"
   },
   "keywords": [
     "mcp",
@@ -70,7 +70,7 @@
     "registry": "https://registry.npmjs.org"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.32.1",
+    "@modelcontextprotocol/server": "^2.3.1",
     "undici": "catalog:",
     "zod": "catalog:"
   },
@@ -78,12 +78,12 @@
     "@types/node": "^26.1.2",
     "@typescript-eslint/eslint-plugin": "catalog:",
     "@typescript-eslint/parser": "catalog:",
-    "@vitest/coverage-v8": "^4.1.0",
+    "@vitest/coverage-v8": "^4.1.11",
     "eslint": "^10.8.0",
     "javascript-obfuscator": "catalog:",
     "tsx": "catalog:",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.0"
+    "vitest": "^4.1.11"
   },
   "packageManager": "pnpm@12.10.1"
 }

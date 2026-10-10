@@ -24,19 +24,14 @@ export function computeStats() {
     categoryCount: categories.length,
     toolCount,
     testFileCount,
-    libraryBadgeSize: libraryBadgeSize(),
+    libraryBadgeSize: computeLibraryCount(),
     testCount: runTestCount(),
   };
 }
 
-/** Count from the private registry when present, else the constants badge value. */
-function libraryBadgeSize() {
-  const privateRegistryPath = join(root, "docs/private/registry.ts");
-  if (existsSync(privateRegistryPath)) {
-    return countMatches(readFileSync(privateRegistryPath, "utf-8"), /^\s+id:\s+"/gm);
-  }
-  const badgeMatch = read("src/constants.ts").match(/REGISTRY_BADGE_SIZE\s*=\s*(\d+)/);
-  return badgeMatch ? parseInt(badgeMatch[1]) : 97;
+/** Registry entries in the shipped table, one `id:` line each. Never read back from constants.ts. */
+export function computeLibraryCount() {
+  return countMatches(read("src/sources/registry.ts"), /^\s+id:\s+"/gm);
 }
 
 /**

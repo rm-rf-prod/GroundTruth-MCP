@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer } from "@modelcontextprotocol/server";
 import { registerDispatchTool } from "./dispatch.js";
 import { resetTelemetry, getRecentOutcomes } from "../services/telemetry.js";
 
@@ -69,13 +69,16 @@ describe("gt_dispatch tool", () => {
     expect(outcomes[0]?.resolved).toBe(true);
   });
 
-  it("includes routing table in response text", async () => {
+  // The server instructions already carry the routing table; repeating it in
+  // every dispatch response cost about 1.7K chars per call.
+  it("omits the routing table but keeps the recommended call", async () => {
     const server = new McpServer({ name: "test", version: "0.0.0" });
     registerDispatchTool(server);
     const handler = getHandler(server, "gt_dispatch");
     const result = (await handler({ query: "use gt" })) as { content: Array<{ text: string }> };
-    expect(result.content[0]?.text).toContain("Trigger phrase routing");
-    expect(result.content[0]?.text).toContain("| User input pattern");
+    expect(result.content[0]?.text).not.toContain("Trigger phrase routing");
+    expect(result.content[0]?.text).not.toContain("| User input pattern");
+    expect(result.content[0]?.text).toContain("## Recommended call");
   });
 
   it("respects projectPath argument for project-level routing", async () => {

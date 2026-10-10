@@ -1,78 +1,45 @@
 #!/usr/bin/env node
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { SERVER_NAME, SERVER_VERSION, TOOL_COUNT } from "./constants.js";
-import { getInstallId } from "./utils/watermark.js";
-import { checkForUpdate, formatUpdateNotice, setPendingUpdate } from "./utils/version-check.js";
-import { diskDocCache } from "./services/cache.js";
-import { log } from "./utils/logger.js";
-import { buildServerInstructions } from "./services/server-instructions.js";
-import { registerAllTools } from "./server/register-tools.js";
-import { registerResources } from "./server/resources.js";
-import { registerPrompts } from "./server/prompts.js";
-import { handleCliFlags } from "./server/cli.js";
-import { startHttpServer } from "./server/http.js";
+// Bootstrap only. Static imports stay minimal so --version, --help and the
+// routing decision never load the tool modules; everything else is imported
+// on demand below.
+import * as nodeModule from "node:module";
+import { route } from "./cli/commands.js";
 
-const server = new McpServer(
-  { name: SERVER_NAME, version: SERVER_VERSION },
-  {
-    instructions: buildServerInstructions(TOOL_COUNT),
-  },
-);
+// Must run before the dynamic imports: modules linked earlier are not cached.
+// Never throws by contract; the guard covers runtimes without the API.
+try {
+  nodeModule.enableCompileCache?.();
+} catch { /* run uncached */ }
+const flushCompileCache = (): void => {
+  try {
+    nodeModule.flushCompileCache?.();
+  } catch { /* best effort */ }
+};
 
-registerAllTools(server);
-registerResources(server);
-registerPrompts(server);
+const args = process.argv.slice(2);
 
-let activeHttpServer: import("http").Server | undefined;
-
-function gracefulShutdown(): void {
-  server.close().catch(() => {});
-  if (activeHttpServer) activeHttpServer.close();
-  process.exit(0);
-}
-
-async function main(): Promise<void> {
-  handleCliFlags(process.argv.slice(2));
-
-  const httpPort = process.env.GT_HTTP_PORT;
-  if (httpPort) {
-    activeHttpServer = await startHttpServer(server, httpPort);
-  } else {
-    const transport = new StdioServerTransport();
-    await server.connect(transport);
-    log({ level: "info", msg: `${SERVER_NAME} v${SERVER_VERSION} running via stdio [${getInstallId()}]` });
+if (route(args, process.stdin.isTTY === true) === "cli") {
+  process.env["GT_LOG_LEVEL"] ??= "warn"; // config.js freezes on first import
+  let code = 2;
+  let out = "";
+  try {
+    const [{ runCli }, { pruneInBackground }] = await Promise.all([import("./cli/run.js"), import("./cli/flush.js")]);
+    pruneInBackground();
+    const result = await runCli(args);
+    code = result.code;
+    out = result.out;
+    process.stderr.write(result.err);
+  } catch (e) {
+    // Only load-time failures land here, e.g. an invalid GT_* variable.
+    process.stderr.write(`gt-mcp: ${e instanceof Error ? e.message : String(e)}\n`);
   }
-
-  // Non-blocking cache prune — removes expired entries and caps at 1000 files.
-  // Repeated hourly: a long-lived stdio session can blow past the cap many
-  // times over, and a boot-only prune never brings it back down.
-  diskDocCache.prune(1000).catch(() => {});
-  const pruneTimer = setInterval(() => {
-    diskDocCache.prune(1000).catch(() => {});
-  }, 3_600_000);
-  pruneTimer.unref();
-
-  // Non-blocking update check — notifies user via MCP logging if a newer version exists
-  checkForUpdate().then((latestVersion) => {
-    if (latestVersion) {
-      setPendingUpdate(latestVersion);
-      const notice = formatUpdateNotice(latestVersion);
-      log({ level: "warn", msg: notice });
-      server.server.sendLoggingMessage({ level: "warning", data: notice }).catch(() => {});
-    }
-  }).catch(() => {});
+  flushCompileCache();
+  // Exit explicitly once stdout drains: tool code can leave long timers pending.
+  process.stdout.write(out, () => process.exit(code));
+} else {
+  const { handleCliFlags } = await import("./server/cli.js");
+  await handleCliFlags(args);
+  await import("./server/main.js");
+  // The server is long-lived and usually killed by a signal, so write now.
+  flushCompileCache();
 }
-
-process.on("SIGTERM", gracefulShutdown);
-process.on("SIGINT", gracefulShutdown);
-
-process.on("unhandledRejection", (reason: unknown) => {
-  log({ level: "error", msg: "unhandledRejection", error: String(reason) });
-  process.exit(1);
-});
-
-main().catch((err: unknown) => {
-  log({ level: "error", msg: "Fatal error", error: String(err) });
-  process.exit(1);
-});

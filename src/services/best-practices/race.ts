@@ -1,4 +1,5 @@
 import { fetchAsMarkdownRace } from "../fetcher.js";
+import { settleWithGrace, PAGE_GRACE_MS } from "../deep-fetch-pages.js";
 import { tokenize, expandTopicTokens } from "../../utils/extract.js";
 
 /** Fetch multiple URLs in parallel — return the one with the best quality content.
@@ -11,20 +12,16 @@ export async function raceUrls(
 ): Promise<{ content: string; url: string; extraUrls: string[] } | null> {
   if (urls.length === 0) return null;
 
-  const results = await Promise.allSettled(
+  // Grace window, not allSettled: one slow Jina render (up to 25 s) held back
+  // pages that were ready in under a second.
+  const hits = await settleWithGrace(
     urls.map(async (url) => {
       const raw = await fetchAsMarkdownRace(url);
       if (raw && raw.length > 200) return { content: raw, url };
       throw new Error("no content");
     }),
+    PAGE_GRACE_MS,
   );
-
-  const hits: Array<{ content: string; url: string }> = [];
-  for (const result of results) {
-    if (result.status === "fulfilled") {
-      hits.push(result.value);
-    }
-  }
 
   if (hits.length === 0) return null;
   if (hits.length === 1) return { ...hits[0]!, extraUrls: [] };
@@ -46,12 +43,17 @@ export async function raceUrls(
     }
     return score;
   };
+  const scores = new Map(hits.map((h) => [h, topicScore(h)]));
+  const score = (h: { content: string; url: string }): number => scores.get(h) ?? 0;
   const ranked = [...hits].sort(
     (a, b) =>
-      topicScore(b) - topicScore(a) ||
+      score(b) - score(a) ||
       scoreContentQuality(b.content) - scoreContentQuality(a.content),
   );
-  const top = ranked.slice(0, 3);
+  // A page far less on-topic than the best one is filler, not a second source:
+  // it rode along as ~23% of a Next.js caching answer (guides/authentication).
+  const best = score(ranked[0]!);
+  const top = ranked.filter((h, i) => i === 0 || score(h) >= 0.5 * best).slice(0, 3);
   // Cap each source before merging — three unbounded pages would make the
   // downstream sanitize + BM25 pass scan megabytes for a few-KB output.
   const MAX_CHARS_PER_SOURCE = 80_000;

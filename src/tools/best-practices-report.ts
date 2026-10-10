@@ -1,4 +1,5 @@
 import { buildEvidenceBlock, buildHonestMiss, extractHeadingOutline, type EvidenceCheck } from "../utils/evidence.js";
+import { weakEvidenceNote } from "../utils/evidence/render.js";
 import { withNotice } from "../utils/guard.js";
 import { computeQualityScore } from "../utils/quality.js";
 
@@ -77,15 +78,12 @@ export function renderBestPractices(input: ReportInput): ToolResponse {
     `# ${displayName} — Best Practices`,
     topic ? `> Topic: ${topic}` : "",
     `> Source: ${sourceUrl}`,
-    truncated ? "> Note: Response truncated. Use a more specific topic or increase tokens." : "",
-    topic && !evidence.ok ? `> Evidence: Weak — topic terms appear only sparsely (${evidence.occurrences} occurrence${evidence.occurrences === 1 ? "" : "s"}). Verify against the source before relying on this.` : "",
+    truncated ? "> Note: More matching sections were truncated; narrow the topic." : "",
+    topic && !evidence.ok ? weakEvidenceNote(evidence) : "",
     qualityScore < 0.4 ? `> Quality: Low — ${qualityHints.join("; ") || "try a more specific topic."}` : "",
-    "",
-    "---",
-    "",
   ]
     .filter(Boolean)
-    .join("\n");
+    .join("\n") + "\n\n---\n\n";
 
   const evidenceBlock = buildEvidenceBlock({
     sources: sourcesTried,

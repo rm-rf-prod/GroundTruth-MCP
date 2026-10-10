@@ -16,6 +16,7 @@
 import { randomBytes } from "crypto";
 import { log, type LogEntry } from "../utils/logger.js";
 import { recordToolCall } from "./metrics.js";
+import * as guard from "../utils/guard.js";
 
 export interface TelemetryContext {
   tool: string;
@@ -69,7 +70,7 @@ function finish(
   errorMessage?: string,
 ): TelemetryResult {
   const durationMs = Date.now() - ctx.startTime;
-  recordToolCall(ctx.tool, durationMs, ctx.cacheHit, !success);
+  recordToolCall(ctx.tool, durationMs, ctx.cacheHit, !success, ctx.resolved);
   const outcome: InvocationOutcome = {
     tool: ctx.tool,
     requestId: ctx.requestId,
@@ -122,12 +123,26 @@ export async function withTelemetry<T>(
   inputHash?: string,
 ): Promise<T> {
   const ctx = startCall(tool, inputHash);
+  let ended = false;
+  const end = (record: () => void): void => {
+    if (ended) return;
+    ended = true;
+    record();
+  };
+  // register-tools answers the abort (deadline or client cancel) with an error
+  // result at once, so record it then; a handler that finishes later is ignored.
+  // `in`, not a named import: many tool tests mock guard.js without this export.
+  const signal = "currentCallSignal" in guard ? guard.currentCallSignal() : undefined;
+  const onAbort = (): void => end(() => endCallError(ctx, "aborted: tool deadline or client cancel"));
+  signal?.addEventListener("abort", onAbort, { once: true });
   try {
     const result = await fn(ctx);
-    endCallSuccess(ctx);
+    end(() => endCallSuccess(ctx));
     return result;
   } catch (err) {
-    endCallError(ctx, err);
+    end(() => endCallError(ctx, err));
     throw err;
+  } finally {
+    signal?.removeEventListener("abort", onAbort);
   }
 }

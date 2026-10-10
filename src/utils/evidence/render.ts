@@ -26,7 +26,7 @@ export function buildEvidenceBlock(opts: {
   }).slice(0, 8);
 
   const lines: string[] = ["", "---", "", "## Evidence"];
-  lines.push(`- Fetched live ${new Date().toISOString().slice(0, 10)} from official sources — not from model training data`);
+  lines.push(`- Fetched live ${new Date().toISOString().slice(0, 10)}`);
   for (const s of uniqueSources) {
     const meta: string[] = [];
     if (s.sourceType) meta.push(s.sourceType);
@@ -49,6 +49,14 @@ export function buildEvidenceBlock(opts: {
     lines.push("- Retrieval: topic-targeted deep fetch (initial page lacked sufficient topic evidence)");
   }
   return lines.join("\n");
+}
+
+/** Header line for content that failed the evidence bar, naming why it failed. */
+export function weakEvidenceNote(check: EvidenceCheck): string {
+  const why = check.occurrences >= 3 && check.missingTokens.length > 0
+    ? `not found in source: ${check.missingTokens.join(", ")}.`
+    : `topic terms appear only sparsely (${check.occurrences} occurrence${check.occurrences === 1 ? "" : "s"}).`;
+  return `> Evidence: Weak — ${why} Verify against the source before relying on this.`;
 }
 
 /** Pull the first markdown headings out of content — used to show what a source DOES cover. */

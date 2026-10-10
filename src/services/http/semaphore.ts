@@ -15,16 +15,26 @@ class FetchSemaphore {
     this.max = max;
   }
 
-  async acquire(): Promise<void> {
+  /** `signal` aborting while queued drops the waiter, so a cancelled call stops holding its place in line. */
+  async acquire(signal?: AbortSignal): Promise<void> {
+    signal?.throwIfAborted();
     if (this.active < this.max) {
       this.active++;
       return;
     }
-    return new Promise<void>((resolve) => {
-      this.queue.push(() => {
+    return new Promise<void>((resolve, reject) => {
+      const grant = (): void => {
+        signal?.removeEventListener("abort", onAbort);
         this.active++;
         resolve();
-      });
+      };
+      const onAbort = (): void => {
+        const i = this.queue.indexOf(grant);
+        if (i >= 0) this.queue.splice(i, 1);
+        reject(signal?.reason);
+      };
+      signal?.addEventListener("abort", onAbort, { once: true });
+      this.queue.push(grant);
     });
   }
 

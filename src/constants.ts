@@ -3,7 +3,8 @@ import { config } from "./config.js";
 export const SERVER_NAME = "GroundTruth";
 export const SERVER_VERSION = "7.5.0";
 
-// Known size of the full private registry (updated with each release that adds entries)
+// Entry count of src/sources/registry.ts, the full registry that ships; rewritten
+// by scripts/lib/readme-stats.mjs (npm run update-stats), never edited by hand.
 export const REGISTRY_BADGE_SIZE = 598;
 
 // Number of MCP tools registered in index.ts — single source of truth for the
@@ -14,11 +15,14 @@ export const TOOL_COUNT = 14;
 export const CHARS_PER_TOKEN = 3.8;
 
 // Disk cache directory for persistent cross-invocation caching
+const _explicitCacheDir = process.env.GT_CACHE_DIR;
 const _rawCacheDir =
-  process.env.GT_CACHE_DIR ??
+  _explicitCacheDir ??
   (process.env.HOME ? `${process.env.HOME}/.gt-mcp-cache` : "/tmp/.gt-mcp-cache");
 const _SYSTEM_DIRS = ["/etc", "/proc", "/sys", "/dev", "/boot", "/root", "/bin", "/sbin", "/usr", "/var/run", "/run", "/var/log"];
-if (_SYSTEM_DIRS.some((d) => _rawCacheDir === d || _rawCacheDir.startsWith(d + "/"))) {
+// Only an explicit GT_CACHE_DIR is checked: root's own HOME (/root in containers
+// and CI) is a legitimate default and must not abort startup.
+if (_explicitCacheDir !== undefined && _SYSTEM_DIRS.some((d) => _rawCacheDir === d || _rawCacheDir.startsWith(d + "/"))) {
   throw new Error(`GT_CACHE_DIR must not point to a system directory: ${_rawCacheDir}`);
 }
 export const DISK_CACHE_DIR = _rawCacheDir;
@@ -43,6 +47,10 @@ export const CACHE_TTLS = {
 export const FETCH_TIMEOUT_MS = config.fetchTimeoutMs;
 
 export const SWR_STALE_TTL_MS = config.swrStaleTtlMs;
+// Readers that revalidate (services/http/swr.ts) serve an expired page at once and
+// refresh it in the background, so it is stale for one call at most. Older entries
+// are refetched in the foreground. Long enough that a next-day session starts warm.
+export const STALE_REVALIDATE_MAX_MS = Math.max(7 * 24 * 60 * 60 * 1000, SWR_STALE_TTL_MS);
 export const CIRCUIT_BREAKER_THRESHOLD = config.circuitBreakerThreshold;
 export const CIRCUIT_BREAKER_RESET_MS = config.circuitBreakerResetMs;
 export const DEEP_FETCH_MAX_PAGES = config.deepFetchMaxPages;
@@ -61,6 +69,8 @@ export const GITHUB_RAW_URL = "https://raw.githubusercontent.com";
 export const INJECTION_PATTERNS: RegExp[] = [
   /ignore\s+(all\s+)?(previous|prior|above)\s+instructions?/gi,
   /you\s+(are|must|should|will|have\s+to)\s+now/gi,
+  // Role delimiters stay case-sensitive (also HUMAN below): they only match on the
+  // raw-text pass, since "system:" in lowercase is ordinary prose ("Operating system:").
   /\bSYSTEM\s*:/g,
   /\bASSISTANT\s*:/g,
   /\b(JAILBREAK|DAN|DO ANYTHING NOW)\b/gi,

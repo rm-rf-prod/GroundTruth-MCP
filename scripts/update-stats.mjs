@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * Computes live project stats from source and updates README badges/prose.
+ * Computes live project stats from source and updates README badges/prose,
+ * llms.txt, the server.json and package.json descriptions, and constants.ts.
  * Also sweeps the repo for stale version strings when called via npm version.
  *
  * Counts:
@@ -9,7 +10,7 @@
  *   - Tools           : `register*Tool(` calls in src/server/register-tools.ts
  *   - Test files      : *.test.ts count under src/
  *   - Tests           : vitest json output (numTotalTests)
- *   - Library badge   : REGISTRY_BADGE_SIZE in src/constants.ts
+ *   - Libraries       : `id:` entries in src/sources/registry.ts
  *
  * Called by:
  *   npm run update-stats         (manual)
@@ -20,6 +21,7 @@
 import { sweepVersions } from "./lib/version-sweep.mjs";
 import { computeStats } from "./lib/project-stats.mjs";
 import { updateReadme, updateConstants } from "./lib/readme-stats.mjs";
+import { updatePublicSurfaces } from "./lib/surface-stats.mjs";
 
 const swept = sweepVersions(process.env.npm_old_version, process.env.npm_new_version);
 if (swept > 0) {
@@ -30,6 +32,7 @@ if (swept > 0) {
 
 const stats = computeStats();
 updateReadme(stats);
+updatePublicSurfaces(stats);
 updateConstants(stats);
 
 console.log(

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/server";
 
 // ── Dependency mocks ────────────────────────────────────────────────────────
 
@@ -166,7 +166,7 @@ describe("gt_auto_scan handler", () => {
       }
     });
 
-    it("shows cap note when more than 20 libraries matched", async () => {
+    it("fetches at most 10 libraries however many matched", async () => {
       // Create many unique package names that may match registry entries
       const manyDeps: Record<string, string> = {};
       for (let i = 0; i < 25; i++) {
@@ -177,8 +177,8 @@ describe("gt_auto_scan handler", () => {
       await mockPackageJson(manyDeps);
       vi.mocked(fetchDocs).mockResolvedValue(makeFetchResult());
       const result = await handler({});
-      // fetchDocs should not be called more than 20 times
-      expect(fetchDocs.mock.calls.length).toBeLessThanOrEqual(20);
+      // fetchDocs should not be called more than 10 times
+      expect(fetchDocs.mock.calls.length).toBeLessThanOrEqual(10);
     });
 
     it("mentions unmatched packages via gt_resolve_library when present", async () => {

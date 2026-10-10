@@ -57,11 +57,12 @@ describe("LIBRARY_REGISTRY", () => {
     }
   });
 
-  it("all bestPracticesPaths start with / when present", () => {
+  it("all bestPracticesPaths are root-relative or absolute https when present", () => {
+    // joinDocPath passes absolute URLs through, for guidance hosted off the docs host.
     for (const entry of LIBRARY_REGISTRY) {
       if (entry.bestPracticesPaths) {
         for (const path of entry.bestPracticesPaths) {
-          expect(path, `${entry.id} path: ${path}`).toMatch(/^\//);
+          expect(path, `${entry.id} path: ${path}`).toMatch(/^(\/|https:\/\/)/);
         }
       }
     }
@@ -98,8 +99,10 @@ describe("LIBRARY_REGISTRY", () => {
     }
   });
 
-  it("every entry has urlPatterns", () => {
-    for (const entry of LIBRARY_REGISTRY) {
+  it("every entry with a docs site has urlPatterns", () => {
+    // README-only GitHub projects and single-page API docs have no page structure to template.
+    const SINGLE_PAGE = new Set(["hapijs/joi"]);
+    for (const entry of LIBRARY_REGISTRY.filter((e) => new URL(e.docsUrl).host !== "github.com" && !SINGLE_PAGE.has(e.id))) {
       expect(entry.urlPatterns, `${entry.id} missing urlPatterns`).toBeDefined();
       expect(entry.urlPatterns!.length, `${entry.id} empty urlPatterns`).toBeGreaterThan(0);
     }

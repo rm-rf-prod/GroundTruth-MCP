@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="700" viewBox="0 0 1600 700" role="img" aria-labelledby="cli-title cli-desc">
+<title id="cli-title">gt-mcp docs react useEffect in a terminal</title>
+<desc id="cli-desc">Terminal output of gt-mcp docs react useEffect: resolves facebook/react in the registry of 793 libraries, fetches react.dev/llms.txt, ranks 6 of 48 sections with BM25, passes the evidence gate, prints the useEffect reference, and ends with an Evidence block listing the fetch date, the source URL and topic coverage.</desc>
+<defs>
+<style>
+text { font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Ubuntu Sans', 'Helvetica Neue', Ubuntu, Arial, sans-serif; }
+.m { font-family: 'JetBrains Mono', 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Ubuntu Sans Mono', 'Ubuntu Mono', 'DejaVu Sans Mono', monospace; }
+.t { font-variant-numeric: tabular-nums; }
+</style>
+
+</defs>
+<rect width="1600" height="700" fill="#0a0d0c"/>
+<rect x="72.5" y="36.5" width="1455" height="627" rx="14" fill="#0d1210" stroke="#2b3833" stroke-width="1"/>
+<line x1="73" y1="84.5" x2="1527" y2="84.5" stroke="#1f2925"/>
+<circle cx="98" cy="60" r="6" fill="#2b3833"/>
+<circle cx="120" cy="60" r="6" fill="#2b3833"/>
+<circle cx="142" cy="60" r="6" fill="#2b3833"/>
+<text x="800" y="66" font-size="15" fill="#808d88" text-anchor="middle" class="m">~/my-app</text>
+<text x="112" y="130" font-size="22" fill="#00d4aa" class="m">$</text>
+<text x="140" y="130" font-size="22" fill="#f1f5f3" class="m">gt-mcp docs react useEffect</text>
+<text x="140" y="173" font-size="22" fill="#808d88" class="m">resolve</text>
+<text x="292" y="173" font-size="22" fill="#a9b5b0" class="m">facebook/react</text>
+<text x="692" y="173" font-size="22" fill="#808d88" class="m">registry of 793</text>
+<text x="1112" y="173" font-size="22" fill="#a9b5b0" text-anchor="end" class="m">2 ms</text>
+<text x="140" y="206" font-size="22" fill="#808d88" class="m">fetch</text>
+<text x="292" y="206" font-size="22" fill="#a9b5b0" class="m">react.dev/llms.txt</text>
+<text x="692" y="206" font-size="22" fill="#808d88" class="m">llms-txt</text>
+<text x="1112" y="206" font-size="22" fill="#a9b5b0" text-anchor="end" class="m">412 ms</text>
+<text x="140" y="239" font-size="22" fill="#808d88" class="m">rank</text>
+<text x="292" y="239" font-size="22" fill="#a9b5b0" class="m">6 of 48 sections</text>
+<text x="692" y="239" font-size="22" fill="#808d88" class="m">bm25</text>
+<text x="1112" y="239" font-size="22" fill="#a9b5b0" text-anchor="end" class="m">2,140 tokens</text>
+<text x="140" y="272" font-size="22" fill="#808d88" class="m">gate</text>
+<text x="292" y="272" font-size="22" fill="#a9b5b0" class="m">topic &quot;useEffect&quot;</text>
+<text x="692" y="272" font-size="22" fill="#808d88" class="m">evidence</text>
+<text x="1112" y="272" font-size="22" fill="#00d4aa" text-anchor="end" class="m">pass</text>
+<text x="112" y="340" font-size="22" fill="#808d88" class="m">##</text>
+<text x="152" y="340" font-size="22" font-weight="700" fill="#f1f5f3" class="m">useEffect</text>
+<text x="112" y="373" font-size="22" fill="#a9b5b0" class="m">useEffect is a React Hook that lets you synchronize a component with an external system.</text>
+<rect x="98" y="387" width="560" height="42" rx="8" fill="#161e1b"/>
+<text x="116" y="414" font-size="22" fill="#a9b5b0" class="m"><tspan fill="#f1f5f3">useEffect</tspan><tspan fill="#a9b5b0">(setup, dependencies?)</tspan></text>
+<text x="112" y="459" font-size="22" fill="#808d88" class="m">##</text>
+<text x="152" y="459" font-size="22" font-weight="700" fill="#f1f5f3" class="m">Evidence</text>
+<text x="112" y="492" font-size="22" fill="#a9b5b0" class="m">- Fetched live 2026-10-10 from official sources — not from model training data</text>
+<text x="112" y="525" font-size="22" fill="#a9b5b0" class="m">- Source: https://react.dev/reference/react/useEffect (llms-txt)</text>
+<text x="112" y="558" font-size="22" fill="#a9b5b0" class="m">- Topic coverage: 1/1 terms, 23 occurrences, present in headings + code blocks</text>
+<text x="112" y="628" font-size="22" fill="#00d4aa" class="m">$</text>
+<rect x="140" y="608" width="13" height="26" fill="#00d4aa" opacity="0.85"/>
+</svg>

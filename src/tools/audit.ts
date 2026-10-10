@@ -1,4 +1,4 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { safeguardPath, withToolTimeout } from "../utils/guard.js";
 import { withTelemetry } from "../services/telemetry.js";
@@ -15,7 +15,7 @@ const InputSchema = z.object({
     .string()
     .max(500)
     .optional()
-    .describe("Project directory. Defaults to current working directory."),
+    .describe("Project root (default: cwd)"),
   categories: z
     .array(
       z.enum([
@@ -40,22 +40,19 @@ const InputSchema = z.object({
         "all",
       ]),
     )
-    .default(["all"])
-    .describe('Issue categories to audit. Use "all" for broad questions. Default: all. Available: layout, performance, accessibility, security, react, nextjs, typescript, node, python, vue, svelte, angular, testing, mobile, api, css, seo, i18n.'),
+    .default(["all"]),
   tokens: z
     .number()
     .int()
     .min(1000)
     .max(8000)
-    .default(4000)
-    .describe("Max tokens per best-practice fetch"),
+    .default(4000),
   maxFiles: z
     .number()
     .int()
     .min(1)
     .max(200)
-    .default(50)
-    .describe("Max source files to scan"),
+    .default(50),
 });
 
 export function registerAuditTool(server: McpServer): void {
@@ -66,13 +63,7 @@ export function registerAuditTool(server: McpServer): void {
       // tools legitimately return long reports, so raise their inline ceiling.
       _meta: { "anthropic/maxResultSizeChars": 200_000 },
       title: "Audit Project Code",
-      description: `Scan source files for code issues across 18 categories, then fetch live best-practice fixes from official docs. Returns file:line locations. Unlike gt_auto_scan (best practices for your dependencies), this audits YOUR OWN source code.
-
-Categories: layout, performance, accessibility, security, react, nextjs, typescript, node, python, vue, svelte, angular, testing, mobile, api, css, seo, i18n — or "all" (default).
-
-For broad questions like "what can be improved" or "find all issues", use categories: ["all"]. For mobile apps (React Native/Expo), use ["mobile", "react", "typescript", "accessibility", "performance", "security"]. For web apps, use ["react", "nextjs", "typescript", "security", "accessibility", "performance", "layout", "css", "seo"].
-
-If doc fetches fail with empty results, the user likely needs to set GT_GITHUB_TOKEN for higher GitHub API rate limits. The audit patterns themselves always run locally — only the fix guidance fetch requires network.`,
+      description: "Scan the project's own source files for issues (file:line) and attach fixes from official docs. Use categories [\"all\"] for broad requests. Best practices for its dependencies: gt_auto_scan.",
       inputSchema: InputSchema,
       annotations: {
         readOnlyHint: true,

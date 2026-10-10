@@ -3,12 +3,19 @@ import { createHash, randomBytes } from "crypto";
 import { readFile, writeFile, mkdir, unlink, readdir, stat, rename } from "fs/promises";
 import { join } from "path";
 import { log } from "../utils/logger.js";
+import type { RevalidatingRead } from "./lru-cache.js";
 
 interface DiskCacheFile {
   data: string;
   expiresAt: number;
   contentHash?: string;
 }
+
+// Every set() in flight, across instances, so a short-lived process (the CLI)
+// can wait for its fire-and-forget writes before it exits.
+const pendingWrites = new Set<Promise<void>>();
+// Older than any live write: a .tmp this old was orphaned by a killed process.
+const ORPHAN_TMP_AGE_MS = 10 * 60 * 1000;
 
 /**
  * Persistent disk cache — survives across npx invocations.
@@ -41,33 +48,47 @@ export class DiskCache {
     return join(this.dir, `${hash}.json`);
   }
 
-  async get(key: string): Promise<string | undefined> {
+  async get(key: string, read?: RevalidatingRead): Promise<string | undefined> {
     if (!(await this.ensureDir())) return undefined;
     const filePath = this.keyToPath(key);
+    let content: string;
     try {
-      const content = await readFile(filePath, "utf-8");
+      content = await readFile(filePath, "utf-8");
+    } catch {
+      return undefined;
+    }
+    try {
       const entry = JSON.parse(content) as DiskCacheFile;
       // Validate the deserialized shape — a truncated/corrupt file can parse to
       // a non-conforming object; don't serve it as if it were a valid entry.
       if (typeof entry !== "object" || entry === null || typeof entry.data !== "string" || typeof entry.expiresAt !== "number") {
-        unlink(filePath).catch(() => void 0);
-        return undefined;
+        throw new Error("malformed cache entry");
       }
-      const now = Date.now();
-      if (now > entry.expiresAt) {
-        if (now <= entry.expiresAt + SWR_STALE_TTL_MS) {
-          return entry.data;
-        }
-        unlink(filePath).catch(() => void 0);
-        return undefined;
+      if (Date.now() <= entry.expiresAt + (read?.maxStaleMs ?? SWR_STALE_TTL_MS)) {
+        read?.onHit(entry.expiresAt);
+        return entry.data;
       }
-      return entry.data;
-    } catch {
-      return undefined;
-    }
+    } catch { /* corrupt: removed below, like an expired entry */ }
+    // Lazy cleanup: prune() no longer reads every file, so expired and corrupt
+    // entries are removed here, when they are first found.
+    await unlink(filePath).catch(() => void 0);
+    return undefined;
   }
 
-  async set(key: string, data: string, ttlMs = CACHE_TTL_MS): Promise<void> {
+  set(key: string, data: string, ttlMs = CACHE_TTL_MS): Promise<void> {
+    const write = this.write(key, data, ttlMs);
+    pendingWrites.add(write);
+    const forget = (): void => { pendingWrites.delete(write); };
+    write.then(forget, forget);
+    return write;
+  }
+
+  /** Wait for every set() in flight on any instance, including writes started meanwhile. */
+  async flush(): Promise<void> {
+    while (pendingWrites.size > 0) await Promise.allSettled(pendingWrites);
+  }
+
+  private async write(key: string, data: string, ttlMs: number): Promise<void> {
     if (!(await this.ensureDir())) return;
     // Serialize concurrent writes to the same key — prevents interleaved
     // bytes from two simultaneous set() calls corrupting the file.
@@ -121,55 +142,39 @@ export class DiskCache {
     let removed = 0;
     try {
       const files = await readdir(this.dir);
+      removed += await this.removeOrphanedTmp(files.filter((f) => f.endsWith(".tmp")));
       const jsonFiles = files.filter((f) => f.endsWith(".json"));
-
+      // Under the cap there is nothing to do: reading and parsing every file at
+      // boot and hourly cost ~40 MB RSS on a full cache. get() handles expiry.
+      if (jsonFiles.length <= maxEntries) return removed;
+      const entries: Array<{ path: string; mtime: number }> = [];
       for (const file of jsonFiles) {
         const filePath = join(this.dir, file);
         try {
-          const content = await readFile(filePath, "utf-8");
-          const entry = JSON.parse(content) as DiskCacheFile;
-          // Corrupt-but-parseable file (e.g. {}) has no numeric expiresAt — the
-          // stale check below would compare against NaN and never prune it. Delete
-          // it, mirroring the shape guards already in get()/has().
-          if (typeof entry !== "object" || entry === null || typeof entry.expiresAt !== "number") {
-            unlink(filePath).catch(() => void 0);
-            removed++;
-            continue;
-          }
-          // Match the serve-stale window used by get()/has(): only prune once the
-          // SWR stale window has also elapsed, else we discard still-serveable data.
-          if (Date.now() > entry.expiresAt + SWR_STALE_TTL_MS) {
-            await unlink(filePath);
-            removed++;
-          }
-        } catch {
-          await unlink(filePath).catch(() => void 0);
-          removed++;
-        }
+          const s = await stat(filePath);
+          entries.push({ path: filePath, mtime: s.mtimeMs });
+        } catch { /* skip */ }
       }
-
-      // Re-read the directory so the eviction guard reflects what is actually on
-      // disk — `removed` can be inflated by fail-silent unlinks above, deflating
-      // the count and skipping LRU eviction while the cache is still over cap.
-      const currentFiles = await readdir(this.dir);
-      const remainingJson = currentFiles.filter((f) => f.endsWith(".json"));
-      if (remainingJson.length > maxEntries) {
-        const entries: Array<{ path: string; mtime: number }> = [];
-        for (const file of remainingJson) {
-          const filePath = join(this.dir, file);
-          try {
-            const s = await stat(filePath);
-            entries.push({ path: filePath, mtime: s.mtimeMs });
-          } catch { /* skip */ }
-        }
-        entries.sort((a, b) => a.mtime - b.mtime);
-        const toEvict = entries.slice(0, entries.length - maxEntries);
-        for (const e of toEvict) {
-          await unlink(e.path).catch(() => void 0);
-          removed++;
-        }
+      entries.sort((a, b) => a.mtime - b.mtime);
+      for (const e of entries.slice(0, entries.length - maxEntries)) {
+        await unlink(e.path).catch(() => void 0);
+        removed++;
       }
     } catch { /* readdir failed — cache dir may not exist */ }
+    return removed;
+  }
+
+  private async removeOrphanedTmp(tmpFiles: string[]): Promise<number> {
+    let removed = 0;
+    const cutoff = Date.now() - ORPHAN_TMP_AGE_MS;
+    for (const file of tmpFiles) {
+      const filePath = join(this.dir, file);
+      try {
+        if ((await stat(filePath)).mtimeMs >= cutoff) continue;
+        await unlink(filePath);
+        removed++;
+      } catch { /* gone already */ }
+    }
     return removed;
   }
 }

@@ -23,7 +23,7 @@ export const NAV_FOOTER_PATTERNS: RegExp[] = [
   // "Previous / Next" page navigation
   /\[← ?(Previous|Back)[^\]]*\]\([^)]*\)/gi,
   /\[Next ?→[^\]]*\]\([^)]*\)/gi,
-  /^\s*←\s*(Previous|Back)\s*\|\s*Next\s*→\s*$/gm,
+  /^[ \t]*←\s*(Previous|Back)\s*\|\s*Next\s*→\s*$/gm,
 
   // Table of contents markers
   /^#+\s*(Table of Contents|Contents|On this page|In this (article|section))\s*$/gim,
@@ -46,17 +46,17 @@ export const NAV_FOOTER_PATTERNS: RegExp[] = [
   /\[(Share|Tweet|LinkedIn|Facebook)[^\]]*\]\([^)]*\)/gi,
 
   // Search boxes
-  /\[?\s*Search (docs|documentation|\.\.\.)\s*\]?/gi,
+  /(?:\[[ \t]*)?Search (?:docs|documentation|\.\.\.)(?:[ \t]*\])?/gi,
 
   // "Last updated" metadata lines
   /^Last updated:?\s+.+$/gim,
-  /^Updated:?\s+[\w\s,]+\d{4}\.?$/gim,
+  /^Updated:?[ \t][\w \t,]+\d{4}\.?$/gim,
 
   // Version switcher lines
   /^Version:?\s+v?\d+\.\d+[\.\d]*/gim,
 
   // Copyright footer lines
-  /^Copyright\s+©?\s+\d{4}.+$/gim,
+  /^Copyright\s+(?:©\s*)?\s\d{4}.+$/gim,
   /^©\s+\d{4}.+All rights reserved\.?$/gim,
   /^Released under the .+ [Ll]icense\.?$/gim,
 
@@ -85,7 +85,7 @@ export const NAV_FOOTER_PATTERNS: RegExp[] = [
   // Cloudflare cdn-cgi internal links (email-protection, etc.) \u2014 never legitimate
   // documentation content. decodeCloudflareEmails() recovers real addresses first;
   // this clears any remaining wrapper link (incl. the Jina "[[email protected]](...)" form).
-  /\[[^\]]*\]\(\s*(?:https?:\/\/[^)]*)?\/cdn-cgi\/l\/[^)]+\)/gi,
+  /\[[^\][]*\]\(\s*(?:https?:\/\/[^()\s]*)?\/cdn-cgi\/l\/[^()\s]+\)/gi,
 
   // Orphan HTML comment markers left after the balanced <!-- --> strip in
   // INJECTION_PATTERNS \u2014 a line that is ONLY a closing/opening marker is noise.

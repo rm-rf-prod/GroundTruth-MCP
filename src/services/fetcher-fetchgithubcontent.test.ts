@@ -125,7 +125,7 @@ describe("fetchGitHubContent", () => {
     expect(mockFetch).not.toHaveBeenCalled();
   });
 
-  it("fetches README from main branch", async () => {
+  it("fetches README from the default branch (HEAD)", async () => {
     const readmeContent = LONG + "readme main";
     mockFetch.mockResolvedValueOnce(makeRes(readmeContent));
     const result = await fetchGitHubContent("https://github.com/org/repo");
@@ -135,10 +135,10 @@ describe("fetchGitHubContent", () => {
     const [url] = mockFetch.mock.calls[0]!;
     expect(url.toString()).toContain("raw.githubusercontent.com");
     expect(url.toString()).toContain("org/repo");
-    expect(url.toString()).toContain("main");
+    expect(url.toString()).toContain("/HEAD/");
   });
 
-  it("falls back to master branch when main fails", async () => {
+  it("falls back to the GitHub readme API when the raw file is missing", async () => {
     const readmeContent = LONG + "readme master";
     mockFetch
       .mockResolvedValueOnce(makeRes("", 404))
@@ -147,7 +147,7 @@ describe("fetchGitHubContent", () => {
     expect(result).not.toBeNull();
     expect(result!.content).toBe(readmeContent);
     const [url] = mockFetch.mock.calls[1]!;
-    expect(url.toString()).toContain("master");
+    expect(url.toString()).toBe("https://api.github.com/repos/org/repo/readme");
   });
 
   it("returns null when both branches fail", async () => {

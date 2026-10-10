@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/server";
 
 vi.mock("../services/fetcher.js", () => ({
   fetchDocs: vi.fn(async () => ({ content: "# Zod\n\nSchema validation.", url: "https://zod.dev", sourceType: "direct" })),

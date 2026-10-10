@@ -137,13 +137,12 @@ describe("fetchViaJina", () => {
     expect(mockFetch).toHaveBeenCalledTimes(1); // only one real request
   });
 
-  it("serves disk cache before making a network request", async () => {
+  it("keeps no disk copy: callers persist Jina results under their own key (NET-02)", async () => {
     const { diskDocCache } = await import("./cache.js");
     const disk = diskDocCache as { get: (k: string) => Promise<string | undefined>; set: (k: string, v: string) => Promise<void>; clear: () => void };
-    await disk.set("jina:https://example.com/disk-cached", JINA_LONG);
-    const result = await fetchViaJina("https://example.com/disk-cached");
-    expect(result).toBe(JINA_LONG);
-    expect(mockFetch).not.toHaveBeenCalled();
+    mockFetch.mockResolvedValueOnce(makeRes(JINA_LONG, 200));
+    expect(await fetchViaJina("https://example.com/disk-cached")).toBe(JINA_LONG);
+    expect(await disk.get("jina:https://example.com/disk-cached")).toBeUndefined();
   });
 
   it("returns null when fetch throws", async () => {

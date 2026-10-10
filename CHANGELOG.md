@@ -1,5 +1,65 @@
 # Changelog
 
+## [8.0.0] — 2026-10-11
+
+A speed, accuracy and coverage release: 195 new libraries, every existing entry re-verified,
+a rebuilt fetch layer, a CLI, and the move to the MCP TypeScript SDK v2. Measured on one
+machine with the same harness against the published 7.5.0.
+
+### Upgrading from 7.x (breaking)
+
+- **HTTP mode binds `127.0.0.1` by default** (was all interfaces). Set `GT_HTTP_HOST=0.0.0.0` together with `GT_AUTH_TOKEN` to expose it. Requests with a foreign `Host` or `Origin` get 403 (`GT_HTTP_ALLOWED_HOSTS` extends the allowlist). The Docker image binds `0.0.0.0` and expects `GT_AUTH_TOKEN`.
+- **Prose tools no longer return `structuredContent`.** Clients that show `structuredContent` instead of the text (Claude Code does) were losing the answer of `gt_compat`, `gt_examples` and `gt_audit`, and every other client received each answer twice. The text content carries the full answer; `gt_resolve_library`, `gt_batch_resolve` and `gt_dispatch` keep their structured result.
+- **Node 24 or newer** (`engines: >=24`).
+
+### Speed
+
+- **`gt-mcp --version` 1,130 ms / 194 MB to 40 ms / 54 MB**; spawn to MCP ready 1,074 to 186 ms. The bin is a small bootstrap that loads the server lazily, enables the Node compile cache, and the obfuscator no longer rotates its string array or touches the public data tables.
+- **Cold `gt_best_practices` for Next.js caching: 6,893 to 259 ms.** Docs pages are requested as markdown (`Accept: text/markdown`, with per-host fallback when a site 404s under negotiation), script-heavy server-rendered pages convert directly instead of waiting on the reader service, and the reader is only a hedged fallback (after 1.5 s or a direct failure).
+- **Real stale-while-revalidate:** an entry up to 7 days old is served instantly and refreshed once in the background. Next day (20 h old cache) the same call takes 92 ms instead of 6,684 ms. Disk hits keep their remaining TTL instead of a fresh 30 minutes.
+- `gt_search` caches results (repeat in a new session 86 to 2 ms); changelog misses, sitemaps (including empty ones), llms.txt probes and oversized bodies are cached; 60 s keep-alive; fan-outs stop waiting for the slowest page; GitHub lookups use one request on the default branch; a 60 s pause after GitHub rate limiting.
+- Per-call cancellation and `GT_TOOL_TIMEOUT_MS` deadlines reach the fetch layer; shared in-flight fetches are never aborted by one caller.
+- Sanitizer 41% faster on cold documents and memoised on warm reads; audit file reads parallel; disk-cache prune 126 ms to 1.5 ms; memory cache bounded by characters as well as entries.
+
+### Fewer tokens
+
+- `tools/list` 23,638 to 11,560 bytes per session; tool descriptions rewritten (-75%), including a resolve description that contained contradictory instructions copied from another product.
+- Wire bytes per docs/best-practices answer halved; `gt_auto_scan` default about 60K to 15K characters (top libraries first, the rest listed); `gt_dispatch` reply 2.7K to 0.9K characters; MDX heading ids, wrapper tags and anchor residue stripped; extraction stops filling the budget with sections that never mention the topic.
+
+### Accuracy
+
+- GitHub-hosted libraries read their README or doc file instead of GitHub's own site-wide `llms.txt` (67 entries were answered with GitHub product docs).
+- Nested `llms.txt` follows the library's own index (SvelteKit, TanStack Query); sitemap discovery scoped to the docs path and no longer capped at the first 500 URLs; real links are tried before guessed slugs; short index pages are followed to their child pages.
+- Library routing rebuilt: 0 false detections on a 212-query generic corpus (was 94, e.g. "handle click events" resolved to a gesture library), 217 of 217 correct on a library corpus, about 20 microseconds per query. Both corpora run in the test suite. `gt_dispatch` keeps the topic.
+- Evidence and ranking: technical identifiers (`KV`, `vi`, `invalidateQueries`) survive tokenization, `gt_search` registry stage matches multi-word queries, off-topic second sources are dropped, the current Next.js caching guide replaces the legacy one, `gt_compare` focuses on the requested pair, `gt_compat` no longer picks a loosely matching page.
+- Live 23-check matrix across all 14 tools: 17 to 23 passing.
+
+### Coverage
+
+- **793 libraries (+195):** Python, data and AI tooling, Java/Kotlin/Spring, .NET, Go, Rust, Ruby, PHP, Swift, Dart/Flutter, Elixir, C/C++, infrastructure, databases, observability and more JavaScript/TypeScript. Every URL was fetched before it was added.
+- **All 598 existing entries re-probed live:** 35 broken docs roots and paths fixed, 115 moved docs sites and repositories updated, about 190 verified `llms.txt` indexes added, deprecated package names fixed, Go standard library and pandas user guide reachable.
+- The URL health check scanned 0 URLs since the data tables moved in 7.5.0; it now checks all 2,600+ curated URLs.
+
+### Security
+
+- SSRF: IP-literal URLs are checked against the full blocklist (cloud metadata via `100.100.100.200`, `fd00:ec2::254`, NAT64, 6to4 and reserved ranges were reachable).
+- The prompt-injection sanitizer redacted the wrong span after length-changing characters (ellipsis, ligatures) and missed entity-encoded directives on cold reads; both fixed.
+- GitHub and Jina tokens are never forwarded across origins on redirects; package-registry descriptions are sanitized; audit regexes rewritten to be linear (worst case 9.5 s to 1 ms).
+- HTTP: localhost by default, Host/Origin validation, constant-time bearer check, idle session expiry, warning when exposed without a token.
+
+### Platform
+
+- **MCP TypeScript SDK v2** (`@modelcontextprotocol/server` 2.3), spec 2026-07-28, legacy 2025 clients still served over stdio and HTTP; `tools/list` cache hints.
+- **HTTP mode fixed:** 7.5.0 answered only the first HTTP request (stateless) or the first client (stateful).
+- Production dependencies 169 to 13 packages (27 MB to 7.7 MB); Docker image 566 MB to 277 MB, non-root, healthcheck works with auth.
+- Graceful shutdown waits for in-flight work; update check can be disabled (`GT_NO_UPDATE_CHECK=1`); Prometheus histograms; `/health` checks the cache directory.
+
+### CLI
+
+- `gt-mcp <command>` runs the same 14 tools in-process: `docs`, `bp`, `search`, `resolve`, `scan`, `audit`, `changelog`, `compat`, `compare`, `examples`, `migrate`, `batch`, `snippets`, `ask`, plus `tools`, `call` and `help`. `--json` prints the full result; exit codes 0, 1 (tool error), 2 (usage). With no arguments it is the stdio MCP server, as before.
+
+---
+
 ## [7.5.0] — 2026-08-05
 
 The largest quality release so far: a 153-library registry expansion, a retrieval

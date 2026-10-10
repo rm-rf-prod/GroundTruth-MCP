@@ -12,7 +12,8 @@ export interface EscalationInput {
   topic: string;
   docsUrl: string;
   tokens: number;
-  bestPracticesPaths?: string[] | undefined;
+  /** Registry `{slug}` URL patterns for the topic-URL guesses of the deep fetch. */
+  urlPatterns?: string[] | undefined;
 }
 
 export interface EscalationResult {
@@ -33,7 +34,7 @@ export interface EscalationResult {
  * is measurably better, so a failed escalation never degrades the answer.
  */
 export async function escalateWeakEvidence(input: EscalationInput): Promise<EscalationResult> {
-  const { topic, docsUrl, tokens, bestPracticesPaths } = input;
+  const { topic, docsUrl, tokens, urlPatterns } = input;
   const evidence = checkEvidence(input.text, topic);
   const base: EscalationResult = {
     text: input.text,
@@ -50,7 +51,7 @@ export async function escalateWeakEvidence(input: EscalationInput): Promise<Esca
     { content: input.text, url: input.sourceUrl, sourceType: "deep-fetch" },
     topic,
     docsUrl,
-    bestPracticesPaths,
+    urlPatterns,
     undefined,
     true,
   );

@@ -57,6 +57,7 @@ vi.mock("./cache.js", () => {
       set: async (k: string, v: string, _ttl?: number) => { diskStore.set(k, v); },
       clear: () => { diskStore.clear(); },
     },
+    llmsProbeCache: { get: () => undefined, set: () => {}, clear: () => {} },
     resolveCache: {
       get: () => undefined,
       set: () => {},
@@ -168,6 +169,8 @@ describe("fetchDocs contentHash — additional paths", () => {
     mockFetch.mockImplementation((url: RequestInfo | URL) => {
       const u = url.toString();
       if (u.includes("r.jina.ai")) return Promise.resolve(makeRes(JINA_LONG + "jinahash"));
+      // Bot-blocked direct fetch (not a 404): Jina is the only way in.
+      if (u === "https://example.com/jina-hash-path") return Promise.resolve(makeRes("", 403));
       return Promise.resolve(makeRes("", 404));
     });
     const result = await fetchDocs("https://example.com/jina-hash-path");

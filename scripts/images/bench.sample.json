@@ -1,0 +1,9 @@
+{
+  "metrics": [
+    { "label": "Cold start (spawn to ready)", "before": 810, "after": 120, "unit": "ms" },
+    { "label": "Docs query, warm cache", "before": 46, "after": 3.8, "unit": "ms" },
+    { "label": "Docs query, cold fetch (p50)", "before": 2400, "after": 940, "unit": "ms" },
+    { "label": "Peak memory (RSS)", "before": 182, "after": 96, "unit": "MB" },
+    { "label": "Warm queries per second", "before": 210, "after": 1450, "unit": "req/s", "better": "higher" }
+  ]
+}

@@ -14,9 +14,23 @@
  *    server.instructions string so the LLM picks the right tool directly.
  */
 import { VERB_HINTS, URL_RE } from "../sources/intent-hints.js";
-import type { GtToolName, IntentInput, IntentMatch } from "./intent/types.js";
-import { stripNoise, detectLibrary, isProjectLevelInvocation, extractTopic } from "./intent/detect.js";
+import type { IntentInput, IntentMatch } from "./intent/types.js";
+import {
+  stripNoise,
+  detectLibrary,
+  isProjectLevelInvocation,
+  extractTopic,
+  residualTopic,
+} from "./intent/detect.js";
 import { routeVerb } from "./intent/verb-routes.js";
+
+const escapeRe = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+// Whole-word hint matching: "vs" must not fire inside "canvas", nor
+// "migration" inside "migrations" (a drizzle-kit docs question, not an upgrade).
+const VERB_HINT_RES = VERB_HINTS.flatMap(({ tool, words }) =>
+  words.map((word) => ({ tool, word, re: new RegExp(`(?<![\\w'])${escapeRe(word)}(?![\\w'])`) })),
+);
 
 export type { GtToolName, IntentInput, IntentMatch } from "./intent/types.js";
 export { renderRoutingTable } from "./intent/routing-table.js";
@@ -41,28 +55,29 @@ export function detectIntent({ query, projectPath }: IntentInput): IntentMatch {
     };
   }
 
-  // 2. Verb hints — scan ordered list, longest-first match wins
-  const verbHits: Array<{ tool: GtToolName; word: string }> = [];
-  for (const { tool, words } of VERB_HINTS) {
-    for (const w of words) {
-      if (text.includes(w)) verbHits.push({ tool, word: w });
-    }
-  }
+  // 2. Verb hints — whole-word matches, longest phrase wins
+  const verbHits = VERB_HINT_RES.filter(({ re }) => re.test(text)).map(({ tool, word }) => ({ tool, word }));
   verbHits.sort((a, b) => b.word.length - a.word.length);
 
-  const library = detectLibrary(text);
-  const topic = extractTopic(text);
+  const library = detectLibrary(text, raw);
+  const surface = library ? [library.surface] : [];
+  // An about/for topic that is only the library name ("use gt for react") says nothing.
+  const explicit = extractTopic(text);
+  const topic = explicit !== undefined && library && !residualTopic(explicit, surface) ? undefined : explicit;
 
-  // 3. Resolve from verb hits
+  // 3. Resolve from verb hits; null means the verb does not apply to this query
   if (verbHits[0]) {
-    return routeVerb(verbHits[0], { raw, text, library, topic, projectPath });
+    const residual = residualTopic(raw, [...surface, ...verbHits.map((h) => h.word)]);
+    const routed = routeVerb(verbHits[0], { raw, text, library, topic, residual, projectPath });
+    if (routed) return routed;
   }
 
-  // 4. No verb hit — but library mentioned → best practices is the safest default
+  // 4. Library mentioned, no applicable verb → best practices is the safest default
   if (library) {
+    const subject = topic ?? residualTopic(raw, surface);
     return {
       tool: "gt_best_practices",
-      args: { libraryId: library.id, ...(topic !== undefined ? { topic } : {}) },
+      args: { libraryId: library.id, ...(subject !== undefined ? { topic: subject } : {}) },
       reason: `library "${library.name}" mentioned, no specific verb`,
       confidence: 0.85,
     };

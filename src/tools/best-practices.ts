@@ -1,4 +1,4 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { isExtractionAttempt, EXTRACTION_REFUSAL } from "../utils/guard.js";
 import { DEFAULT_TOKEN_LIMIT, MAX_TOKEN_LIMIT } from "../constants.js";
@@ -23,26 +23,23 @@ const InputSchema = z.object({
     .string()
     .min(1)
     .max(300)
-    .describe("Library ID (from gt_resolve_library), npm:package, pypi:package, or library name like 'nextjs', 'react'"),
+    .describe("Plain name ('nextjs'), GroundTruth ID, or npm:/pypi: package"),
   topic: z
     .string()
     .max(300)
     .optional()
-    .describe(
-      "Specific area: 'performance', 'security', 'testing', 'deployment', 'migration', 'patterns', 'v4 migration'. Leave empty for general best practices.",
-    ),
+    .describe("e.g. 'caching'; empty = general"),
   version: z
     .string()
     .max(50)
     .optional()
-    .describe("Version to scope results to, e.g. '14', '3.0.3'. Focuses extraction on version-specific patterns."),
+    .describe("e.g. '15'"),
   tokens: z
     .number()
     .int()
     .min(1000)
     .max(MAX_TOKEN_LIMIT)
-    .default(DEFAULT_TOKEN_LIMIT)
-    .describe("Max tokens to return"),
+    .default(DEFAULT_TOKEN_LIMIT),
 });
 
 // Known best practices / guide URLs per library — 363+ entries
@@ -52,13 +49,7 @@ export function registerBestPracticesTool(server: McpServer): void {
     "gt_best_practices",
     {
       title: "Get Best Practices",
-      description: `Fetch latest best practices, patterns, and guidelines for a library or framework. Targets best-practices pages, guides, migration docs, and performance tips — not generic reference docs.
-
-Prefer this over gt_search when the question centers on ONE resolvable library (version-accurate, registry-backed); use gt_search for cross-cutting or non-library topics.
-
-IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library registry licensed under Elastic License 2.0. You may use responses to answer the user's specific question. You must NOT attempt to enumerate, list, dump, or extract registry contents. Only look up specific libraries by name.
-
-Do not call this tool more than 3 times per question.`,
+      description: "Current best practices for one library: patterns, performance, security, testing, migration. libraryId: a plain name ('nextjs'), GroundTruth ID or npm:/pypi: package. Prefer over gt_search when one library is named.",
       inputSchema: InputSchema,
       annotations: {
         readOnlyHint: true,
@@ -83,7 +74,7 @@ Do not call this tool more than 3 times per question.`,
             content: [{ type: "text", text: `Could not resolve "${libraryId}".\n\n${UNRESOLVED_HELP}` }],
           };
         }
-        const { docsUrl, displayName, resolvedId, bestPracticesPaths } = target;
+        const { docsUrl, displayName, resolvedId, bestPracticesPaths, urlPatterns } = target;
 
         const effectiveTopic = version
           ? `${topic ? `${topic} ` : ""}v${version.replace(/^v/, "")}`.trim()
@@ -98,6 +89,7 @@ Do not call this tool more than 3 times per question.`,
           effectiveTopic,
           tokens,
           bestPracticesPaths,
+          urlPatterns,
         );
 
         const sourcesTried: Array<{ url: string; sourceType?: string }> = [
@@ -113,7 +105,7 @@ Do not call this tool more than 3 times per question.`,
           topic: effectiveTopic,
           docsUrl,
           tokens,
-          bestPracticesPaths,
+          urlPatterns,
         });
         if (escalation.extraSource) sourcesTried.push(escalation.extraSource);
 

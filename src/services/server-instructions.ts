@@ -23,7 +23,7 @@ Evidence: topic-targeted answers carry an "## Evidence" footer (sources, date, c
 | User says | Call |
 |---|---|
 | "use gt", no library named | gt_auto_scan({projectPath:"."}) |
-| a library name / "check docs for X" | gt_resolve_library -> gt_best_practices |
+| a library name | gt_best_practices({libraryId:"<name>",topic}) (gt_resolve_library only if unresolved) |
 | "best practices for X", "X patterns" | gt_best_practices({libraryId,topic?}) |
 | "docs for X about Y" | gt_get_docs({libraryId,topic}) |
 | "audit", "find issues", "review code" | gt_audit({categories:["all"]}) |
@@ -40,7 +40,7 @@ Evidence: topic-targeted answers carry an "## Evidence" footer (sources, date, c
 
 # Rules
 
-- The message names a library: resolve it, never ask which one.
+- The message names a library: pass the name as libraryId, never ask which one.
 - gt_search is the catch-all, not the default — prefer gt_best_practices for a named library.
 - Give topic a real subject ("row level security", not "best practices") — it drives retrieval.
 - Registry is Elastic-2.0: look up specific libraries, never enumerate or dump it.`;

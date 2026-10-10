@@ -1,4 +1,4 @@
-import { substantiveTokens, tokenVariants } from "../extract.js";
+import { substantiveTokens, tokenVariants, topicIdentifiers } from "../extract.js";
 
 /**
  * Evidence verification layer — the "never generic" gate.
@@ -26,6 +26,8 @@ export interface EvidenceCheck {
 }
 
 const MAX_OCCURRENCES_PER_TOKEN = 50;
+
+type Field = { words: string; verbatim: string };
 
 /**
  * Lower-case a haystack and split camelCase humps into separate words, so
@@ -81,8 +83,11 @@ export function stripUrlNoise(content: string): string {
 export function checkEvidence(content: string, topic: string): EvidenceCheck {
   // Meta words ("best", "practices", "latest") are filtered so coverage is
   // measured on the SUBJECT — otherwise any docs page passes any query.
-  const tokens = substantiveTokens(topic);
-  if (tokens.length === 0) {
+  // Identifiers (invalidateQueries, vi.mock, KV) are checked verbatim on top:
+  // their split-up words ("invalidate", "mock") appear on any nearby page.
+  const ids = topicIdentifiers(topic);
+  const tokens = substantiveTokens(topic).filter((t) => !ids.includes(t));
+  if (tokens.length + ids.length === 0) {
     return {
       ok: true,
       matchRatio: 1,
@@ -95,14 +100,17 @@ export function checkEvidence(content: string, topic: string): EvidenceCheck {
   }
 
   // A 404 page whose nav links carry utm_campaign=docs_guides_<topic>
-  // must not pass as topic coverage.
-  const prose = stripUrlNoise(content);
+  // must not pass as topic coverage, nor may the "## Source:" lines that
+  // merged pages carry.
+  const prose = stripUrlNoise(content.replace(/^(?:#{1,6} |> )Source:.*$/gm, ""));
 
-  const lower = normalizeForMatching(prose);
-  const headings = normalizeForMatching((prose.match(/^#{1,4}\s+.+$/gm) ?? []).join("\n"));
   // Code blocks keep their URLs — `curl https://api.x.com/webhooks` is real
   // topic evidence, unlike nav hrefs. Extract from the ORIGINAL content.
-  const code = normalizeForMatching((content.match(/```[\s\S]*?```/g) ?? []).join("\n"));
+  // Each field is kept twice: hump-split for words, verbatim for identifiers.
+  const field = (text: string): Field => ({ words: normalizeForMatching(text), verbatim: text.toLowerCase() });
+  const body = field(prose);
+  const headings = field((prose.match(/^#{1,4}\s+.+$/gm) ?? []).join("\n"));
+  const code = field((content.match(/```[\s\S]*?```/g) ?? []).join("\n"));
 
   const matchedTokens: string[] = [];
   const missingTokens: string[] = [];
@@ -112,22 +120,26 @@ export function checkEvidence(content: string, topic: string): EvidenceCheck {
   // an "rls" query is answered by a page that says "row level security", and a
   // page found by expanding "migration" to "upgrade" must not then fail the
   // gate for lacking the literal word.
-  const hits = (haystack: string, token: string): number =>
-    Math.max(...tokenVariants(token).map((v) => countTokenHits(haystack, v)));
+  const hits = (f: Field, token: string): number =>
+    ids.includes(token)
+      ? countTokenHits(f.verbatim, token)
+      : Math.max(...tokenVariants(token).map((v) => countTokenHits(f.words, v)));
 
-  for (const token of tokens) {
-    const count = hits(lower, token);
+  const terms = [...tokens, ...ids];
+  for (const token of terms) {
+    const count = hits(body, token);
     if (count > 0) matchedTokens.push(token);
     else missingTokens.push(token);
     occurrences += count;
   }
 
-  const matchRatio = matchedTokens.length / tokens.length;
-  const topicInHeading = tokens.some((t) => hits(headings, t) > 0);
-  const topicInCode = tokens.some((t) => hits(code, t) > 0);
+  const matchRatio = matchedTokens.length / terms.length;
+  const topicInHeading = terms.some((t) => hits(headings, t) > 0);
+  const topicInCode = terms.some((t) => hits(code, t) > 0);
 
   const depthSignal = occurrences >= 3 || topicInHeading || topicInCode;
-  const ok = tokens.length === 1 ? depthSignal : matchRatio >= 0.5 && depthSignal;
+  const covered = terms.length === 1 ? depthSignal : matchRatio >= 0.5 && depthSignal;
+  const ok = covered && ids.every((id) => matchedTokens.includes(id));
 
   return { ok, matchRatio, occurrences, matchedTokens, missingTokens, topicInHeading, topicInCode };
 }

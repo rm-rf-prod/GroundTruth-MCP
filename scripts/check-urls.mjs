@@ -8,8 +8,8 @@
 
 import { readFileSync } from "fs";
 
-const BP_FILE = "src/tools/best-practices.ts";
-const SEARCH_FILE = "src/tools/search.ts";
+// Curated URL tables live in src/sources/ (moved out of src/tools/ in 7.5.0).
+const URL_FILES = ["src/sources/best-practice-urls.ts", "src/sources/topic-urls.ts", "src/sources/registry.ts"];
 
 function extractUrls(content) {
   const urlRegex = /https?:\/\/[^\s"',)}\]]+/g;
@@ -17,6 +17,7 @@ function extractUrls(content) {
   return [...new Set(matches)].filter(
     (u) =>
       !u.includes("${") && // template-literal fragments, not real URLs
+      !u.includes("{") && // urlPatterns templates like /docs/{slug}
       !u.includes("example.com") &&
       !u.includes("localhost") &&
       !u.includes("127.0.0.1") &&
@@ -52,12 +53,9 @@ async function checkUrl(url, timeout = 10000) {
 }
 
 async function main() {
-  const bpContent = readFileSync(BP_FILE, "utf-8");
-  const searchContent = readFileSync(SEARCH_FILE, "utf-8");
-
-  const bpUrls = extractUrls(bpContent);
-  const searchUrls = extractUrls(searchContent);
-  const allUrls = [...new Set([...bpUrls, ...searchUrls])];
+  const allUrls = [...new Set(URL_FILES.flatMap((f) => extractUrls(readFileSync(f, "utf-8"))))];
+  // An empty scan means the tables moved again; fail loudly instead of passing on zero URLs.
+  if (allUrls.length === 0) throw new Error(`No URLs found in ${URL_FILES.join(", ")}`);
 
   console.log(`Checking ${allUrls.length} URLs...\n`);
 

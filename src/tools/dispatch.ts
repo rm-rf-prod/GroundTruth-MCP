@@ -18,9 +18,9 @@
  * useful (typically: scanned project dependencies + best practices).
  */
 
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
-import { detectIntent, renderRoutingTable } from "../services/intent-router.js";
+import { detectIntent } from "../services/intent-router.js";
 import { withNotice, safeguardPath } from "../utils/guard.js";
 import { withTelemetry } from "../services/telemetry.js";
 import { ROUTING_RATIONALE, ROUTING_FALLBACK } from "../sources/routing-rationale.js";
@@ -30,27 +30,16 @@ const InputSchema = z.object({
     .string()
     .min(1)
     .max(2000)
-    .describe(
-      "Plain-text user intent. Examples: 'use gt for react', 'find issues', 'migrate next from 14 to 15', 'best practices for fastapi'.",
-    ),
+    .describe("Raw user request"),
   projectPath: z
     .string()
     .max(500)
     .optional()
-    .describe(
-      "Optional project directory for project-level intents (auto-scan, audit). Defaults to current working directory.",
-    ),
+    .describe("Project root (default: cwd)"),
 });
 
-const TOOL_DESCRIPTION = `Routes a plain-text user query to the correct gt_* tool with the right arguments. Examples: "use gt", "use gt for react", "find issues in this codebase", "migrate next from 14 to 15".
-
-WHEN TO USE: the user's intent is ambiguous, they invoked gt without specifying a tool ("use gt mcp"), or you want a single entry point that always returns something actionable.
-
-WHEN NOT TO USE: you already know which gt_* tool fits. Call it directly to save one round-trip.
-
-OUTPUT: a routing decision with tool name, args, reason, and a 0-to-1 confidence score. The response text also embeds the routing table and a recommended JSON call so you can make the next tool call without another lookup.
-
-Use it for "use gt mcp" in any phrasing.`;
+const TOOL_DESCRIPTION =
+  'Route a raw user request ("use gt", "use gt for react", "migrate next from 15 to 16") to the right gt_* tool. Returns {tool, args, reason, confidence}. Skip it when the tool is already clear.';
 
 export function registerDispatchTool(server: McpServer): void {
   server.registerTool(
@@ -116,10 +105,6 @@ export function registerDispatchTool(server: McpServer): void {
         lines.push(
           `Invoke the recommended tool with the args above. The arguments are checked against the target tool's required fields. If the routing looks wrong, fall back to \`gt_search({ query: "${query.replace(/"/g, '\\"')}" })\` — it never fails to return *something* useful.`,
         );
-        lines.push("");
-        lines.push("---");
-        lines.push("");
-        lines.push(renderRoutingTable());
 
         ctx.resolved = true;
         return {

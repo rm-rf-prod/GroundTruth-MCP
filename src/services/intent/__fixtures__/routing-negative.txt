@@ -1,0 +1,213 @@
+# Generic developer phrases that name no library. Every line must detect nothing.
+how to build a rest api
+handle click events
+handle forms
+set up logging
+deploy to production
+write unit tests
+parse json
+make http requests
+rich text editing
+run async tasks
+schedule jobs
+send emails
+upload files
+resize images
+cache responses
+rate limit requests
+stream responses
+connect to a database
+run migrations
+secure headers
+dark mode toggle
+draw charts
+show maps
+add animations
+state management
+authentication flow
+accept payments
+full text search
+job queues
+websockets realtime
+graphql schema
+testing components
+accessibility audit
+improve performance
+reduce bundle size
+code splitting
+lazy loading images
+server components
+edge functions
+cron jobs
+feature flags
+observability tracing
+collect metrics
+error tracking
+build a docker image
+kubernetes deployment
+terraform module
+ci pipeline
+lint rules
+format code
+type checking
+monorepo setup
+package manager
+virtual environment
+data frames
+plot a chart
+train a model
+fine tune a model
+embeddings
+vector search
+prompt caching
+build agents
+rich console output
+command line arguments
+progress bar
+date formatting
+generate uuid
+environment variables
+config files
+yaml parsing
+markdown rendering
+syntax highlighting
+pdf generation
+excel export
+csv parsing
+image optimization
+video streaming
+push notifications
+deep links
+camera access
+location tracking
+secure storage
+biometric login
+in-app purchases
+analytics events
+seo sitemap
+translations i18n
+timezones
+background jobs
+retry logic
+circuit breaker
+pagination
+infinite scroll
+virtual list
+drag and drop
+modal dialog
+toast notifications
+tooltip
+date picker
+select dropdown
+form validation
+code editor
+terminal ui
+keyboard shortcuts
+clipboard copy
+fetch data
+optimistic updates
+server actions
+middleware
+routing
+redirects
+cookies and sessions
+jwt tokens
+oauth login
+passkeys
+row level security
+transactions
+database indexes
+replication
+backups
+connection pooling
+orm relations
+query builder
+seed data
+mocking
+snapshot tests
+end to end tests
+load testing
+benchmarks
+profiling memory leaks
+hot reload
+tree shaking
+source maps
+web workers
+service workers offline
+webassembly
+canvas drawing
+3d scene
+physics engine
+game loop
+shaders
+scroll animation
+page transitions
+spring physics
+gestures swipe
+carousel slider
+tabs and accordion
+data grid
+tree view
+skeleton loader
+error boundary
+suspense streaming
+static export
+message queue
+event sourcing
+workflow engine
+state machine
+concurrency threads
+async await
+decorators
+dependency injection
+plugins and hooks
+signals reactivity
+observables streams
+goroutines channels
+ownership borrowing
+traits and generics
+pattern matching
+null safety
+coroutines
+sealed classes
+serialization protobuf
+grpc service
+http server
+web framework
+template engine
+static site generator
+docs site
+headless cms
+e-commerce checkout
+subscriptions billing
+webhooks
+email templates
+sms messages
+video calls
+chat app
+realtime collaboration
+sync engine local first
+embedded database
+key value store
+graph database
+time series data
+data warehouse
+stream processing
+notebooks
+dashboards
+alerting
+load balancer
+tls certificates
+secrets management
+single sign on
+audit log
+cookie consent
+screen reader support
+focus management
+responsive design
+grid layout
+container queries
+css variables
+design tokens
+icons
+fonts and typography

@@ -1,14 +1,18 @@
 import { lookupByAlias } from "../../sources/registry.js";
 import type { GtToolName, IntentMatch } from "./types.js";
 import { extractMigrationVersions } from "./detect.js";
+import { resolveName, type DetectedLibrary } from "./library-detect.js";
 
 export interface VerbContext {
   /** Original, un-normalised query — version ranges and casing survive here. */
   raw: string;
   /** Noise-stripped, lowercased query used for token matching. */
   text: string;
-  library: { id: string; name: string; alias: string } | null;
+  library: DetectedLibrary | null;
+  /** Explicit about/for topic, if the query has one. */
   topic: string | undefined;
+  /** Query minus library name, hint phrases and filler — the subject otherwise. */
+  residual: string | undefined;
   projectPath: string | undefined;
 }
 
@@ -16,13 +20,16 @@ export interface VerbContext {
  * Map the highest-precision verb hit to a concrete tool call. Every branch whose
  * target tool has a REQUIRED identifier falls back to gt_search when that
  * identifier could not be parsed — recommending a call that fails the target's
- * own Zod schema is worse than a soft route.
+ * own Zod schema is worse than a soft route. Returns null when the verb does
+ * not apply (compare sides are not libraries, a migration without a version)
+ * so the caller falls back to the library default route.
  */
 export function routeVerb(
   top: { tool: GtToolName; word: string },
   ctx: VerbContext,
-): IntentMatch {
+): IntentMatch | null {
   const { raw, text, library, topic, projectPath } = ctx;
+  const subject = topic ?? ctx.residual;
   const args: Record<string, unknown> = {};
 
   const searchFallback = (verb: string): IntentMatch => ({
@@ -45,8 +52,9 @@ switch (top.tool) {
   }
   case "gt_migration": {
     if (!library) return searchFallback("migration");
-    args["libraryId"] = library.id;
     const versions = extractMigrationVersions(raw);
+    if (versions.from === undefined && !/\bv?\d+(?:\.\d+)*\b/.test(raw)) return null;
+    args["libraryId"] = library.id;
     if (versions.from !== undefined) args["fromVersion"] = versions.from;
     if (versions.to !== undefined) args["toVersion"] = versions.to;
     return {
@@ -68,10 +76,10 @@ switch (top.tool) {
   }
   case "gt_compare": {
     const libs: string[] = [];
-    // crude: look for "X vs Y" or "X or Y" or "X, Y"
-    const vs = raw.match(/([\w@/.-]+)\s+(?:vs\.?|versus|or)\s+([\w@/.-]+)/i);
-    if (vs && vs[1] && vs[2]) libs.push(vs[1], vs[2]);
-    if (libs.length < 2) return searchFallback("compare");
+    // crude: "X vs Y", "X or Y", "X and Y", "X with Y" — both sides must resolve below
+    const vs = raw.match(/([\w@/.-]+)\s+(?:vs\.?|versus|or|and|with)\s+([\w@/.-]+)/i);
+    if (vs && vs[1] && vs[2] && resolveName(vs[1]) && resolveName(vs[2])) libs.push(vs[1], vs[2]);
+    if (libs.length < 2) return library ? null : searchFallback("compare");
     args["libraries"] = libs;
     return {
       tool: "gt_compare",
@@ -94,7 +102,7 @@ switch (top.tool) {
   case "gt_examples": {
     if (!library) return searchFallback("example");
     args["library"] = library.alias;
-    if (topic) args["pattern"] = topic;
+    if (subject) args["pattern"] = subject;
     return {
       tool: "gt_examples",
       args,
@@ -105,7 +113,7 @@ switch (top.tool) {
   case "gt_best_practices": {
     if (!library) return searchFallback("best-practices");
     args["libraryId"] = library.id;
-    if (topic) args["topic"] = topic;
+    if (subject) args["topic"] = subject;
     return {
       tool: "gt_best_practices",
       args,
@@ -125,7 +133,7 @@ switch (top.tool) {
   case "gt_get_docs": {
     if (!library) return searchFallback("docs");
     args["libraryId"] = library.id;
-    if (topic) args["topic"] = topic;
+    if (subject) args["topic"] = subject;
     return {
       tool: "gt_get_docs",
       args,
@@ -160,15 +168,8 @@ switch (top.tool) {
         confidence: 0.82,
       };
     }
-    // No parseable library names — gt_batch_resolve requires a non-empty
-    // libraryNames array (Zod .min(1)), so fall back to freeform search
-    // instead of emitting args that would fail validation.
-    return {
-      tool: "gt_search",
-      args: { query: raw },
-      reason: `batch-resolve verb detected but no library names parseable — fallback to search`,
-      confidence: 0.5,
-    };
+    // gt_batch_resolve requires a non-empty libraryNames array (Zod .min(1)).
+    return searchFallback("batch-resolve");
   }
   case "gt_search":
   case "gt_snippets":
@@ -177,7 +178,10 @@ switch (top.tool) {
     // would fail the target schema.
     if (top.tool === "gt_snippets" && !library) return searchFallback("snippets");
     if (top.tool === "gt_search") args["query"] = topic ?? text;
-    if (top.tool === "gt_snippets" && library) args["libraryId"] = library.id;
+    if (top.tool === "gt_snippets" && library) {
+      args["libraryId"] = library.id;
+      if (subject) args["topic"] = subject;
+    }
     return {
       tool: top.tool,
       args,

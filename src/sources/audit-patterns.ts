@@ -42,9 +42,14 @@ export const S = {
 
 export const DYNAMIC_CODE_RE = new RegExp(`\\b${S.dynExecFn}\\s*\\(`);
 export const DSIN_RE = new RegExp(S.dsiH);
-export const CMD_INJECT_RE = new RegExp(
-  `\\b(?:${S.cmdRun}|${S.cmdRun}Sync|${S.cmdFork}|${S.cmdFork}Sync)\\s*\\([^)]*\\$\\{`,
-);
+// Argument and tag-attribute scans stop at the next call/tag start as well as at
+// ")" or ">": a later call's arguments are a suffix of an earlier unclosed one's,
+// so matches are unchanged, but repeated unclosed calls or tags on one long line
+// no longer rescan it per start.
+const CMD_CALL = `\\b(?:${S.cmdRun}|${S.cmdRun}Sync|${S.cmdFork}|${S.cmdFork}Sync)\\s*\\(`;
+export const CMD_INJECT_RE = new RegExp(`${CMD_CALL}(?:(?!${CMD_CALL})[^)])*\\$\\{`);
+const FS_CALL = "(?:readFile|readFileSync|createReadStream|writeFile|writeFileSync|unlink)\\s*\\(";
+const FS_USER_INPUT_RE = new RegExp(`${FS_CALL}(?:(?!${FS_CALL})[^)])*(?:req\\.|body\\.|params\\.|query\\.)`);
 export const AUDIT_PATTERNS: AuditPattern[] = [
   // === LAYOUT / CLS ===
   {
@@ -73,7 +78,7 @@ export const AUDIT_PATTERNS: AuditPattern[] = [
     title: "100vh — use 100dvh for mobile viewport",
     detail:
       "100vh ignores the shrinking mobile browser chrome (address bar). 100dvh tracks the actual available viewport.",
-    fix: "Replace `100vh` with `100dvh`. Add `min(100vh, 100dvh)` as a fallback for older browsers.",
+    fix: "Replace `100vh` with `100dvh`, or `100svh` for a height that does not resize while scrolling. For older browsers declare `100vh` first and `100dvh` on the next line.",
     docsQuery: "dvh dynamic viewport height mobile browser CSS",
     test: (line) => (/\b100vh\b/.test(line) ? line : null),
   },
@@ -117,7 +122,7 @@ export const AUDIT_PATTERNS: AuditPattern[] = [
     fix: "Add defer for scripts that don't need to execute immediately, or async for independent scripts.",
     docsQuery: "script async defer render-blocking performance HTML",
     test: (line) =>
-      /<script\s[^>]*src=/.test(line) &&
+      /<script\s(?:(?!<script\s)[^>])*src=/.test(line) &&
       !/\basync\b/.test(line) &&
       !/\bdefer\b/.test(line) &&
       !/type=["']module["']/.test(line)
@@ -132,7 +137,7 @@ export const AUDIT_PATTERNS: AuditPattern[] = [
     title: "Missing loading='lazy' on image",
     detail:
       "Images without lazy loading are fetched immediately on page load even when below the fold, delaying critical resources.",
-    fix: "Add loading='lazy' to all below-fold images. Use priority={true} on the above-fold hero image only.",
+    fix: "Add loading='lazy' to all below-fold images. Load only the above-fold hero eagerly; in next/image use preload or loading='eager' (Next.js 16 deprecated the priority prop).",
     docsQuery: "image lazy loading performance fetchpriority LCP",
     test: (line) =>
       /<img\b/.test(line) && !line.includes("loading=") && !line.includes("priority") ? line : null,
@@ -205,7 +210,7 @@ export const AUDIT_PATTERNS: AuditPattern[] = [
     title: "Missing fetchpriority on LCP image",
     detail:
       "The browser cannot predict which image will be LCP. Without fetchpriority='high' on the hero image, it may start loading too late.",
-    fix: "Add fetchpriority='high' to the first above-the-fold image. In next/image use priority={true}.",
+    fix: "Add fetchpriority='high' to the first above-the-fold image. In next/image use fetchPriority='high' or preload (Next.js 16 deprecated the priority prop).",
     docsQuery: "fetchpriority LCP largest contentful paint image priority optimization",
     test: (line) =>
       /<img\b/.test(line) &&
@@ -226,9 +231,11 @@ export const AUDIT_PATTERNS: AuditPattern[] = [
     fix: "Add descriptive alt='...' text. Use alt='' for decorative images. Never omit the attribute entirely.",
     docsQuery: "image alt text accessibility WCAG 1.1.1 screen reader",
     test: (line) => {
-      if (/<img\b/.test(line) && !line.includes("alt=")) return line;
-      if (/\bImage\b.+src=/.test(line) && !line.includes("alt=")) return line;
-      return null;
+      if (line.includes("alt=")) return null;
+      if (/<img\b/.test(line)) return line;
+      // indexOf after the first match, not /Image.+src=/: that rescanned the line per "Image"
+      const at = line.search(/\bImage\b/);
+      return at !== -1 && line.includes("src=", at + 6) ? line : null;
     },
   },
   {
@@ -240,7 +247,7 @@ export const AUDIT_PATTERNS: AuditPattern[] = [
     fix: "Replace with <button> for actions or <a href> for navigation. Never put onClick on div, span, or p.",
     docsQuery: "WCAG keyboard accessible button onClick div span",
     test: (line) =>
-      /<(?:div|span|p|section|li)\s[^>]*onClick/.test(line) ? line : null,
+      /<(?:div|span|p|section|li)\s(?:(?!<(?:div|span|p|section|li)\s)[^>])*onClick/.test(line) ? line : null,
   },
   {
     category: "accessibility",
@@ -251,7 +258,7 @@ export const AUDIT_PATTERNS: AuditPattern[] = [
     fix: "Add aria-label='Action description' to every button that contains only an icon or SVG.",
     docsQuery: "button aria-label accessible name icon only WCAG",
     test: (line) =>
-      /<button[^>]*>\s*<(?:svg|Icon)/.test(line) &&
+      /<button(?:(?!<button)[^>])*>\s*<(?:svg|Icon)/.test(line) &&
       !line.includes("aria-label") &&
       !line.includes("aria-labelledby")
         ? line
@@ -444,12 +451,7 @@ export const AUDIT_PATTERNS: AuditPattern[] = [
       "Passing user-controlled values to file system functions enables path traversal. Attackers can read or overwrite any file on the server.",
     fix: "Resolve paths with path.resolve() and verify they stay within the allowed base directory. Never pass request parameters to fs functions.",
     docsQuery: "path traversal OWASP directory traversal Node.js fs security",
-    test: (line) =>
-      /(?:readFile|readFileSync|createReadStream|writeFile|writeFileSync|unlink)\s*\([^)]*(?:req\.|body\.|params\.|query\.)/.test(
-        line,
-      )
-        ? line
-        : null,
+    test: (line) => (FS_USER_INPUT_RE.test(line) ? line : null),
   },
   {
     category: "security",
@@ -477,9 +479,9 @@ export const AUDIT_PATTERNS: AuditPattern[] = [
   // === REACT ===
   {
     category: "react",
-    severity: "high",
-    title: "forwardRef — deprecated in React 19",
-    detail: "React 19 passes ref as a regular prop. forwardRef is no longer needed and is scheduled for removal.",
+    severity: "medium",
+    title: "forwardRef — unnecessary in React 19 (ref is a prop)",
+    detail: "React 19 passes ref to function components as a regular prop. forwardRef is no longer needed and will be deprecated in a future release.",
     fix: "Remove forwardRef. Accept ref directly as a prop: `function Input({ ref, ...props }: Props & { ref?: React.Ref<HTMLInputElement> })`",
     docsQuery: "React 19 forwardRef ref as prop deprecated migration",
     test: (line) => (/forwardRef\s*[(<]/.test(line) ? line : null),
@@ -635,12 +637,12 @@ export const AUDIT_PATTERNS: AuditPattern[] = [
   },
   {
     category: "nextjs",
-    severity: "high",
-    title: "middleware.ts — rename to proxy.ts in Next.js 16",
+    severity: "medium",
+    title: "middleware.ts is deprecated in Next.js 16 (renamed to proxy.ts)",
     detail:
-      "Next.js 16 renamed middleware.ts to proxy.ts with a Node.js-only runtime. The old filename causes silent fallback to legacy behavior.",
-    fix: "Rename middleware.ts to proxy.ts. Export a function named proxy instead of middleware.",
-    docsQuery: "Next.js 16 proxy.ts middleware rename breaking change",
+      "Next.js 16 deprecated the middleware file and export in favor of proxy.ts. Middleware still runs; proxy runs only on the Node.js runtime and cannot use the edge runtime.",
+    fix: "On Next.js 16+, run `npx @next/codemod@latest middleware-to-proxy .` (renames the file to proxy.ts and the export to proxy). Keep middleware.ts if you need the edge runtime. Do not rename on Next.js 15 or earlier, which does not recognize proxy.ts.",
+    docsQuery: "Next.js 16 middleware to proxy migration codemod edge runtime",
     test: (line, _content) =>
       /export\s+(?:default\s+)?function\s+middleware\b/.test(line) ||
       /export\s+\{\s*middleware\s+as\s+default\s*\}/.test(line)
@@ -833,12 +835,19 @@ export const AUDIT_PATTERNS: AuditPattern[] = [
       "Interpolating user input directly into SQL strings enables SQL injection attacks. An attacker can read, modify, or delete any data in the database.",
     fix: "Use parameterized queries: `cursor.execute('SELECT * FROM users WHERE id = %s', (user_id,))`. Never use f-strings, .format(), or % to build SQL.",
     docsQuery: "Python SQL injection parameterized queries OWASP",
-    test: (line) =>
-      /\.execute\s*\(.*f['"].*\{/.test(line) ||
-      /\.execute\s*\(.*['"]\s*%\s*(?:\(|[a-zA-Z_])/.test(line) ||
-      /\.execute\s*\(.*\.format\s*\(/.test(line)
+    test: (line) => {
+      // Scan once from the first .execute( — chained `.*` per call start backtracked
+      // cubically on long lines. The first start sees a superset of every later one.
+      const at = line.search(/\.execute\s*\(/);
+      if (at === -1) return null;
+      const rest = line.slice(at);
+      const f = rest.search(/f['"]/);
+      return (f !== -1 && rest.includes("{", f)) ||
+        /['"]\s*%\s*(?:\(|[a-zA-Z_])/.test(rest) ||
+        /\.format\s*\(/.test(rest)
         ? line
-        : null,
+        : null;
+    },
   },
   {
     category: "python",
@@ -859,7 +868,10 @@ export const AUDIT_PATTERNS: AuditPattern[] = [
       "`subprocess.run(..., shell=True)` passes the command to the system shell. If any part of the command includes user input, it enables command injection.",
     fix: "Pass commands as a list: `subprocess.run(['ls', '-la'])`. Never use `shell=True` with any data that originates outside your application.",
     docsQuery: "Python subprocess shell=True command injection security",
-    test: (line) => /subprocess\.\w+\s*\(.*shell\s*=\s*True/.test(line) ? line : null,
+    test: (line) => {
+      const at = line.search(/subprocess\.\w+\s*\(/);
+      return at !== -1 && /shell\s*=\s*True/.test(line.slice(at)) ? line : null;
+    },
   },
   {
     category: "python",
@@ -897,7 +909,7 @@ export const AUDIT_PATTERNS: AuditPattern[] = [
     title: "MD5 or SHA1 used for password hashing",
     detail:
       "MD5 and SHA1 are cryptographically broken. They are fast to compute, enabling brute-force and rainbow table attacks. Never use them for storing passwords.",
-    fix: "Use `bcrypt`, `argon2-cffi`, or `passlib` for password hashing. For non-password integrity checks, use SHA-256 or SHA-3.",
+    fix: "Use `argon2-cffi`, `bcrypt`, or `pwdlib[argon2]` for password hashing. For non-password integrity checks, use SHA-256 or SHA-3.",
     docsQuery: "Python password hashing bcrypt argon2 security OWASP",
     test: (line) =>
       /hashlib\.(md5|sha1)\s*\(/.test(line) ||
@@ -913,7 +925,10 @@ export const AUDIT_PATTERNS: AuditPattern[] = [
       "Setting `verify=False` disables TLS certificate verification, making the connection vulnerable to man-in-the-middle attacks. An attacker can intercept and modify traffic.",
     fix: "Remove `verify=False`. If using a self-signed certificate, pass the CA bundle path: `verify='/path/to/ca-bundle.crt'`.",
     docsQuery: "Python requests verify=False TLS SSL certificate security",
-    test: (line) => /requests\.\w+\s*\(.*verify\s*=\s*False/.test(line) ? line : null,
+    test: (line) => {
+      const at = line.search(/requests\.\w+\s*\(/);
+      return at !== -1 && /verify\s*=\s*False/.test(line.slice(at)) ? line : null;
+    },
   },
   {
     category: "python",
@@ -924,7 +939,7 @@ export const AUDIT_PATTERNS: AuditPattern[] = [
     fix: "Use `None` as the default and initialize inside the function: `def fn(items=None): items = items if items is not None else []`.",
     docsQuery: "Python mutable default argument anti-pattern",
     test: (line) =>
-      /def\s+\w+\s*\([^)]*=\s*(?:\[\]|\{\}|set\s*\(\))/.test(line) ? line : null,
+      /def\s+\w+\s*\([^()]*=\s*(?:\[\]|\{\}|set\s*\(\))/.test(line) ? line : null,
   },
   {
     category: "python",
@@ -1038,24 +1053,24 @@ export const AUDIT_PATTERNS: AuditPattern[] = [
   },
   {
     category: "angular",
-    severity: "medium",
+    severity: "low",
     title: "Mutable @Input() property",
-    detail: "@Input() properties should be readonly to prevent accidental mutation",
-    fix: "Add readonly: @Input() readonly title: string",
-    docsQuery: "Angular Input readonly signal-based inputs",
+    detail: "Decorator @Input() fields are plain writable properties. Angular recommends signal inputs, which are read-only; its style guide does not apply readonly to decorator inputs",
+    fix: "Migrate to a signal input: readonly title = input<string>(). `ng generate @angular/core:signal-input-migration` converts them automatically",
+    docsQuery: "Angular signal inputs input() migration from @Input decorator",
     test: (line) => {
       return /@Input\(\)(?!\s*readonly)/.test(line) ? line : null;
     },
   },
   {
     category: "angular",
-    severity: "low",
+    severity: "medium",
     title: "Legacy *ngIf / *ngFor structural directive",
-    detail: "Angular 17+ prefers @if and @for block syntax over *ngIf and *ngFor directives",
-    fix: "Replace *ngIf=\"cond\" with @if (cond) {} block; replace *ngFor with @for (x of xs; track x.id) {}",
-    docsQuery: "Angular 17 control flow @if @for migration ngIf ngFor",
+    detail: "*ngIf, *ngFor and *ngSwitch are deprecated since Angular 20 in favor of the built-in @if, @for and @switch blocks",
+    fix: "Run `ng generate @angular/core:control-flow`, or convert by hand: *ngIf to @if (cond) {}, *ngFor to @for (x of xs; track x.id) {}, *ngSwitchCase to @switch/@case",
+    docsQuery: "Angular built-in control flow @if @for @switch migration ngIf ngFor ngSwitch deprecated",
     test: (line) => {
-      return /\*ngIf=|\*ngFor=/.test(line) ? line : null;
+      return /\*ngIf=|\*ngFor=|\*ngSwitch(?:Case|Default)?\b/.test(line) ? line : null;
     },
   },
 
@@ -1112,13 +1127,13 @@ export const AUDIT_PATTERNS: AuditPattern[] = [
     category: "mobile",
     severity: "medium",
     title: "Missing accessible prop on touchable element",
-    detail: "TouchableOpacity and Pressable elements need accessible={true} and accessibilityLabel",
-    fix: "Add accessible={true} accessibilityLabel=\"Description\" to touchable components",
+    detail: "Touchables are accessible by default, but without accessibilityLabel (or aria-label) screen readers fall back to the concatenated child text, and icon-only buttons announce nothing useful",
+    fix: "Add accessibilityLabel=\"Description\" (or aria-label) and accessibilityRole=\"button\" to touchable components",
     docsQuery: "React Native accessibility accessibilityLabel touchable",
     test: (line, content, charOffset) => {
       if (!/<(?:TouchableOpacity|Pressable|TouchableHighlight)/.test(line)) return null;
       const nearby = content.slice(Math.max(0, charOffset - 200), charOffset + 300);
-      return !nearby.includes("accessibilityLabel") ? line : null;
+      return !nearby.includes("accessibilityLabel") && !nearby.includes("aria-label") ? line : null;
     },
   },
   {
@@ -1129,7 +1144,7 @@ export const AUDIT_PATTERNS: AuditPattern[] = [
     fix: "Move inline styles to const styles = StyleSheet.create({ container: { flex: 1 } })",
     docsQuery: "React Native StyleSheet performance inline styles",
     test: (line) => {
-      return /<(?:View|Text|ScrollView)\s[^>]*style=\{\{/.test(line) ? line : null;
+      return /<(?:View|Text|ScrollView)\s(?:(?!<(?:View|Text|ScrollView)\s)[^>])*style=\{\{/.test(line) ? line : null;
     },
   },
 
@@ -1142,7 +1157,7 @@ export const AUDIT_PATTERNS: AuditPattern[] = [
     fix: "Return generic error: res.status(500).json({ error: 'Internal server error' })",
     docsQuery: "Express error handling generic messages production",
     test: (line) => {
-      return /(?:err|error)\.stack|\.json\(\{[^}]*(?:err|error)\.message/.test(line) ? line : null;
+      return /(?:err|error)\.stack|\.json\(\{(?:(?!\.json\(\{)[^}])*(?:err|error)\.message/.test(line) ? line : null;
     },
   },
   {
@@ -1160,8 +1175,8 @@ export const AUDIT_PATTERNS: AuditPattern[] = [
     category: "api",
     severity: "medium",
     title: "Route handler without try/catch",
-    detail: "Uncaught async errors in route handlers crash the process",
-    fix: "Wrap handler body in try/catch or use an async error wrapper middleware",
+    detail: "On Express 4 a rejected promise in an async handler never reaches error middleware: the request hangs and the unhandled rejection crashes Node. Express 5 forwards rejections to error middleware automatically",
+    fix: "Upgrade to Express 5 and handle errors in one error-handling middleware, or on Express 4 wrap the handler body in try/catch and call next(err)",
     docsQuery: "Express async route handler error handling",
     test: (line, content, charOffset) => {
       if (!/(app|router)\.\s*(?:get|post|put|patch|delete)\s*\(/.test(line)) return null;
@@ -1200,7 +1215,7 @@ export const AUDIT_PATTERNS: AuditPattern[] = [
     title: "Missing prefers-reduced-motion for animation",
     detail: "CSS animations must respect prefers-reduced-motion for vestibular safety",
     fix: "Wrap animation in @media (prefers-reduced-motion: no-preference) { ... }",
-    docsQuery: "CSS prefers-reduced-motion accessibility WCAG 3.0.3",
+    docsQuery: "CSS prefers-reduced-motion accessibility WCAG 2.3.3",
     test: (line, content) => {
       if (!/@keyframes|animation:/.test(line)) return null;
       return !content.includes("prefers-reduced-motion") ? line : null;
@@ -1214,8 +1229,14 @@ export const AUDIT_PATTERNS: AuditPattern[] = [
     fix: "Refactor selectors for proper specificity — use CSS Layers (@layer) instead",
     docsQuery: "CSS specificity layers best practices avoid !important",
     test: (line, content) => {
-      const count = (content.match(/!important/g) ?? []).length;
-      return count > 3 && line.includes("!important") ? line : null;
+      if (!line.includes("!important")) return null;
+      // Stop at the 4th hit: a full-file count on every line was quadratic on utility sheets.
+      let at = -1;
+      for (let hits = 0; hits < 4; hits++) {
+        at = content.indexOf("!important", at + 1);
+        if (at === -1) return null;
+      }
+      return line;
     },
   },
 

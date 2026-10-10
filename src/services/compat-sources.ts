@@ -1,6 +1,6 @@
 import { fetchAsMarkdownRace } from "./fetcher.js";
-import { fetchMdnDocMeta, renderBcdTable, formatBaseline } from "./mdn-bcd.js";
-import { extractRelevantContent } from "../utils/extract.js";
+import { fetchMdnDocMeta, renderBcdTable, formatBaseline, type MdnDocMeta } from "./mdn-bcd.js";
+import { extractRelevantContent, substantiveTokens } from "../utils/extract.js";
 import { checkEvidence } from "../utils/evidence.js";
 import { sanitizeContent } from "../utils/sanitize.js";
 import { findTopicUrls } from "./search/topic-match.js";
@@ -23,12 +23,39 @@ export async function resolveMdnCandidates(feature: string): Promise<string[]> {
     .filter((u) => u.includes("mozilla.org"));
   // Always append MDN search hits: topic-map entries are often GUIDE pages
   // that carry no BCD paths — the reference page (with the compat table)
-  // only surfaces via search.
-  for (const hit of (await searchMDN(feature)).slice(0, 5)) {
+  // only surfaces via search, often below the guides ("container queries":
+  // six guides, then container-type and @container at 7 and 8).
+  for (const hit of (await searchMDN(feature)).slice(0, 10)) {
     if (!candidates.includes(hit.url)) candidates.push(hit.url);
   }
   const isGuideUrl = (u: string): boolean => /\/(Guides?|Learn)\//i.test(u);
   return candidates.sort((a, b) => Number(isGuideUrl(a)) - Number(isGuideUrl(b)));
+}
+
+/** Platform words, not features: "css" plus "dynamic" let dynamic-range-limit answer a dvh query. */
+const CATEGORY_WORDS = /\b(?:css|html|javascript|js|web|apis?|dom|browsers?|support(?:ed)?|compat(?:ibility)?)\b/gi;
+
+/**
+ * A doc is about the feature when the feature names its compat key ("Array.groupBy"
+ * -> javascript.builtins.Object.groupBy, ":has()" -> css.selectors.has), or when its
+ * title and summary cover at least half of the feature's own words.
+ */
+function aboutFeature(meta: MdnDocMeta, feature: string): boolean {
+  const lower = feature.toLowerCase();
+  const namesKey = meta.browserCompat.some((path) => {
+    const leaf = (path.split(".").pop() ?? "").toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    // Not followed by "." or "-": "array.at()" names Array.at, not Array.
+    return leaf.length > 0 && new RegExp(`(?:^|[^a-z0-9_-])${leaf}(?:[^a-z0-9_.-]|$)`).test(lower);
+  });
+  return namesKey || coversFeature(`${meta.title}\n${meta.summary}`, feature);
+}
+
+/** At least half of the feature's own words, platform words aside, appear in `text`. */
+function coversFeature(text: string, feature: string): boolean {
+  const specific = feature.replace(CATEGORY_WORDS, " ");
+  return substantiveTokens(specific).length > 0
+    ? checkEvidence(text, specific).matchRatio >= 0.5
+    : checkEvidence(text, feature).matchRatio > 0;
 }
 
 /**
@@ -51,8 +78,7 @@ export async function fetchBcdSection(
   for (const [i, candidateUrl] of candidateUrls.entries()) {
     const meta = metas[i];
     if (!meta || meta.browserCompat.length === 0) continue;
-    // Relevance gate: the resolved doc must actually be about the feature.
-    if (checkEvidence(`${meta.title}\n${meta.summary}`, feature).matchRatio === 0) continue;
+    if (!aboutFeature(meta, feature)) continue;
 
     const tables = (
       await Promise.all(meta.browserCompat.slice(0, 3).map((p) => renderBcdTable(p, environments)))
@@ -77,7 +103,7 @@ export async function fetchBcdSection(
   return null;
 }
 
-/** Fetch one page, extract against a topic, and keep it only if it covers the feature. */
+/** Fetch one page, extract against a topic, and keep it only if it covers the feature as fetchBcdSection requires. */
 async function fetchGatedSection(
   url: string,
   feature: string,
@@ -89,7 +115,7 @@ async function fetchGatedSection(
   const content = await fetchAsMarkdownRace(url);
   if (!content || content.length <= 200) return null;
   const { text } = extractRelevantContent(sanitizeContent(content), topic, tokens);
-  if (text.length <= 100 || checkEvidence(text, feature).matchRatio === 0) return null;
+  if (text.length <= 100 || !coversFeature(text, feature)) return null;
   return { text: `${heading}\n\n${text}`, url, sourceType };
 }
 

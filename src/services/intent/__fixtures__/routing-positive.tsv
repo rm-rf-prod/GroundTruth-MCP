@@ -1,0 +1,218 @@
+# Queries that name a library, with the expected registry id (tab-separated).
+next.js caching	vercel/next.js
+tanstack query invalidation	tanstack/query
+zod refine	colinhacks/zod
+react native reanimated worklets	software-mansion/react-native-reanimated
+drizzle migrations	drizzle-team/drizzle-orm
+how to run drizzle migrations with drizzle-kit	drizzle-team/drizzle-kit
+marked markdown renderer options	markedjs/marked
+faker locale	faker-js/faker
+expo router dynamic routes	expo/expo-router
+how do I clean up a subscription in React useEffect	facebook/react
+tanstack query invalidateQueries after mutation	tanstack/query
+prisma relations	prisma/prisma
+tailwind css dark mode	tailwindlabs/tailwindcss
+vite plugin config	vitejs/vite
+vitest mocking modules	vitest-dev/vitest
+playwright locators	microsoft/playwright
+svelte runes	sveltejs/svelte
+sveltekit form actions	sveltejs/kit
+vue composition api	vuejs/vue
+nuxt server routes	nuxt/nuxt
+astro content collections	withastro/astro
+remix loaders	remix-run/remix
+hono middleware	honojs/hono
+express error handling middleware	expressjs/express
+fastify plugins	fastify/fastify
+nestjs guards	nestjs/nest
+trpc procedures	trpc/trpc
+zustand persist middleware	pmndrs/zustand
+redux toolkit slices	reduxjs/redux-toolkit
+jotai atoms	pmndrs/jotai
+swr revalidation	vercel/swr
+react hook form validation	react-hook-form/react-hook-form
+framer motion layout animations	framer/motion
+gsap scrolltrigger	greensock/gsap
+three.js shadows	mrdoob/three.js
+react three fiber canvas	pmndrs/react-three-fiber
+storybook interaction tests	storybookjs/storybook
+eslint flat config	eslint/eslint
+biome lint rules	biomejs/biome
+turborepo remote caching	vercel/turborepo
+pnpm workspaces	pnpm/pnpm
+webpack code splitting	webpack/webpack
+esbuild plugins	evanw/esbuild
+babel preset env	babel/babel
+mocha hooks	mochajs/mocha
+jest snapshot testing	jestjs/jest
+cypress intercept	cypress-io/cypress
+msw handlers	mswjs/msw
+axios interceptors	axios/axios
+lodash debounce	lodash/lodash
+date-fns format	date-fns/date-fns
+date fns format distance	date-fns/date-fns
+socket.io rooms	socketio/socket.io
+mongoose schemas	Automattic/mongoose
+sequelize associations	sequelize/sequelize
+knex migrations	knex/knex
+kysely joins	kysely-org/kysely
+stripe webhooks	stripe/stripe-node
+clerk middleware	clerk/javascript
+supabase row level security	supabase/supabase
+firebase auth	firebase/firebase-js-sdk
+langchain retrievers	langchain-ai/langchainjs
+sass mixins	sass/dart-sass
+bootstrap 5 navbar	twbs/bootstrap
+emotion css prop	emotion-js/emotion
+mermaid sequence diagram	mermaid-js/mermaid
+monaco editor themes	microsoft/monaco-editor
+commander subcommands	tj/commander.js
+tsx watch mode typescript	privatenumber/tsx
+h3 framework routing	h3js/h3
+ofetch retry	unjs/ofetch
+inertia.js react adapter	inertiajs/inertia
+livewire components	livewire/livewire
+renovate config presets	renovatebot/renovate
+envoy proxy filters	envoyproxy/envoy
+aspire dashboard	microsoft/aspire
+testcontainers postgres module	testcontainers/testcontainers-java
+babylon.js scene setup	BabylonJS/Babylon.js
+react native permissions camera	zoontek/react-native-permissions
+rn permissions request	zoontek/react-native-permissions
+python click options	pallets/click
+pillow resize image	python-pillow/Pillow
+uv lockfile	astral-sh/uv
+ray serve deployment	ray-project/ray
+fastapi dependency injection	tiangolo/fastapi
+django select_related vs prefetch_related	django/django
+flask blueprints	pallets/flask
+pydantic validators	pydantic/pydantic
+sqlalchemy async sessions	sqlalchemy/sqlalchemy
+celery beat schedule	celery/celery
+httpx async client	encode/httpx
+requests session retries in python	psf/requests
+numpy broadcasting	numpy/numpy
+pandas groupby	pandas-dev/pandas
+polars lazy frames	pola-rs/polars
+pytest fixtures	pytest-dev/pytest
+ruff lint rules	astral-sh/ruff
+mypy strict mode	python/mypy
+poetry lock file	python-poetry/poetry
+rich progress bar in python	Textualize/rich
+textual widgets	Textualize/textual
+spacy named entity recognition	explosion/spaCy
+hypothesis property based testing	HypothesisWorks/hypothesis
+scrapy spiders	scrapy/scrapy
+streamlit session state	streamlit/streamlit
+matplotlib subplots	matplotlib/matplotlib
+scikit-learn pipelines	scikit-learn/scikit-learn
+pytorch dataloader	pytorch/pytorch
+langgraph checkpoints	langchain-ai/langgraph
+dspy signatures	stanfordnlp/dspy
+jupyter notebook extensions	jupyterlab/jupyterlab
+airflow dags	apache/airflow
+dagster assets	dagster-io/dagster
+duckdb parquet	duckdb/duckdb
+xgboost early stopping	dmlc/xgboost
+pre-commit hooks	pre-commit/pre-commit
+precommit hooks config	pre-commit/pre-commit
+modal gpu functions	modal-labs/modal
+browser-use python agent	browser-use/browser-use
+peft lora adapters	huggingface/peft
+unsloth fine tuning	unslothai/unsloth
+ty type checker	astral-sh/ty
+xai grok api	xai-org/xai-sdk-python
+strands agents sdk	strands-agents/harness-sdk
+stagehand browser automation	browserbase/stagehand
+braintrust evals	braintrustdata/braintrust-sdk-javascript
+openrouter model routing	OpenRouterTeam/typescript-sdk
+ollama modelfile	ollama/ollama-js
+vllm tensor parallel	vllm-project/vllm
+litellm proxy	BerriAI/litellm
+langfuse prompt management	langfuse/langfuse
+elastic python client	elastic/elasticsearch
+postgres vector similarity	pgvector/pgvector
+rust tokio spawn a task	tokio-rs/tokio
+serde derive	serde-rs/serde
+axum extractors	tokio-rs/axum
+clap derive macros	clap-rs/clap
+reqwest json body	seanmonstar/reqwest
+sqlx compile time checks	launchbadge/sqlx
+tracing subscriber in rust	tokio-rs/tracing
+gin middleware in golang	gin-gonic/gin
+gorm associations	go-gorm/gorm
+cobra commands	spf13/cobra
+chi router middleware go	go-chi/chi
+echo framework go	labstack/echo
+spring boot actuator	spring-projects/spring-boot
+hibernate lazy loading	hibernate/hibernate-orm
+junit parameterized tests	junit-team/junit5
+ktor routing	ktorio/ktor
+quarkus native image	quarkusio/quarkus
+mockito spy	mockito/mockito
+maven dependency management	apache/maven
+gradle kotlin dsl	gradle/gradle
+kotlin coroutines flow	JetBrains/kotlin
+kmp shared module	JetBrains/kotlin
+polly retry policy c#	App-vNext/Polly
+serilog sinks	serilog/serilog
+xunit theory data	xunit/xunit
+efcore migrations	dotnet/efcore
+asp.net core minimal apis	dotnet/aspnetcore
+rails active record callbacks	rails/rails
+sidekiq retries	sidekiq/sidekiq
+rspec matchers	rspec/rspec
+ruby blocks and procs	ruby/ruby
+laravel eloquent relationships	laravel/laravel
+guzzle middleware	guzzle/guzzle
+composer autoload	composer/composer
+phpunit data providers	sebastianbergmann/phpunit
+elixir genserver	elixir-lang/elixir
+oban jobs	oban-bg/oban
+flutter widgets	flutter/flutter
+riverpod providers	rrousselGit/riverpod
+dart null safety	dart-lang/sdk
+swift concurrency actors	swiftlang/swift
+swiftui navigation stack	apple/swiftui
+alamofire request interceptors	Alamofire/Alamofire
+hugo shortcodes	gohugoio/hugo
+redis streams	redis/docs
+postgres jsonb indexes	postgres/docs
+kafka consumer groups	apache/kafka
+rabbitmq dead letter queues	rabbitmq/rabbitmq-server
+pika blocking connection	rabbitmq/rabbitmq-server
+nginx reverse proxy	nginx/nginx
+grafana dashboards	grafana/grafana
+prometheus alerting rules	prometheus/prometheus
+opentofu providers	opentofu/opentofu
+tofu state encryption	opentofu/opentofu
+iceberg table partitioning	apache/iceberg
+elasticsearch index mappings	elastic/elasticsearch
+valkey cluster	valkey-io/valkey
+clickhouse materialized views	ClickHouse/ClickHouse
+sqlite wal mode	sqlite/docs
+helm chart values	helm/helm
+pulumi stacks	pulumi/pulumi
+ansible playbooks	ansible/ansible
+neo4j cypher queries	neo4j/neo4j
+keycloak realms	keycloak/keycloak
+temporal workflows typescript	temporalio/sdk-typescript
+inngest functions	inngest/inngest
+pocketbase collections	pocketbase/pocketbase
+convex mutations	convex-dev/convex
+mlflow tracking	mlflow/mlflow
+wandb sweeps	wandb/wandb
+what's new in next	vercel/next.js
+docs for spring	spring-projects/spring-boot
+click library for cli args	pallets/click
+use the `rich` package for tables	Textualize/rich
+How do I use Click groups	pallets/click
+help me migrate next from 14 to 15	vercel/next.js
+upgrade to react 19	facebook/react
+next15 app router	vercel/next.js
+vue3 composition api	vuejs/vue
+kubernetes docs	kubernetes/docs
+jwt best practices	auth/jwt
+cron jobs in node	node-cron/node-cron
+spring framework transactions	spring-projects/spring-framework
+hey api openapi client	hey-api/hey-api

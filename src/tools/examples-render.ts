@@ -1,5 +1,5 @@
 import { withNotice } from "../utils/guard.js";
-import { sanitizeContent } from "../utils/sanitize.js";
+import { sanitizeContent, sanitizeInline } from "../utils/sanitize.js";
 import type { ExamplesResponse } from "./examples-fallback.js";
 
 export interface CodeSearchItem {
@@ -41,7 +41,8 @@ export function renderCodeSearch(params: {
 
     lines.push(`## ${repo.full_name} ${stars > 0 ? `(${stars} stars)` : ""}`);
     lines.push(`> File: [\`${item.path}\`](${item.html_url})`);
-    if (repo.description) lines.push(`> ${repo.description}`);
+    // Publisher-controlled: one line, injection text removed.
+    if (repo.description) lines.push(`> ${sanitizeInline(repo.description)}`);
     lines.push("");
 
     for (const match of item.text_matches?.slice(0, 2) ?? []) {

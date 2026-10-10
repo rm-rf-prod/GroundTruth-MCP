@@ -1,8 +1,10 @@
 import { fetchNpmPackage, fetchPypiPackage, fetchWithTimeout, fetchAsMarkdownRace } from "../fetcher.js";
+import { discardBody } from "../http/body.js";
 import { CACHE_TTLS } from "../../constants.js";
 import { resolveCache } from "../cache.js";
 import type { LibraryMatch, NpmPackageInfo, PypiPackageInfo } from "../../types.js";
 import { log } from "../../utils/logger.js";
+import { sanitizeInline } from "../../utils/sanitize.js";
 import { probeLlmsTxt } from "./llms-probe.js";
 
 interface CratesApiResponse {
@@ -51,7 +53,7 @@ export async function resolveFromNpm(packageName: string): Promise<LibraryMatch 
   const result: LibraryMatch = {
     id: `npm:${pkg.name}`,
     name: pkg.name,
-    description: pkg.description ?? "",
+    description: sanitizeInline(pkg.description ?? ""),
     docsUrl: homepage || `https://www.npmjs.com/package/${pkg.name}`,
     llmsTxtUrl: llmsProbe.llmsTxtUrl,
     ...(llmsProbe.llmsFullTxtUrl !== undefined && { llmsFullTxtUrl: llmsProbe.llmsFullTxtUrl }),
@@ -90,7 +92,7 @@ export async function resolveFromPypi(packageName: string): Promise<LibraryMatch
   const result: LibraryMatch = {
     id: `pypi:${info.name}`,
     name: info.name,
-    description: info.summary ?? "",
+    description: sanitizeInline(info.summary ?? ""),
     docsUrl: homepage,
     llmsTxtUrl: llmsProbe.llmsTxtUrl,
     ...(llmsProbe.llmsFullTxtUrl !== undefined && { llmsFullTxtUrl: llmsProbe.llmsFullTxtUrl }),
@@ -116,7 +118,10 @@ export async function resolveFromCrates(packageName: string): Promise<LibraryMat
       `https://crates.io/api/v1/crates/${encodeURIComponent(packageName)}`,
       8000,
     );
-    if (!res.ok) return null;
+    if (!res.ok) {
+      discardBody(res);
+      return null;
+    }
     const data = (await res.json()) as CratesApiResponse;
     if (!data?.crate?.name) return null;
 
@@ -129,7 +134,7 @@ export async function resolveFromCrates(packageName: string): Promise<LibraryMat
     const result: LibraryMatch = {
       id: `crates:${crate.name}`,
       name: crate.name,
-      description: crate.description ?? "",
+      description: sanitizeInline(crate.description ?? ""),
       docsUrl,
       llmsTxtUrl: llmsProbe.llmsTxtUrl,
       ...(llmsProbe.llmsFullTxtUrl !== undefined && { llmsFullTxtUrl: llmsProbe.llmsFullTxtUrl }),
@@ -174,7 +179,7 @@ export async function resolveFromGo(moduleName: string): Promise<LibraryMatch | 
   if (isGoPkgNotFound(content)) return null;
 
   const descMatch = content.match(/^(.{20,300})/m);
-  const description = descMatch?.[1]?.trim() ?? "";
+  const description = sanitizeInline(descMatch?.[1] ?? "");
 
   const result: LibraryMatch = {
     id: `go:${moduleName}`,

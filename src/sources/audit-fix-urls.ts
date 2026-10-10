@@ -42,8 +42,8 @@ export const FIX_TARGET_GROUPS: FixTargetGroup[] = [
     targets: [
       [/aria/i, `${MDN}/Web/Accessibility/ARIA`],
       [/focus|keyboard|outline/i, `${MDN}/Web/Accessibility/Guides/Understanding_WCAG/Keyboard`],
-      [/reduced-?motion/i, `${MDN}/Web/CSS/@media/prefers-reduced-motion`],
-      [/viewport/i, `${MDN}/Web/HTML/Guides/Viewport_meta_element`],
+      [/reduced-?motion/i, `${MDN}/Web/CSS/Reference/At-rules/@media/prefers-reduced-motion`],
+      [/viewport/i, `${MDN}/Web/HTML/Reference/Elements/meta/name/viewport`],
       [/\balt\b|img|image/i, `${MDN}/Web/API/HTMLImageElement/alt`],
       [/\blang\b/i, `${MDN}/Web/HTML/Reference/Global_attributes/lang`],
       [/wcag|a11y|accessib/i, `${MDN}/Web/Accessibility`],
@@ -73,7 +73,7 @@ export const FIX_TARGET_GROUPS: FixTargetGroup[] = [
       [/cls|layout.?shift|dimension|aspect/i, "https://web.dev/articles/optimize-cls"],
       [/inp|interaction|long.?task/i, "https://web.dev/articles/optimize-inp"],
       [/bundle|code.?split|chunk|tree.?shak/i, "https://web.dev/articles/reduce-javascript-payloads-with-code-splitting"],
-      [/lazy|offscreen/i, "https://web.dev/articles/lazy-loading-images"],
+      [/lazy|offscreen/i, "https://web.dev/articles/browser-level-image-lazy-loading"],
       [/render.?blocking|critical/i, "https://developer.chrome.com/docs/lighthouse/performance/render-blocking-resources"],
       [/font/i, "https://web.dev/articles/font-best-practices"],
       [/lcp|largest|fetchpriority|preload|hero/i, "https://web.dev/articles/optimize-lcp"],
@@ -87,10 +87,13 @@ export const FIX_TARGET_GROUPS: FixTargetGroup[] = [
   },
 ];
 
-/** Python findings fetch both sources in parallel and prefer the security sheet. */
+/** Python findings use the security page only when `securityMatch` holds, else the style guide. */
 export const PYTHON_FIX_URLS = {
   match: /python|pickle|subprocess|f-string|sql.inject|argon2|bcrypt|bare.except|mutable.default|requests.verify/i,
-  security: `${OWASP}/Python_Security_Cheat_Sheet.html`,
+  // The security page passes the evidence gate on "python" alone, so it would answer style findings it does not cover.
+  securityMatch: /pickle|eval|exec|subprocess|os\.system|shell|inject|verify|tls|ssl|md5|sha1|hash|password|travers/i,
+  // OWASP has no Python cheat sheet (404); Bandit's call list covers pickle, eval, md5, shell and TLS checks.
+  security: "https://bandit.readthedocs.io/en/latest/blacklists/blacklist_calls.html",
   style: "https://peps.python.org/pep-0008/",
 } as const;
 

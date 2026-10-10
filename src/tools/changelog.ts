@@ -1,4 +1,4 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { withTelemetry } from "../services/telemetry.js";
 import { resolveChangelogTarget, fetchChangelog } from "../services/changelog-sources.js";
@@ -8,26 +8,27 @@ import { computeQualityScore } from "../utils/quality.js";
 import { sanitizeContent } from "../utils/sanitize.js";
 import { isExtractionAttempt, withNotice, EXTRACTION_REFUSAL, withToolTimeout } from "../utils/guard.js";
 import { docCache } from "../services/cache.js";
-import { DEFAULT_TOKEN_LIMIT, MAX_TOKEN_LIMIT } from "../constants.js";
+import { DEFAULT_TOKEN_LIMIT, MAX_TOKEN_LIMIT, SWR_STALE_TTL_MS } from "../constants.js";
+
+const MISS_TTL_MS = 5 * 60_000;
 
 const InputSchema = z.object({
   libraryId: z
     .string()
     .min(1)
     .max(200)
-    .describe("Library ID from gt_resolve_library, e.g. 'vercel/next.js'"),
+    .describe("Plain name or GroundTruth ID, e.g. 'nextjs'"),
   version: z
     .string()
     .max(50)
     .optional()
-    .describe("Filter to a specific version prefix, e.g. '15' or 'v15.2.0'"),
+    .describe("Version prefix filter, e.g. '15'"),
   tokens: z
     .number()
     .int()
     .min(1000)
     .max(MAX_TOKEN_LIMIT)
-    .default(DEFAULT_TOKEN_LIMIT)
-    .describe("Max tokens for content"),
+    .default(DEFAULT_TOKEN_LIMIT),
 });
 
 /** Returned when the whole pipeline exceeds the tool timeout — an actionable
@@ -41,9 +42,7 @@ export function registerChangelogTool(server: McpServer): void {
     "gt_changelog",
     {
       title: "Fetch Library Changelog",
-      description: `Fetch recent release notes and changelog for a library. Reads GitHub Releases API first, then CHANGELOG.md, then the docs site. Use before upgrading.
-
-Use this for "what changed in version X" questions. For "how do I upgrade my code from vA to vB" — use gt_migration instead (it targets MIGRATION.md, UPGRADING.md, and upgrade guides with step-by-step instructions).`,
+      description: "Recent release notes for a library (GitHub Releases, CHANGELOG.md): what changed in a version. Step-by-step upgrade: gt_migration.",
       inputSchema: InputSchema,
       annotations: {
         readOnlyHint: true,
@@ -64,7 +63,8 @@ Use this for "what changed in version X" questions. For "how do I upgrade my cod
           }
 
           const cacheKey = `changelog:${libraryId}:${version ?? ""}:${tokens}`;
-          const cached = docCache.get(cacheKey);
+          let expiresAt = Number.POSITIVE_INFINITY;
+          const cached = docCache.get(cacheKey, { maxStaleMs: SWR_STALE_TTL_MS, onHit: (at) => { expiresAt = at; } });
           if (typeof cached === "string") {
             // Envelope, not a bare string: caching only the text made every
             // cache hit return a degraded structuredContent (no displayName,
@@ -74,7 +74,9 @@ Use this for "what changed in version X" questions. For "how do I upgrade my cod
                 text?: string;
                 structuredContent?: Record<string, unknown>;
               };
-              if (typeof envelope.text === "string" && envelope.structuredContent) {
+              // A remembered miss is never served stale: past its TTL, look again.
+              const staleMiss = envelope.structuredContent?.["found"] === false && Date.now() > expiresAt;
+              if (typeof envelope.text === "string" && envelope.structuredContent && !staleMiss) {
                 return {
                   content: [{ type: "text", text: envelope.text }],
                   structuredContent: { ...envelope.structuredContent, cached: true },
@@ -96,7 +98,10 @@ Use this for "what changed in version X" questions. For "how do I upgrade my cod
             const text = withNotice(
               `No changelog found for **${displayName}**.\n\nCheck the GitHub releases page directly: ${githubUrl ?? docsUrl}`,
             );
-            return { content: [{ type: "text", text }] };
+            const structuredContent = { libraryId, displayName, version: version ?? null, sourceUrl, found: false };
+            // Remembered briefly: each repeat re-ran about 2 s of GitHub and Jina lookups.
+            docCache.set(cacheKey, JSON.stringify({ text, structuredContent }), MISS_TTL_MS);
+            return { content: [{ type: "text", text }], structuredContent };
           }
 
           let content = sanitizeContent(raw);

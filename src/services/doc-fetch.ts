@@ -1,21 +1,26 @@
+import { setTimeout as sleep } from "timers/promises";
 import { CACHE_TTLS } from "../constants.js";
 import type { FetchResult } from "../types.js";
-import { docCache, diskDocCache } from "./cache.js";
-import { convertHtmlToMarkdown } from "../utils/html-to-md.js";
-import { cacheDoc, hashContent } from "./http/request.js";
-import { tryFetch } from "./http/try-fetch.js";
-import { fetchViaJina } from "./http/jina.js";
-import { followNestedLlmsIndex } from "./llms-index.js";
-import { isGarbageContent } from "./content-guards.js";
+import { singleFlight } from "./http/single-flight.js";
+import { fetchGitHubContent, isGitHubHost } from "./github.js";
+import { gitHubDocFile } from "./github-url.js";
+import { probeLlmsTxt } from "./resolve/llms-probe.js";
+import { cacheDocs, readDocs } from "./doc-fetch-cache.js";
+import { fetchLlmsDocs, fetchPage, type LlmsDocs } from "./doc-fetch-sources.js";
+
+const PROBE_GRACE_MS = 300;
+
+type Probed = Awaited<ReturnType<typeof probeLlmsTxt>>;
+
+interface Found extends LlmsDocs {
+  ttl: number;
+}
 
 /**
- * Single-flight wrapper around the docs pipeline.
- *
- * Every other fetch entry point already dedups via `inFlightRequests`; this one
- * did not, so two concurrent gt_get_docs / gt_auto_scan calls for the same
- * library each ran the full llms.txt -> discovery -> Jina -> GitHub chain.
+ * Single-flight per cache key: two concurrent gt_get_docs / gt_auto_scan calls
+ * for the same library must not each run the llms.txt -> page -> Jina chain.
  */
-const inFlightDocs = new Map<string, Promise<FetchResult>>();
+const inFlightDocs = new Map<string, Promise<LlmsDocs>>();
 
 export async function fetchDocs(
   docsUrl: string,
@@ -23,155 +28,57 @@ export async function fetchDocs(
   llmsFullTxtUrl?: string,
   topic?: string,
 ): Promise<FetchResult> {
-  const key = `docs:${docsUrl}`;
-  const inFlight = inFlightDocs.get(key);
-  if (inFlight) return inFlight;
+  // The llms files are part of the key: an entry fetched under other ones (an
+  // older registry entry, a caller without them) must not answer for these.
+  const key = llmsTxtUrl || llmsFullTxtUrl ? `docs:${docsUrl}|${llmsTxtUrl ?? ""}|${llmsFullTxtUrl ?? ""}` : `docs:${docsUrl}`;
+  const refresh = (): Promise<LlmsDocs> => singleFlight(inFlightDocs, key, async () => {
+    const found = await findDocs(docsUrl, llmsTxtUrl, llmsFullTxtUrl);
+    if (!found) throw new Error(`Failed to fetch documentation from ${docsUrl}`);
+    const main = cacheDocs(key, found.main, found.ttl);
+    return found.index ? { main, index: cacheDocs(`${key}:index`, found.index, found.ttl) } : { main };
+  });
 
-  const pending = fetchDocsUncached(docsUrl, llmsTxtUrl, llmsFullTxtUrl, topic);
-  inFlightDocs.set(key, pending);
-  try {
-    return await pending;
-  } finally {
-    inFlightDocs.delete(key);
-  }
+  // A topic is answered from the llms.txt index when one was kept beside an oversized llms-full.txt.
+  const cached = (topic ? await readDocs(`${key}:index`, docsUrl, refresh) : undefined)
+    ?? (await readDocs(key, docsUrl, refresh));
+  if (cached) return cached;
+  const fresh = await refresh();
+  return (topic ? fresh.index : undefined) ?? fresh.main;
 }
 
-async function fetchDocsUncached(
-  docsUrl: string,
-  llmsTxtUrl?: string,
-  llmsFullTxtUrl?: string,
-  _topic?: string,
-): Promise<FetchResult> {
-  const cacheKey = `docs:${docsUrl}`;
-  const sourceTypeKey = `${cacheKey}:sourceType`;
-  const VALID_SOURCE_TYPES: ReadonlySet<string> = new Set(["llms-txt", "llms-full-txt", "jina", "direct"]);
-
-  function stamp(result: FetchResult): FetchResult {
-    return { ...result, contentHash: hashContent(result.content), fetchedAt: new Date().toISOString() };
+async function findDocs(docsUrl: string, llmsTxtUrl?: string, llmsFullTxtUrl?: string): Promise<Found | null> {
+  // 1. The registry's own llms files.
+  if (llmsTxtUrl || llmsFullTxtUrl) {
+    const llms = await fetchLlmsDocs(docsUrl, llmsTxtUrl, llmsFullTxtUrl);
+    if (llms) return { ...llms, ttl: CACHE_TTLS.LLMS_TXT };
   }
 
-  // Cache hits must report the ORIGINAL fetch origin, not a hardcoded
-  // "llms-txt" — quality scoring downstream weights source types differently.
-  // Companion entry absent (pre-fix cache files) falls back to llms-txt.
-  function asSourceType(raw: string | null | undefined): FetchResult["sourceType"] {
-    return raw && VALID_SOURCE_TYPES.has(raw) ? (raw as FetchResult["sourceType"]) : "llms-txt";
+  // GitHub-hosted docs: the repo page renders as navigation chrome and the
+  // origin llms.txt is GitHub's own, so read the repo file raw instead.
+  // Anonymous: docsUrl may be caller-supplied, and must not borrow the operator token.
+  const ghFile = gitHubDocFile(docsUrl);
+  if (ghFile) {
+    const gh = await fetchGitHubContent(ghFile.repoUrl, ghFile.path, false);
+    if (gh) return { main: gh, ttl: CACHE_TTLS.GITHUB_README };
   }
 
-  function cacheDocsResult(content: string, ttl: number, sourceType: FetchResult["sourceType"]): void {
-    cacheDoc(cacheKey, content, ttl);
-    docCache.set(sourceTypeKey, sourceType, ttl);
-    void diskDocCache.set(sourceTypeKey, sourceType, ttl);
-  }
-
-  const memCached = docCache.get(cacheKey);
-  if (memCached) {
-    return stamp({ content: memCached, url: docsUrl, sourceType: asSourceType(docCache.get(sourceTypeKey)) });
-  }
-
-  const diskCached = await diskDocCache.get(cacheKey);
-  if (diskCached) {
-    docCache.set(cacheKey, diskCached);
-    const st = asSourceType(await diskDocCache.get(sourceTypeKey));
-    docCache.set(sourceTypeKey, st);
-    return stamp({ content: diskCached, url: docsUrl, sourceType: st });
-  }
-
-  // 1. Race llms-full.txt and llms.txt in parallel (both are cheap GETs)
-  if (llmsFullTxtUrl || llmsTxtUrl) {
-    const candidates: Array<{ url: string; sourceType: FetchResult["sourceType"] }> = [];
-    if (llmsFullTxtUrl) candidates.push({ url: llmsFullTxtUrl, sourceType: "llms-full-txt" });
-    if (llmsTxtUrl) candidates.push({ url: llmsTxtUrl, sourceType: "llms-txt" });
-
-    const results = await Promise.all(
-      candidates.map(async (c) => ({ ...c, content: await tryFetch(c.url) })),
-    );
-
-    // Prefer llms-full.txt > llms.txt
-    for (const r of results) {
-      if (r.content) {
-        if (r.sourceType === "llms-txt") {
-          const nested = await followNestedLlmsIndex(r.content, r.url);
-          if (nested) {
-            cacheDocsResult(nested.content, CACHE_TTLS.LLMS_TXT, "llms-txt");
-            return stamp({ content: nested.content, url: nested.url, sourceType: "llms-txt" });
-          }
-        }
-        cacheDocsResult(r.content, CACHE_TTLS.LLMS_TXT, r.sourceType);
-        return stamp({ content: r.content, url: r.url, sourceType: r.sourceType });
-      }
-    }
-
-    // Auto-discover from the domain root of the provided llms.txt URL
-    if (llmsTxtUrl) {
-      try {
-        const origin = new URL(llmsTxtUrl).origin;
-        const autoUrl = `${origin}/llms.txt`;
-        const autoDiscovered = await tryFetch(autoUrl);
-        if (autoDiscovered) {
-          const nested = await followNestedLlmsIndex(autoDiscovered, autoUrl);
-          const final = nested ?? { content: autoDiscovered, url: autoUrl };
-          cacheDocsResult(final.content, CACHE_TTLS.LLMS_TXT, "llms-txt");
-          return stamp({ content: final.content, url: final.url, sourceType: "llms-txt" });
-        }
-      } catch { /* invalid URL */ }
+  // 2. Discover llms files while the page itself is already on its way, instead
+  // of probing first: a discovered llms file still wins over the page, unless
+  // the probe is still out PROBE_GRACE_MS after the page arrived (tailwindcss.com
+  // takes 0.5-1.6 s to 404 /llms.txt). Its answer is persisted for the next fetch.
+  let settled = false;
+  const page = fetchPage(docsUrl, () => settled);
+  // Never on github.com: its root llms.txt is GitHub's own product index.
+  const probe: Promise<Probed> = isGitHubHost(docsUrl) ? Promise.resolve({}) : probeLlmsTxt(docsUrl);
+  const probed = await Promise.race([probe, page.then((p): Promise<Probed> => (p ? sleep(PROBE_GRACE_MS, {}) : probe))]);
+  if (probed.llmsTxtUrl || probed.llmsFullTxtUrl) {
+    const llms = await fetchLlmsDocs(docsUrl, probed.llmsTxtUrl, probed.llmsFullTxtUrl);
+    if (llms) {
+      settled = true;
+      return { ...llms, ttl: CACHE_TTLS.LLMS_TXT };
     }
   }
-
-  // 2. Race auto-discover + direct HTML extraction + Jina — first good result wins
-  const autoDiscoverUrls: string[] = [];
-  try {
-    const origin = new URL(docsUrl).origin;
-    autoDiscoverUrls.push(
-      `${origin}/llms.txt`,
-      `${origin}/llms-full.txt`,
-      `${origin}/docs/llms.txt`,
-      `${origin}/docs/llms-full.txt`,
-    );
-  } catch { /* invalid URL */ }
-
-  const candidates: Array<Promise<FetchResult>> = [];
-  for (const adUrl of autoDiscoverUrls) {
-    candidates.push(
-      tryFetch(adUrl).then((c) => {
-        if (c) return { content: c, url: adUrl, sourceType: "llms-txt" as const };
-        throw new Error("no content");
-      }),
-    );
-  }
-  // Direct HTML fetch + extraction (fast, no Jina dependency)
-  candidates.push(
-    (async () => {
-      const html = await tryFetch(docsUrl, 0);
-      if (!html) throw new Error("no content");
-      const tagDensity = (html.match(/<[a-z]/gi) ?? []).length / Math.max(html.length, 1);
-      // Already plain text / markdown
-      if (tagDensity < 0.005 && html.length > 100) {
-        if (isGarbageContent(html).garbage) throw new Error("garbage content");
-        return { content: html, url: docsUrl, sourceType: "direct" as const };
-      }
-      const md = convertHtmlToMarkdown(html);
-      if (md.length >= 200) {
-        if (isGarbageContent(md).garbage) throw new Error("garbage content after extraction");
-        return { content: md, url: docsUrl, sourceType: "direct" as const };
-      }
-      throw new Error("extraction too short");
-    })(),
-  );
-  // Jina Reader (handles JS-rendered sites)
-  candidates.push(
-    fetchViaJina(docsUrl).then((c) => {
-      if (c) return { content: c, url: docsUrl, sourceType: "jina" as const };
-      throw new Error("no content");
-    }),
-  );
-
-  try {
-    const hit = await Promise.any(candidates);
-    cacheDocsResult(hit.content, CACHE_TTLS.DOCS_PAGE, hit.sourceType);
-    return stamp(hit);
-  } catch {
-    // All candidates failed — fall through to error
-  }
-
-  throw new Error(`Failed to fetch documentation from ${docsUrl}`);
+  const main = await page;
+  settled = true;
+  return main ? { main, ttl: CACHE_TTLS.DOCS_PAGE } : null;
 }

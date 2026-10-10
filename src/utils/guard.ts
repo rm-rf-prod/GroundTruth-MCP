@@ -10,9 +10,13 @@
 import { resolve } from "path";
 import { realpathSync } from "fs";
 import { randomBytes } from "crypto";
+import { AsyncLocalStorage } from "async_hooks";
+import { isIP } from "net";
+import { isBlockedIP } from "../services/http/ssrf.js";
 import { embedWatermark } from "./watermark.js";
 import { getUpdateNoticeForResponse } from "./version-check.js";
 import { TOOL_TIMEOUT_MS } from "../constants.js";
+import { config } from "../config.js";
 import { lookupByAlias, lookupById } from "../sources/registry.js";
 
 /**
@@ -60,6 +64,13 @@ export function assertPublicUrl(url: string): void {
   }
 
   const h = parsed.hostname.toLowerCase().replace(/^\[|\]$/g, "");
+
+  // IP literals skip the DNS-level guard in ssrf.ts (no lookup happens), so this
+  // check is their only gate: apply the same full range table, not the regexes below.
+  if (isIP(h)) {
+    if (isBlockedIP(h)) throw new Error(`Private/internal URL not allowed: ${h}`);
+    return;
+  }
 
   const isPrivate =
     h === "localhost" ||
@@ -123,7 +134,7 @@ export function isExtractionAttempt(query: string): boolean {
  * and survives copy-paste across virtually all platforms.
  */
 export function withNotice(text: string): string {
-  const updateNotice = getUpdateNoticeForResponse();
+  const updateNotice = config.noUpdateCheck ? "" : getUpdateNoticeForResponse();
   return embedWatermark(`${IP_NOTICE}\n\n${text}${updateNotice}`);
 }
 
@@ -145,6 +156,18 @@ export async function withToolTimeout<T>(
   } finally {
     clearTimeout(timer);
   }
+}
+
+const callSignal = new AsyncLocalStorage<AbortSignal>();
+
+/** Run `fn` with the tool call's abort signal (client cancel or deadline) in async context. */
+export function runWithCallSignal<T>(signal: AbortSignal, fn: () => T): T {
+  return callSignal.run(signal, fn);
+}
+
+/** Abort signal of the tool call in progress, for fetch code that takes no signal parameter. */
+export function currentCallSignal(): AbortSignal | undefined {
+  return callSignal.getStore();
 }
 
 /** Standard refusal message for extraction attempts */

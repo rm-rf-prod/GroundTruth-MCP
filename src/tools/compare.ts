@@ -1,8 +1,8 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { withTelemetry } from "../services/telemetry.js";
 import { lookupById, lookupByAlias, fuzzySearch } from "../sources/registry.js";
-import { fetchDocs, fetchAsMarkdownRace, isIndexContent, rankIndexLinks } from "../services/fetcher.js";
+import { fetchDocs, fetchAsMarkdownRace, isIndexContent, rankIndexLinks, hashContent } from "../services/fetcher.js";
 import { extractRelevantContent } from "../utils/extract.js";
 import { sanitizeContent } from "../utils/sanitize.js";
 import { isExtractionAttempt, withNotice, withToolTimeout } from "../utils/guard.js";
@@ -14,19 +14,18 @@ const InputSchema = z.object({
     .array(z.string().min(1).max(100))
     .min(2)
     .max(3)
-    .describe("2–3 library names to compare, e.g. ['prisma', 'drizzle-orm']"),
+    .describe("2-3 library names"),
   criteria: z
     .string()
     .max(300)
     .optional()
-    .describe("Comparison angle: 'performance', 'TypeScript support', 'bundle size', 'DX'"),
+    .describe("e.g. 'bundle size'"),
   tokens: z
     .number()
     .int()
     .min(500)
     .max(4000)
-    .default(2000)
-    .describe("Max tokens per library (2000 default)"),
+    .default(2000),
 });
 
 function resolveLibrary(name: string): LibraryEntry | null {
@@ -44,9 +43,7 @@ export function registerCompareTool(server: McpServer): void {
     "gt_compare",
     {
       title: "Compare Libraries Side-by-Side",
-      description: `Compare 2–3 libraries side-by-side. Fetches live documentation for each and presents content relevant to the comparison criteria.
-
-Pass library NAMES (e.g. ['prisma', 'drizzle-orm']) — not registry IDs. The tool resolves them internally. Use for "X vs Y" or "which library should I choose" questions. For fetching docs about a single library, use gt_get_docs instead.`,
+      description: "Compare 2-3 libraries side by side from their live docs. Pass names (['prisma', 'drizzle-orm']), not IDs. One library: gt_get_docs.",
       inputSchema: InputSchema,
       annotations: {
         readOnlyHint: true,
@@ -61,7 +58,7 @@ Pass library NAMES (e.g. ['prisma', 'drizzle-orm']) — not registry IDs. The to
         return withToolTimeout(async () => {
           // No extraction guard on `criteria` — it is a comparison angle, not a
           // registry key ("full feature list" is a legitimate criteria).
-          const topic = criteria ? `${criteria} comparison tradeoffs` : "overview features comparison";
+          const angle = criteria ? `${criteria} comparison tradeoffs` : "overview features comparison";
           // Per-item guard: one flagged name is treated as unresolvable instead of
           // aborting the sibling libraries' comparison.
           const entries = libraries.map((lib) => ({
@@ -78,7 +75,10 @@ Pass library NAMES (e.g. ['prisma', 'drizzle-orm']) — not registry IDs. The to
 
           const fetchResults = await Promise.allSettled(
             entries.map(async ({ lib, entry }) => {
-              const cacheKey = `compare:${entry?.id ?? lib}:${topic.slice(0, 40)}`;
+              // Name the peers: a bare angle spent zustand's budget on its Redux
+              // and Valtio comparisons when the question was zustand vs jotai.
+              const topic = `${libraries.filter((l) => l !== lib).join(" ")} ${angle}`;
+              const cacheKey = `compare:${entry?.id ?? lib}:${hashContent(topic)}`;
               const cached = docCache.get(cacheKey);
               if (typeof cached === "string") return { lib, entry, content: cached };
 

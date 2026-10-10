@@ -26,15 +26,10 @@ jobs:
           cache: "pnpm"
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      # Blocking gate: production dependencies only — that is what ships to
-      # consumers. Remaining high advisories are transitive under
-      # javascript-obfuscator (build-time devDependency) and npm's only fix is a
-      # 5.4.3 -> 0.14.3 downgrade that breaks the obfuscation stage.
       - name: Dependency audit (production)
         run: pnpm audit --prod --audit-level high
-      # Non-blocking: keeps dev-tree advisories visible rather than silenced.
-      - name: Dependency audit (dev, informational)
-        run: pnpm audit --audit-level high || true
+      - name: Dependency audit (dev)
+        run: pnpm audit --audit-level high
       - name: Type check
         run: pnpm run typecheck
       - name: Lint

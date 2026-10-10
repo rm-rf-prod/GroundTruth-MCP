@@ -1,17 +1,36 @@
 import { FETCH_TIMEOUT_MS } from "../../constants.js";
 import { extractDomain, isCircuitOpen, recordSuccess, recordFailure } from "../circuit-breaker.js";
-import { assertPublicUrl } from "../../utils/guard.js";
+import { assertPublicUrl, currentCallSignal } from "../../utils/guard.js";
 import { log } from "../../utils/logger.js";
-import { fetchWithTimeout, readBodyCapped } from "./request.js";
-import { RETRYABLE_STATUS, backoffDelayMs, isKnownMissing, rememberMissing } from "./negative-cache.js";
+import { HTML_ACCEPT, MARKDOWN_ACCEPT, fetchWithTimeout, pageAccept } from "./request.js";
+import { discardBody, readBodyCapped, responseHeader } from "./body.js";
+import {
+  RETRYABLE_STATUS, backoffDelayMs, isKnownMissing, isOversize, rememberBrokenNegotiation, rememberMissing, rememberOversize,
+} from "./negative-cache.js";
+
+export interface FetchedText {
+  text: string;
+  /** Declared Content-Type ("" when absent): lets callers keep server markdown out of the HTML converter. */
+  contentType: string;
+}
 
 /** Single-URL fetch with retry, circuit-breaker accounting and negative caching. */
 export async function tryFetch(url: string, retries = 1, extraHeaders?: Record<string, string>): Promise<string | null> {
+  return (await tryFetchText(url, retries, extraHeaders))?.text ?? null;
+}
+
+/** A docs page, negotiating markdown with hosts that serve it (see MARKDOWN_ACCEPT). */
+export async function tryFetchPage(url: string, retries = 1): Promise<FetchedText | null> {
+  return tryFetchText(url, retries, { Accept: pageAccept(url) });
+}
+
+/** tryFetch that also reports the response's content type. */
+export async function tryFetchText(url: string, retries = 1, extraHeaders?: Record<string, string>): Promise<FetchedText | null> {
   try { assertPublicUrl(url); } catch (err) {
     log({ level: "warn", msg: "tryFetch.ssrf_blocked", url, error: err instanceof Error ? err.message : String(err) });
     return null;
   }
-  if (isKnownMissing(url)) {
+  if (isKnownMissing(url) || isOversize(url)) {
     log({ level: "debug", msg: "tryFetch.negative_cache_hit", url });
     return null;
   }
@@ -20,12 +39,14 @@ export async function tryFetch(url: string, retries = 1, extraHeaders?: Record<s
     log({ level: "debug", msg: "tryFetch.circuit_open", url, domain });
     return null;
   }
+  const negotiating = extraHeaders?.Accept === MARKDOWN_ACCEPT;
   let lastError: string | undefined;
   let lastStatus: number | undefined;
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       const res = await fetchWithTimeout(url, FETCH_TIMEOUT_MS, extraHeaders);
       lastStatus = res.status;
+      if (!res.ok) discardBody(res);
       if (RETRYABLE_STATUS.has(res.status)) {
         recordFailure(domain);
         if (attempt < retries) {
@@ -41,6 +62,13 @@ export async function tryFetch(url: string, retries = 1, extraHeaders?: Record<s
         // circuit for the whole domain; recordSuccess also resolves a half-open
         // probe, which the breaker needs to leave that state.
         recordSuccess(domain);
+        if (negotiating && (res.status === 404 || res.status === 406)) {
+          // Some hosts 404 pages under markdown negotiation that they serve as
+          // HTML (react.dev root, nuxt.com, redis.io/docs): ask once more without it.
+          const page = await tryFetchText(url, 0, { ...extraHeaders, Accept: HTML_ACCEPT });
+          if (page !== null) rememberBrokenNegotiation(url);
+          return page;
+        }
         if (res.status === 404 || res.status === 410) rememberMissing(url);
         log({ level: "debug", msg: "tryFetch.http_error", url, status: res.status });
         return null;
@@ -48,12 +76,13 @@ export async function tryFetch(url: string, retries = 1, extraHeaders?: Record<s
       const text = await readBodyCapped(res);
       if (text === null) {
         recordSuccess(domain);
+        rememberOversize(url);
         log({ level: "warn", msg: "tryFetch.body_too_large", url, status: res.status });
         return null;
       }
       if (text.length > 50) {
         recordSuccess(domain);
-        return text;
+        return { text, contentType: responseHeader(res, "content-type") ?? "" };
       }
       // Served fine, just had nothing in it — the domain is healthy, so this
       // must resolve the circuit rather than count against it.
@@ -61,6 +90,8 @@ export async function tryFetch(url: string, retries = 1, extraHeaders?: Record<s
       log({ level: "debug", msg: "tryFetch.too_short", url, length: text.length });
       return null;
     } catch (err) {
+      // The tool call was cancelled: that says nothing about the domain's health.
+      if (currentCallSignal()?.aborted) return null;
       recordFailure(domain);
       lastError = err instanceof Error ? err.message : String(err);
       log({ level: "debug", msg: "tryFetch.exception", url, error: lastError, attempt });

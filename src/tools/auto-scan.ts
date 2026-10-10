@@ -1,4 +1,4 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { withNotice, withToolTimeout, safeguardPath } from "../utils/guard.js";
 import type { LibraryEntry } from "../types.js";
@@ -18,24 +18,22 @@ const InputSchema = z.object({
     .string()
     .max(500)
     .optional()
-    .describe(
-      "Absolute path to the project directory. Defaults to current working directory. The tool will read package.json, requirements.txt, Cargo.toml, go.mod, etc.",
-    ),
+    .describe("Project root (default: cwd)"),
   topic: z
     .string()
     .max(300)
     .optional()
-    .describe(
-      "What to look up for each detected dependency. Examples: 'latest best practices', 'security', 'performance', 'migration'. Leave empty for general best practices.",
-    ),
+    .describe("What to look up per dependency, e.g. 'security'"),
   tokensPerLib: z
     .number()
     .int()
     .min(500)
     .max(4000)
-    .default(1500)
-    .describe("Max tokens per library (default: 1500). Lower = more libraries covered."),
+    .default(500),
 });
+
+/** A survey, not a deep-dive: 10 x 500 tokens keeps the default reply near 19 K chars. */
+const MAX_FETCHED = 10;
 
 export function registerAutoScanTool(server: McpServer): void {
   server.registerTool(
@@ -45,11 +43,7 @@ export function registerAutoScanTool(server: McpServer): void {
       // tools legitimately return long reports, so raise their inline ceiling.
       _meta: { "anthropic/maxResultSizeChars": 200_000 },
       title: "Auto-Scan Project Dependencies",
-      description: `Automatically detect all dependencies in a project and fetch latest best practices for each. Say "use gt" to invoke.
-
-Reads: package.json, requirements.txt, pyproject.toml, Cargo.toml, go.mod, pom.xml, composer.json, build.gradle — whichever exist.
-
-Fetches best practices for your installed DEPENDENCIES — to scan your own source code for issues, use gt_audit instead. Unrecognized dependencies are listed separately, never fail the call.`,
+      description: "Detect the project's dependencies (package.json, pyproject.toml, requirements.txt, Cargo.toml, go.mod, ...) and fetch best practices for each. Issues in the project's own code: gt_audit.",
       inputSchema: InputSchema,
       annotations: {
         readOnlyHint: true,
@@ -100,8 +94,7 @@ Fetches best practices for your installed DEPENDENCIES — to scan your own sour
           }
         }
 
-        // Cap at 20 libraries to avoid overwhelming responses
-        const topMatched = matched.slice(0, 20);
+        const topMatched = matched.slice(0, MAX_FETCHED);
         const versions = await detectAllVersions(resolvedPath, [...allDeps]);
         const results: LibraryResult[] = [];
         await withToolTimeout(
@@ -114,8 +107,8 @@ Fetches best practices for your installed DEPENDENCIES — to scan your own sour
           topic,
           sources,
           totalDeps: allDeps.size,
-          matchedCount: matched.length,
           topMatched,
+          notFetched: matched.slice(MAX_FETCHED).map((m) => m.entry.name),
           unmatched,
           versions,
           results,

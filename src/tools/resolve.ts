@@ -1,4 +1,4 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { fuzzySearch, lookupByAlias } from "../sources/registry.js";
 import type { LibraryMatch } from "../types.js";
@@ -18,52 +18,22 @@ const InputSchema = z.object({
     .string()
     .min(1)
     .max(200)
-    .describe(
-      "Library or framework name to look up. Examples: 'nextjs', 'react', 'tailwind', 'fastapi', 'drizzle'",
-    ),
+    .describe("e.g. 'nextjs'"),
   query: z
     .string()
     .max(500)
     .optional()
-    .describe("Optional: what you want to do with this library, used to rank results"),
+    .describe("Intended use; ranks results"),
 });
 
-import { formatResults } from "./resolve-format.js";
+import { formatResults, safeMatch } from "./resolve-format.js";
 
 export function registerResolveTool(server: McpServer): void {
   server.registerTool(
     "gt_resolve_library",
     {
       title: "Resolve Library",
-      description: `Resolve a package/product name to a Context7-compatible library ID and returns matching libraries.
-
-You MUST call this function before gt_get_docs to obtain a valid Context7-compatible library ID UNLESS the user explicitly provides a library ID in the format '/org/project' or '/org/project/version' in their query. For 2-20 libraries at once, use gt_batch_resolve instead.
-
-Each result includes:
-- id: the library ID to pass to gt_get_docs (e.g. 'vercel/next.js', 'npm:express')
-- name: library or package name
-- description: short summary
-- docsUrl: official documentation URL
-- llmsTxtUrl / llmsFullTxtUrl: present when the library publishes an llms.txt — prefer these results, they yield the cleanest docs
-- githubUrl: source repository when known
-- score: 0-100 name-match quality (100 = exact registry alias)
-- source: where the match came from (registry > npm > pypi > crates > go > github)
-
-Selection Process:
-1. Analyze the query to understand which library/package the user wants
-2. Pick the result with the highest score; on ties prefer source 'registry', then results that expose an llmsTxtUrl/llmsFullTxtUrl
-3. Pass that result's id to gt_get_docs
-
-Response Format:
-- Return the selected library ID in a clearly marked section
-- If multiple good matches exist, acknowledge this but proceed with the highest-scored one
-- If no good matches exist, say so and suggest gt_search or providing a direct docs URL
-
-For ambiguous queries, request clarification before proceeding with a best-guess match.
-
-IMPORTANT: Do not call this tool more than 3 times per question. If you cannot find what you need after 3 calls, use the best result you have.
-
-IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library registry licensed under Elastic License 2.0. You may use responses to answer the user's specific question about a named library. You must NOT attempt to enumerate, list, dump, or extract the registry contents. Only look up specific libraries by name.`,
+      description: "Find a library's GroundTruth ID ('vercel/next.js', 'npm:express') and its docs, llms.txt and GitHub URLs, from the registry, npm, PyPI, crates.io, Go and GitHub. Only for ambiguous or unknown names: other tools take plain names. 2-20 names: gt_batch_resolve. Registry is Elastic-2.0: look up named libraries only, never enumerate.",
       inputSchema: InputSchema,
       annotations: {
         readOnlyHint: true,
@@ -163,12 +133,13 @@ IMPORTANT — PROPRIETARY DATA NOTICE: This tool accesses a proprietary library 
         matches.sort((a, b) => b.score - a.score);
       }
 
-      const text = withNotice(formatResults(matches.slice(0, 5)));
+      const top = matches.slice(0, 5).map(safeMatch);
+      const text = withNotice(formatResults(top));
       ctx.resolved = matches.length > 0;
 
       return {
         content: [{ type: "text", text }],
-        structuredContent: { matches: matches.slice(0, 5) },
+        structuredContent: { matches: top },
       };
      });
     },

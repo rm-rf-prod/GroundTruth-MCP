@@ -109,7 +109,7 @@ describe("deepFetchForTopic", () => {
       "https://docs.example.com",
     );
     expect(result.sourceType).toBe("deep-fetch");
-    expect(mockRankIndexLinks).toHaveBeenCalledWith(indexResult.content, "authentication middleware", "https://docs.example.com");
+    expect(mockRankIndexLinks).toHaveBeenCalledWith(indexResult.content, "authentication middleware", "https://docs.example.com", "https://docs.example.com");
   });
 
   it("follows internal links when content is shallow and not index", async () => {

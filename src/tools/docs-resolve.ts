@@ -1,5 +1,4 @@
 import { lookupById, lookupByAlias } from "../sources/registry.js";
-import { probeLlmsTxt } from "../services/resolve.js";
 import { assertPublicUrl } from "../utils/guard.js";
 import type { LibraryEntry } from "../types.js";
 
@@ -38,18 +37,12 @@ export async function resolveDocsTarget(
   entry: LibraryEntry | null,
 ): Promise<DocsTarget | string> {
   if (entry) {
-    let llmsTxtUrl = entry.llmsTxtUrl;
-    let llmsFullTxtUrl = entry.llmsFullTxtUrl;
-    // Lazy llms.txt discovery for registry entries missing the URL
-    if (!llmsTxtUrl && !llmsFullTxtUrl) {
-      const probed = await probeLlmsTxt(entry.docsUrl);
-      if (probed.llmsTxtUrl) llmsTxtUrl = probed.llmsTxtUrl;
-      if (probed.llmsFullTxtUrl) llmsFullTxtUrl = probed.llmsFullTxtUrl;
-    }
+    // Entries without llms URLs are not probed here: fetchDocs discovers llms
+    // files in parallel with the page fetch, where a probe first was serial.
     return {
       docsUrl: entry.docsUrl,
-      llmsTxtUrl,
-      llmsFullTxtUrl,
+      llmsTxtUrl: entry.llmsTxtUrl,
+      llmsFullTxtUrl: entry.llmsFullTxtUrl,
       githubUrl: entry.githubUrl,
       displayName: entry.name,
     };

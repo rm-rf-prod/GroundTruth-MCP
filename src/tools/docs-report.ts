@@ -1,6 +1,7 @@
 import type { FetchResult } from "../types.js";
-import { isIndexContent } from "../services/fetcher.js";
+import { isIndexContent, rankIndexLinks } from "../services/fetcher.js";
 import { buildEvidenceBlock, buildHonestMiss, extractHeadingOutline, type EvidenceCheck } from "../utils/evidence.js";
+import { weakEvidenceNote } from "../utils/evidence/render.js";
 import { withNotice } from "../utils/guard.js";
 import { computeQualityScore } from "../utils/quality.js";
 
@@ -80,6 +81,24 @@ function renderMiss(input: DocsReportInput, barelyMentioned: boolean): DocsRespo
   };
 }
 
+/**
+ * An llms.txt index points at the answer without containing it. Ship the links
+ * that match the topic (about 1 KB) instead of the whole ~30 KB link dump.
+ */
+function topicLinks(index: string, topic: string, baseUrl: string): string {
+  const titles = new Map<string, string>();
+  for (const [, title = "", href = ""] of index.matchAll(/\[([^\]]+)\]\(([^)\s]+)\)/g)) {
+    try {
+      titles.set(href.startsWith("/") ? new URL(href, baseUrl).href : href, title);
+    } catch {
+      // not a resolvable link
+    }
+  }
+  return rankIndexLinks(index, topic, baseUrl)
+    .map((url) => `- [${titles.get(url) ?? url}](${url})`)
+    .join("\n");
+}
+
 export function renderDocs(input: DocsReportInput): DocsResponse {
   const { libraryId, displayName, topic, version, text, truncated, fetchResult, evidence, escalated, sourcesTried } = input;
 
@@ -97,20 +116,22 @@ export function renderDocs(input: DocsReportInput): DocsResponse {
     version ? [version] : undefined,
   );
 
+  const isIndex = Boolean(topic) && isIndexContent(text);
+  const links = isIndex ? topicLinks(text, topic, fetchResult.url) : "";
+  const body = links || text;
+
   const header = [
     `# ${displayName} Documentation`,
     `> Source: ${fetchResult.sourceType} — ${fetchResult.url}`,
     topic ? `> Topic: ${topic}` : "",
-    topic && isIndexContent(text) ? "> Note: This is a documentation INDEX (link list), not the answer itself — fetch the linked pages that match your topic." : "",
-    truncated ? "> Note: Response truncated. Use a more specific topic or increase tokens." : "",
-    topic && !evidence.ok ? `> Evidence: Weak — topic terms appear only sparsely (${evidence.occurrences} occurrence${evidence.occurrences === 1 ? "" : "s"}). Verify against the source before relying on this.` : "",
+    links ? "> Note: Only a documentation INDEX was found. These are its links that match your topic — fetch them for the answer." : "",
+    isIndex && !links ? "> Note: This is a documentation INDEX (link list), not the answer itself — fetch the linked pages that match your topic." : "",
+    truncated && !links ? "> Note: More matching sections were truncated; narrow the topic." : "",
+    topic && !evidence.ok ? weakEvidenceNote(evidence) : "",
     qualityScore < 0.4 ? `> Quality: Low — ${qualityHints.join("; ") || "try a more specific topic or different library ID."}` : "",
-    "",
-    "---",
-    "",
   ]
     .filter(Boolean)
-    .join("\n");
+    .join("\n") + "\n\n---\n\n";
 
   const evidenceBlock = buildEvidenceBlock({
     sources: sourcesTried,
@@ -121,7 +142,7 @@ export function renderDocs(input: DocsReportInput): DocsResponse {
 
   return {
     response: {
-      content: [{ type: "text", text: withNotice(header + text + evidenceBlock) }],
+      content: [{ type: "text", text: withNotice(header + body + evidenceBlock) }],
       structuredContent: {
       libraryId,
       displayName,
@@ -135,7 +156,7 @@ export function renderDocs(input: DocsReportInput): DocsResponse {
       qualityScore,
       qualityHints,
       evidence: summarize(input),
-        content: text,
+        content: body,
       },
     },
     resolved: text.length > 200,

@@ -2,6 +2,7 @@ import { fetchDocs } from "../fetcher.js";
 import { deepFetchForTopic } from "../deep-fetch.js";
 import { extractRelevantContent, expandTopicTokens } from "../../utils/extract.js";
 import { sanitizeContent } from "../../utils/sanitize.js";
+import { checkEvidence } from "../../utils/evidence.js";
 import { joinDocPaths } from "../../utils/url-join.js";
 import { BEST_PRACTICES_URLS, GENERIC_BP_SUFFIXES } from "../../sources/best-practice-urls.js";
 import { raceUrls } from "./race.js";
@@ -69,6 +70,7 @@ export async function fetchBestPracticesContent(
   topic: string,
   tokens: number,
   bestPracticesPaths?: string[],
+  urlPatterns?: string[],
 ): Promise<BestPracticesContent> {
   // joinDocPaths keeps the docs base segment ("supabase.com/docs" + "/guides"),
   // which plain origin-joining dropped — that produced a 404 for 46 entries.
@@ -95,10 +97,15 @@ export async function fetchBestPracticesContent(
     if (hit) return asContent(hit, topic, tokens);
   }
 
-  // 2. Generic best-practices paths in parallel
+  // 2. Generic best-practices paths in parallel. Most sites serve one of them
+  // (/docs/guide, /docs/getting-started) whatever the topic, so a topic'd call
+  // only stops here when the page actually covers the topic.
   if (origin) {
     const hit = await raceUrls(GENERIC_BP_SUFFIXES.map((suffix) => `${origin}${suffix}`), topic);
-    if (hit) return asContent(hit, topic, tokens);
+    if (hit) {
+      const content = asContent(hit, topic, tokens);
+      if (!topic || checkEvidence(content.text, topic).ok) return content;
+    }
   }
 
   // 2c. Sitemap-based discovery
@@ -116,7 +123,7 @@ export async function fetchBestPracticesContent(
   try {
     const enrichedTopic = topic ? `${topic} ${FALLBACK_TOPIC}` : `${FALLBACK_TOPIC} tips`;
     let result = await fetchDocs(docsUrl, llmsTxtUrl, llmsFullTxtUrl, topic || undefined);
-    result = await deepFetchForTopic(result, enrichedTopic, docsUrl, bestPracticesPaths);
+    result = await deepFetchForTopic(result, enrichedTopic, docsUrl, urlPatterns);
     const { text, truncated } = extractRelevantContent(sanitizeContent(result.content), enrichedTopic, tokens);
     return { text, sourceUrl: result.url, truncated, extraSources: [], sourceType: result.sourceType };
   } catch {

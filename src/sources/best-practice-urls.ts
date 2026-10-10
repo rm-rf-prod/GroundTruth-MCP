@@ -9,9 +9,10 @@ export const BEST_PRACTICES_URLS: Record<string, string[]> = {
   // ─── JavaScript / TypeScript Frameworks ─────────────────────────────────
   "vercel/next.js": [
     "https://nextjs.org/docs/app/guides/production-checklist",
-    "https://nextjs.org/docs/app/guides/caching",
+    // Current (Cache Components) guide. guides/caching now redirects to the
+    // "Previous Model" page and opened every caching answer with legacy advice.
+    "https://nextjs.org/docs/app/getting-started/caching",
     "https://nextjs.org/docs/app/guides/authentication",
-    "https://nextjs.org/docs/app/getting-started/caching-and-revalidating",
   ],
   "facebook/react": [
     "https://react.dev/reference/rules",
@@ -45,7 +46,7 @@ export const BEST_PRACTICES_URLS: Record<string, string[]> = {
     "https://docs.nestjs.com/fundamentals/testing",
   ],
   "elysiajs/elysia": [
-    "https://elysiajs.com/essential/best-practice.html",
+    "https://elysiajs.com/essential/best-practice",
   ],
   "unjs/nitro": [
     "https://nitro.build/guide",
@@ -74,15 +75,15 @@ export const BEST_PRACTICES_URLS: Record<string, string[]> = {
     "https://www.radix-ui.com/primitives/docs/overview/getting-started",
   ],
   "ariakit/ariakit": [
-    "https://ariakit.org/guide",
+    "https://ariakit.com/guide",
   ],
   "chakra-ui/chakra-ui": [
     "https://v2.chakra-ui.com/docs/styled-system/customize-theme",
     "https://v2.chakra-ui.com/docs/components",
   ],
   "chakra-ui/panda": [
-    "https://panda-css.com/docs/overview/getting-started",
-    "https://panda-css.com/docs/concepts/writing-styles",
+    "https://panda-css.com/docs/get-started/why-panda",
+    "https://panda-css.com/docs/styling/writing-styles",
   ],
 
   // ─── Database / ORM ──────────────────────────────────────────────────────
@@ -136,7 +137,7 @@ export const BEST_PRACTICES_URLS: Record<string, string[]> = {
     "https://kysely.dev/docs/migrations",
   ],
   "electric-sql/electric": [
-    "https://electric-sql.com/docs/intro/quickstart",
+    "https://electric.ax/docs/sync/quickstart",
     "https://electric.ax/docs/sync",
   ],
   "redis/node-redis": [
@@ -233,8 +234,8 @@ export const BEST_PRACTICES_URLS: Record<string, string[]> = {
     "https://docs.cypress.io/guides/guides/network-requests",
   ],
   "mswjs/msw": [
-    "https://mswjs.io/docs/best-practices/",
-    "https://mswjs.io/docs/concepts/request-handler",
+    "https://mswjs.io/guides/best-practices/",
+    "https://mswjs.io/docs/http/intercepting-requests/",
   ],
 
   // ─── Build Tools ─────────────────────────────────────────────────────────
@@ -245,8 +246,8 @@ export const BEST_PRACTICES_URLS: Record<string, string[]> = {
     "https://vite.dev/guide/ssr",
   ],
   "biomejs/biome": [
-    "https://biomejs.dev/guides/getting-started/",
-    "https://biomejs.dev/guides/integrate-in-vcs/",
+    "https://biomejs.dev/installation/quick-start/",
+    "https://biomejs.dev/configuration/integrate-with-vcs/",
     "https://biomejs.dev/linter/",
   ],
   "vercel/turborepo": [
@@ -312,11 +313,11 @@ export const BEST_PRACTICES_URLS: Record<string, string[]> = {
     "https://platform.openai.com/docs/guides/latency-optimization",
   ],
   "langchain-ai/langchainjs": [
-    "https://js.langchain.com/docs/concepts/",
-    "https://js.langchain.com/docs/how_to/",
+    "https://docs.langchain.com/oss/javascript/langchain/overview",
+    "https://docs.langchain.com/oss/javascript/langchain/guardrails",
   ],
   "run-llama/llamaindex-ts": [
-    "https://ts.llamaindex.ai/docs/llamaindex/getting_started/installation",
+    "https://developers.llamaindex.ai/typescript/framework/getting_started/installation/",
   ],
   "huggingface/transformers.js": [
     "https://huggingface.co/docs/transformers.js/index",
@@ -334,9 +335,9 @@ export const BEST_PRACTICES_URLS: Record<string, string[]> = {
 
   // ─── AI / ML (Python) ────────────────────────────────────────────────────
   "langchain-ai/langchain": [
-    "https://python.langchain.com/docs/concepts/",
-    "https://python.langchain.com/docs/how_to/",
-    "https://python.langchain.com/docs/tutorials/rag/",
+    "https://docs.langchain.com/oss/python/langchain/overview",
+    "https://docs.langchain.com/oss/python/langchain/guardrails",
+    "https://docs.langchain.com/oss/python/deepagents/rag",
   ],
   "run-llama/llama_index": [
     "https://docs.llamaindex.ai/en/stable/getting_started/concepts/",
@@ -353,7 +354,7 @@ export const BEST_PRACTICES_URLS: Record<string, string[]> = {
   ],
   "huggingface/transformers": [
     "https://huggingface.co/docs/transformers/main/en/quicktour",
-    "https://huggingface.co/docs/transformers/main/en/performance",
+    "https://huggingface.co/docs/transformers/optimization_overview",
     "https://huggingface.co/docs/transformers/main/en/training",
   ],
 
@@ -387,7 +388,7 @@ export const BEST_PRACTICES_URLS: Record<string, string[]> = {
     "https://www.better-auth.com/docs/authentication/email-password",
   ],
   "lucia-auth/lucia": [
-    "https://lucia-auth.com/sessions/overview",
+    "https://auth.pilcrowonpaper.com/sessions",
     "https://v3.lucia-auth.com/guides/validate-session-cookies/",
   ],
   "jaredhanson/passport": [
@@ -426,10 +427,10 @@ export const BEST_PRACTICES_URLS: Record<string, string[]> = {
     "https://docs.swmansion.com/react-native-reanimated/docs/fundamentals/getting-started/",
   ],
   "mrousavy/react-native-mmkv": [
-    "https://github.com/mrousavy/react-native-mmkv#usage",
+    "https://github.com/margelo/react-native-mmkv#readme",
   ],
   "shopify/react-native-skia": [
-    "https://shopify.github.io/react-native-skia/docs/getting-started/installation",
+    "https://wcandillon.github.io/react-native-skia/docs/getting-started/installation/",
   ],
   "nativewind/nativewind": [
     "https://www.nativewind.dev/docs/getting-started/installation",
@@ -585,9 +586,9 @@ export const BEST_PRACTICES_URLS: Record<string, string[]> = {
 
   // ─── HTTP Clients ────────────────────────────────────────────────────────
   "axios/axios": [
-    "https://axios-http.com/docs/intro",
-    "https://axios-http.com/docs/interceptors",
-    "https://axios-http.com/docs/cancellation",
+    "https://axios.rest/pages/getting-started/first-steps",
+    "https://axios.rest/pages/advanced/interceptors",
+    "https://axios.rest/pages/advanced/cancellation",
   ],
   "sindresorhus/ky": [
     "https://github.com/sindresorhus/ky#readme",
@@ -656,7 +657,7 @@ export const BEST_PRACTICES_URLS: Record<string, string[]> = {
   ],
   "dcastil/tailwind-merge": [
     "https://github.com/dcastil/tailwind-merge#readme",
-    "https://github.com/dcastil/tailwind-merge/blob/main/docs/configuration.md",
+    "https://raw.githubusercontent.com/dcastil/tailwind-merge/main/packages/tailwind-merge/docs/configuration.md",
   ],
   "ai/nanoid": [
     "https://github.com/ai/nanoid#readme",
@@ -680,7 +681,7 @@ export const BEST_PRACTICES_URLS: Record<string, string[]> = {
     "https://www.react-spring.dev/docs/getting-started",
   ],
   "darkroomstudio/lenis": [
-    "https://lenis.darkroom.engineering",
+    "https://github.com/darkroomengineering/lenis#readme",
   ],
 
   // ─── Sonner / Toast ──────────────────────────────────────────────────────
@@ -713,9 +714,9 @@ export const BEST_PRACTICES_URLS: Record<string, string[]> = {
 
   // ─── Java / Kotlin ────────────────────────────────────────────────────────
   "spring-projects/spring-boot": [
-    "https://docs.spring.io/spring-boot/docs/current/reference/html/getting-started.html",
-    "https://docs.spring.io/spring-boot/docs/current/reference/html/howto.html",
-    "https://docs.spring.io/spring-boot/docs/current/reference/html/actuator.html",
+    "https://docs.spring.io/spring-boot/installing.html",
+    "https://docs.spring.io/spring-boot/how-to/index.html",
+    "https://docs.spring.io/spring-boot/reference/actuator/index.html",
   ],
   "spring-projects/spring-security": [
     "https://docs.spring.io/spring-security/reference/servlet/authentication/index.html",
@@ -754,15 +755,15 @@ export const BEST_PRACTICES_URLS: Record<string, string[]> = {
 
   // ─── Databases (additional) ───────────────────────────────────────────────
   "cockroachdb/cockroach": [
-    "https://www.cockroachlabs.com/docs/stable/performance-best-practices-overview.html",
+    "https://docs.cockroachlabs.com/docs/stable/performance-best-practices-overview",
   ],
   "ClickHouse/ClickHouse": [
     "https://clickhouse.com/docs/en/best-practices",
     "https://clickhouse.com/docs/en/guides",
   ],
   "meilisearch/meilisearch": [
-    "https://www.meilisearch.com/docs/learn/getting_started",
-    "https://www.meilisearch.com/docs/learn/relevancy/relevancy",
+    "https://www.meilisearch.com/docs/getting_started/overview",
+    "https://www.meilisearch.com/docs/capabilities/full_text_search/relevancy/relevancy",
   ],
   "typesense/typesense": [
     "https://typesense.org/docs/guide/",
@@ -771,8 +772,8 @@ export const BEST_PRACTICES_URLS: Record<string, string[]> = {
 
   // ─── AI / ML ──────────────────────────────────────────────────────────────
   "wandb/wandb": [
-    "https://docs.wandb.ai/guides",
-    "https://docs.wandb.ai/guides/track",
+    "https://docs.coreweave.com/products/wandb",
+    "https://docs.coreweave.com/products/wandb/track",
   ],
   "mlflow/mlflow": [
     "https://mlflow.org/docs/latest/tracking.html",
@@ -827,8 +828,8 @@ export const BEST_PRACTICES_URLS: Record<string, string[]> = {
     "https://qwik.dev/docs/components/overview/",
   ],
   "preactjs/preact": [
-    "https://preactjs.com/guide/v10/getting-started",
-    "https://preactjs.com/guide/v10/hooks",
+    "https://preactjs.com/guide/v11/getting-started/",
+    "https://preactjs.com/guide/v11/hooks/",
   ],
 
   // ─── Desktop / Mobile (additional) ────────────────────────────────────────
@@ -1054,8 +1055,8 @@ export const BEST_PRACTICES_URLS: Record<string, string[]> = {
 
   // ─── ML / Deep Learning ───────────────────────────────────────────────
   "pytorch/pytorch": [
-    "https://pytorch.org/tutorials/beginner/basics/intro",
-    "https://pytorch.org/docs/stable/notes/cuda",
+    "https://docs.pytorch.org/tutorials/beginner/basics/intro",
+    "https://docs.pytorch.org/docs/stable/notes/cuda.md",
   ],
   "tensorflow/tensorflow": [
     "https://www.tensorflow.org/guide",

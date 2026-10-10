@@ -1,4 +1,4 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { lookupById, lookupByAlias } from "../sources/registry.js";
 import { resolveDynamic } from "../services/resolve.js";
@@ -25,24 +25,23 @@ const InputSchema = z.object({
     .string()
     .min(1)
     .max(300)
-    .describe("Library ID from gt_resolve_library (e.g. 'vercel/next.js')"),
+    .describe("Plain name or GroundTruth ID, e.g. 'nextjs'"),
   fromVersion: z
     .string()
     .max(50)
     .optional()
-    .describe("Version migrating from, e.g. '14', 'v3.0'"),
+    .describe("e.g. '15'"),
   toVersion: z
     .string()
     .max(50)
     .optional()
-    .describe("Version migrating to, e.g. '15', 'v4.0'"),
+    .describe("e.g. '16'"),
   tokens: z
     .number()
     .int()
     .min(1000)
     .max(MAX_TOKEN_LIMIT)
-    .default(DEFAULT_TOKEN_LIMIT)
-    .describe("Max tokens to return"),
+    .default(DEFAULT_TOKEN_LIMIT),
 });
 
 /** Returned when the whole pipeline exceeds the tool timeout — an actionable
@@ -56,11 +55,7 @@ export function registerMigrationTool(server: McpServer): void {
     "gt_migration",
     {
       title: "Get Migration Guide",
-      description: `Fetch migration guides, breaking changes, and upgrade instructions for a library. Targets MIGRATION.md, UPGRADING.md, CHANGELOG, release notes, and upgrade docs.
-
-Call gt_resolve_library first to get the libraryId.
-
-Use this when the user asks HOW to upgrade their code from one version to another (step-by-step migration instructions, breaking changes, code transforms needed). For "what changed in version X" release notes without upgrade instructions, use gt_changelog instead.`,
+      description: "Upgrade guide between two versions of a library: breaking changes and required code changes. Release notes only: gt_changelog.",
       inputSchema: InputSchema,
       annotations: {
         readOnlyHint: true,
@@ -149,12 +144,11 @@ Use this when the user asks HOW to upgrade their code from one version to anothe
               ? `> ${fromVersion ? `From: v${fromVersion.replace(/^v/, "")}` : ""}${toVersion ? ` To: v${toVersion.replace(/^v/, "")}` : ""}`
               : "",
             `> Sources: ${sections.map((s) => s.source).join(", ")}`,
-            truncated ? "> Note: Response truncated. Specify fromVersion/toVersion for focused results." : "",
+            truncated && !(fromVersion && toVersion)
+              ? "> Note: More matching sections were truncated; specify fromVersion/toVersion to narrow the range."
+              : "",
             qualityScore < 0.4 ? `> Quality: Low — ${qualityHints.join("; ") || "verify against the official upgrade guide."}` : "",
-            "",
-            "---",
-            "",
-          ].filter(Boolean).join("\n");
+          ].filter(Boolean).join("\n") + "\n\n---\n\n";
 
           const evidenceBlock = buildEvidenceBlock({
             sources: sections.map((s) => ({ url: s.source })),

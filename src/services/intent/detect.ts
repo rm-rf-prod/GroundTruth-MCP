@@ -1,62 +1,21 @@
-import { lookupByAlias, fuzzySearch } from "../../sources/registry.js";
-import { NOISE_PHRASES, FUZZY_STOP_WORDS } from "../../sources/intent-hints.js";
+import { NOISE_PHRASES, FUNCTION_WORDS, ECOSYSTEM_WORDS } from "../../sources/intent-hints.js";
+import { tokenize } from "./library-detect.js";
 
-export function stripNoise(query: string): string {
-  let s = query.toLowerCase().trim();
+export { detectLibrary } from "./library-detect.js";
+
+const MAX_TOPIC = 200;
+
+/** Removes invocation noise ("use gt", "please") but keeps the caller's casing. */
+export function removeNoise(query: string): string {
+  let s = query.trim();
   for (const re of NOISE_PHRASES) {
     s = s.replace(re, " ");
   }
   return s.replace(/\s+/g, " ").trim();
 }
 
-/**
- * Detects a library mention by scanning each token against the registry alias
- * table. Returns the longest matching alias, since users say "next.js" not "next".
- */
-export function detectLibrary(text: string): { id: string; name: string; alias: string } | null {
-  // Multi-word aliases first (e.g. "react native", "next.js", "tailwind css")
-  const phrases = [
-    /\bnext\.?js\b/i,
-    /\bnuxt\.?js?\b/i,
-    /\breact\s+native\b/i,
-    /\bnode\.?js\b/i,
-    /\bvue\.?js?\b/i,
-    /\btailwind\s+css\b/i,
-    /\bspring\s+boot\b/i,
-    /\bclaude\s+code\b/i,
-    /\bclaude\s+agent\s+sdk\b/i,
-  ];
-  for (const re of phrases) {
-    const m = text.match(re);
-    if (m) {
-      const alias = m[0].toLowerCase().replace(/\s+/g, " ");
-      const entry = lookupByAlias(alias);
-      if (entry) return { id: entry.id, name: entry.name, alias };
-    }
-  }
-
-  // Single-word alias lookup against the registry
-  const tokens = text.split(/[\s,]+/).filter((t) => t.length >= 2 && t.length <= 60);
-  for (const tok of tokens) {
-    const cleaned = tok.replace(/[^\w@/.-]/g, "");
-    if (!cleaned) continue;
-    const entry = lookupByAlias(cleaned);
-    if (entry) return { id: entry.id, name: entry.name, alias: cleaned };
-  }
-
-  // Fuzzy fallback on the longest non-stop word
-  const longest = tokens
-    .filter((t) => t.length >= 4 && !FUZZY_STOP_WORDS.has(t.toLowerCase()))
-    .sort((a, b) => b.length - a.length)[0];
-  if (longest) {
-    // minScore 20 = at least an alias-contains match; rejects tag-only (10) and
-    // npm-package-contains-only (15) hits that otherwise misroute generic queries
-    // ("how to build a rest api" -> a build-tool library).
-    const matches = fuzzySearch(longest, 1, 20);
-    if (matches[0]) return { id: matches[0].id, name: matches[0].name, alias: longest };
-  }
-
-  return null;
+export function stripNoise(query: string): string {
+  return removeNoise(query).toLowerCase();
 }
 
 /** True if the query looks like a project-level "use gt" call (no library) */
@@ -80,10 +39,10 @@ export function extractTopic(text: string): string | undefined {
   // Prefer the more specific "about ..." marker — it scopes the topic
   // tightly. Fall back to "regarding", then quoted strings, then "for/on".
   const tries = [
-    /\babout\s+([\w./@-]+(?:\s+[\w./@-]+){0,4})/i,
+    /\babout\s+([\w./@:()#+-]+(?:\s+[\w./@:()#+-]+){0,4})/i,
     /\bregarding\s+([\w./@-]+(?:\s+[\w./@-]+){0,4})/i,
     /['"]([^'"]{3,60})['"]/,
-    /\b(?:for|on|re:?)\s+([\w\s./@-]{3,60})/i,
+    /\b(?:for|on|re:?)\s+([\w\s./@:()#+-]{3,60})/i,
   ];
   for (const re of tries) {
     const m = text.match(re);
@@ -93,4 +52,25 @@ export function extractTopic(text: string): string | undefined {
     }
   }
   return undefined;
+}
+
+/**
+ * What the query is about once the library name, the matched hint phrases,
+ * ecosystem words and filler are removed — the topic when no about/for marker
+ * names one ("clean up subscription useEffect"). Keeps the caller's casing.
+ */
+export function residualTopic(raw: string, phrases: readonly string[]): string | undefined {
+  const tokens = tokenize(removeNoise(raw));
+  const lower = tokens.map((t) => t.toLowerCase());
+  const drop = lower.map((t) => FUNCTION_WORDS.has(t) || ECOSYSTEM_WORDS.has(t));
+  for (const phrase of phrases) {
+    const words = tokenize(phrase.toLowerCase());
+    for (let i = 0; words.length > 0 && i + words.length <= lower.length; i++) {
+      if (words.every((w, j) => lower[i + j] === w)) words.forEach((_, j) => (drop[i + j] = true));
+    }
+  }
+  // Cut at a word boundary: target tools cap topic/pattern at 300 chars.
+  const rest = tokens.filter((_, i) => !drop[i]).join(" ");
+  const capped = rest.length > MAX_TOPIC ? rest.slice(0, MAX_TOPIC + 1).replace(/\s+\S*$/, "") : rest;
+  return capped.length >= 2 ? capped : undefined;
 }

@@ -1,4 +1,5 @@
 import { fetchWithTimeout, githubAuthHeaders } from "../fetcher.js";
+import { discardBody } from "../http/body.js";
 import { CACHE_TTLS } from "../../constants.js";
 import { resolveCache } from "../cache.js";
 import type { LibraryMatch } from "../../types.js";
@@ -13,7 +14,10 @@ export async function searchNpm(query: string): Promise<LibraryMatch | null> {
   try {
     const searchUrl = `https://registry.npmjs.org/-/v1/search?text=${encodeURIComponent(query)}&size=3`;
     const res = await fetchWithTimeout(searchUrl, 8000);
-    if (!res.ok) return null;
+    if (!res.ok) {
+      discardBody(res);
+      return null;
+    }
 
     const data = await res.json() as { objects?: Array<{ package: { name: string; description?: string; links?: { homepage?: string; repository?: string; npm?: string } } }> };
     const objects = data?.objects;
@@ -57,7 +61,10 @@ export async function searchGitHub(query: string): Promise<LibraryMatch | null> 
       Accept: "application/vnd.github.v3+json",
       ...githubAuthHeaders(),
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      discardBody(res);
+      return null;
+    }
 
     const data = await res.json() as { items?: Array<{ full_name: string; description?: string; homepage?: string; html_url: string; stargazers_count?: number }> };
     const items = data?.items;

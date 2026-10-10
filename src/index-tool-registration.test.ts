@@ -3,23 +3,24 @@ import { describe, it, expect, vi } from "vitest";
 // ── Dependency mocks ────────────────────────────────────────────────────────
 
 // Prevent actual stdio connection
-vi.mock("@modelcontextprotocol/sdk/server/stdio.js", () => ({
-  StdioServerTransport: vi.fn().mockImplementation(() => ({})),
+vi.mock("@modelcontextprotocol/server/stdio", () => ({
+  // Regular function (not arrow) so new StdioServerTransport() works as a constructor
+  StdioServerTransport: vi.fn().mockImplementation(function StdioServerTransportMock() { return {}; }),
+  serveStdio: vi.fn(() => ({ close: vi.fn().mockResolvedValue(undefined) })),
 }));
 
-vi.mock("@modelcontextprotocol/sdk/server/mcp.js", () => ({
+vi.mock("@modelcontextprotocol/server", () => ({
   // Use a regular function (not arrow) so new McpServer() works as a constructor
   McpServer: vi.fn().mockImplementation(function McpServerMock(
-    this: { _name: string; _version: string; registerTool: unknown; registerResource: unknown; prompt: unknown; connect: unknown; server: unknown },
+    this: { _name: string; _version: string; registerTool: unknown; registerResource: unknown; registerPrompt: unknown; connect: unknown },
     meta: { name: string; version: string },
   ) {
     this._name = meta.name;
     this._version = meta.version;
     this.registerTool = vi.fn();
     this.registerResource = vi.fn();
-    this.prompt = vi.fn();
+    this.registerPrompt = vi.fn();
     this.connect = vi.fn().mockResolvedValue(undefined);
-    this.server = { sendLoggingMessage: vi.fn().mockResolvedValue(undefined) };
   }),
   ResourceTemplate: class { constructor() { /* mock */ } },
 }));
@@ -83,21 +84,22 @@ vi.mock("./utils/guard.js", () => ({
 
 // ── process.exit guard ──────────────────────────────────────────────────────
 
-// main() runs when index.ts is imported. If server.connect() rejects, the
+// main() runs when server/main.ts is imported. If server.connect() rejects, the
 // .catch() handler calls process.exit(1). Vitest intercepts that call and
 // surfaces it as an "Unhandled Error". vi.hoisted() runs BEFORE any imports,
-// so the spy is in place before index.ts's module-level code executes.
+// so the spy is in place before main.ts's module-level code executes.
 vi.hoisted(() => {
   vi.spyOn(process, "exit").mockImplementation((() => undefined) as () => never);
 });
 
 // ── Imports after mocks ─────────────────────────────────────────────────────
 
-// Import index to trigger bootstrap (all deps are mocked above)
-import "./index.js";
+// Import the server entry to trigger bootstrap (all deps are mocked above).
+// Not ./index.js: that bootstrap routes on process.argv and enables the compile cache.
+import "./server/main.js";
 
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
+import { McpServer } from "@modelcontextprotocol/server";
 import { registerResolveTool } from "./tools/resolve.js";
 import { registerDocsTool } from "./tools/docs.js";
 import { registerBestPracticesTool } from "./tools/best-practices.js";
@@ -112,7 +114,7 @@ import { SERVER_NAME, SERVER_VERSION } from "./constants.js";
 
 // ── Tests ───────────────────────────────────────────────────────────────────
 
-describe("index.ts bootstrap", () => {
+describe("server/main.ts bootstrap", () => {
   describe("tool registration", () => {
     it("calls registerResolveTool", () => {
       expect(registerResolveTool).toHaveBeenCalledOnce();

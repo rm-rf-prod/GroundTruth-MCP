@@ -1,11 +1,11 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 
 /** Discoverable workflow templates, shown as slash commands in compatible clients. */
 export function registerPrompts(server: McpServer): void {
-  server.prompt(
+  server.registerPrompt(
     "audit-my-project",
-    "Scan this project for code issues and fetch live best-practice fixes from official docs",
+    { description: "Scan this project for code issues and fetch live best-practice fixes from official docs" },
     () => ({
       messages: [{
         role: "user",
@@ -14,10 +14,12 @@ export function registerPrompts(server: McpServer): void {
     }),
   );
 
-  server.prompt(
+  server.registerPrompt(
     "upgrade-check",
-    "Check release notes and breaking changes before upgrading a library",
-    { library: z.string().describe("Library to check, e.g. 'nextjs', 'react', 'prisma'") },
+    {
+      description: "Check release notes and breaking changes before upgrading a library",
+      argsSchema: z.object({ library: z.string().describe("Library to check, e.g. 'nextjs', 'react', 'prisma'") }),
+    },
     ({ library }) => ({
       messages: [{
         role: "user",
@@ -26,9 +28,9 @@ export function registerPrompts(server: McpServer): void {
     }),
   );
 
-  server.prompt(
+  server.registerPrompt(
     "best-practices-scan",
-    "Get current best practices for every library in this project",
+    { description: "Get current best practices for every library in this project" },
     () => ({
       messages: [{
         role: "user",
@@ -37,10 +39,12 @@ export function registerPrompts(server: McpServer): void {
     }),
   );
 
-  server.prompt(
+  server.registerPrompt(
     "compare-libraries",
-    "Compare two or three libraries side-by-side to decide which one to use",
-    { libraries: z.string().describe("Comma-separated library names, e.g. 'prisma, drizzle-orm' or 'zod, valibot, yup'") },
+    {
+      description: "Compare two or three libraries side-by-side to decide which one to use",
+      argsSchema: z.object({ libraries: z.string().describe("Comma-separated library names, e.g. 'prisma, drizzle-orm' or 'zod, valibot, yup'") }),
+    },
     ({ libraries }) => ({
       messages: [{
         role: "user",
@@ -49,10 +53,12 @@ export function registerPrompts(server: McpServer): void {
     }),
   );
 
-  server.prompt(
+  server.registerPrompt(
     "security-check",
-    "Search OWASP and security docs for guidance on a vulnerability or security topic",
-    { topic: z.string().describe("Security topic, e.g. 'SQL injection', 'JWT best practices', 'CSP headers'") },
+    {
+      description: "Search OWASP and security docs for guidance on a vulnerability or security topic",
+      argsSchema: z.object({ topic: z.string().describe("Security topic, e.g. 'SQL injection', 'JWT best practices', 'CSP headers'") }),
+    },
     ({ topic }) => ({
       messages: [{
         role: "user",
@@ -61,31 +67,35 @@ export function registerPrompts(server: McpServer): void {
     }),
   );
 
-  server.prompt(
+  server.registerPrompt(
     "migration-guide",
-    "Check migration guides and breaking changes for upgrading a library between versions",
     {
-      library: z.string().describe("Library to migrate, e.g. 'nextjs', 'react', 'tailwind'"),
-      fromVersion: z.string().optional().describe("Version migrating from, e.g. '14'"),
-      toVersion: z.string().optional().describe("Version migrating to, e.g. '15'"),
+      description: "Check migration guides and breaking changes for upgrading a library between versions",
+      argsSchema: z.object({
+        library: z.string().describe("Library to migrate, e.g. 'nextjs', 'react', 'tailwind'"),
+        fromVersion: z.string().optional().describe("Version migrating from, e.g. '15'"),
+        toVersion: z.string().optional().describe("Version migrating to, e.g. '16'"),
+      }),
     },
     ({ library, fromVersion, toVersion }) => ({
       messages: [{
         role: "user",
         content: {
           type: "text",
-          text: `Use gt_changelog and gt_get_docs to find the migration guide for ${library}${fromVersion ? ` from v${fromVersion}` : ""}${toVersion ? ` to v${toVersion}` : ""}. List all breaking changes, required code modifications, and step-by-step upgrade instructions.`,
+          text: `Use gt_migration to find the migration guide for ${library}${fromVersion ? ` from v${fromVersion}` : ""}${toVersion ? ` to v${toVersion}` : ""}. List all breaking changes, required code modifications, and step-by-step upgrade instructions.`,
         },
       }],
     }),
   );
 
-  server.prompt(
+  server.registerPrompt(
     "find-examples",
-    "Find real-world code examples of a pattern using a specific library",
     {
-      library: z.string().describe("Library name, e.g. 'react', 'drizzle-orm'"),
-      pattern: z.string().describe("Pattern or feature, e.g. 'server actions', 'middleware', 'RLS policies'"),
+      description: "Find real-world code examples of a pattern using a specific library",
+      argsSchema: z.object({
+        library: z.string().describe("Library name, e.g. 'react', 'drizzle-orm'"),
+        pattern: z.string().describe("Pattern or feature, e.g. 'server actions', 'middleware', 'RLS policies'"),
+      }),
     },
     ({ library, pattern }) => ({
       messages: [{
@@ -98,9 +108,9 @@ export function registerPrompts(server: McpServer): void {
     }),
   );
 
-  server.prompt(
+  server.registerPrompt(
     "dependency-audit",
-    "Scan project dependencies for outdated patterns and fetch current best practices",
+    { description: "Scan project dependencies for outdated patterns and fetch current best practices" },
     () => ({
       messages: [{
         role: "user",

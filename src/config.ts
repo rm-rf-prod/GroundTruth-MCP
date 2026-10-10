@@ -14,6 +14,8 @@ export interface GTConfig {
   logFormat: "json" | "text";
   logLevel: "debug" | "info" | "warn" | "error";
   httpPort: string | undefined;
+  /** GT_NO_UPDATE_CHECK=1: no npm registry check, no update notice. (GT_NO_WATERMARK=1 is read live in utils/watermark.ts.) */
+  noUpdateCheck: boolean;
 }
 
 function intEnv(name: string, fallback: number, min = 0): number {
@@ -61,4 +63,5 @@ export const config: Readonly<GTConfig> = Object.freeze({
   logFormat: enumEnv("GT_LOG_FORMAT", "text", ["json", "text"] as const),
   logLevel: enumEnv("GT_LOG_LEVEL", "info", ["debug", "info", "warn", "error"] as const),
   httpPort: process.env.GT_HTTP_PORT,
+  noUpdateCheck: process.env.GT_NO_UPDATE_CHECK === "1",
 });
