@@ -20,6 +20,7 @@ const manifest = JSON.parse(readFileSync(join(root, "server.json"), "utf8")) as 
 const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8")) as {
   name: string;
   version: string;
+  dependencies: Record<string, string>;
 };
 
 /** Enforced by registry.modelcontextprotocol.io — a longer value returns HTTP 422. */
@@ -54,5 +55,15 @@ describe("server.json (MCP registry manifest)", () => {
 
   it("agrees with SERVER_VERSION in constants.ts", () => {
     expect(manifest.version).toBe(SERVER_VERSION);
+  });
+});
+
+describe("package.json (published manifest)", () => {
+  // CI publishes with npm, which ships pnpm-only protocols verbatim; npm installs then fail
+  // with EUNSUPPORTEDPROTOCOL (8.0.0 shipped "catalog:" and could not be installed).
+  it("uses only registry version ranges for runtime dependencies", () => {
+    for (const [name, range] of Object.entries(pkg.dependencies)) {
+      expect(range, name).not.toMatch(/^(catalog|workspace|link|file):/);
+    }
   });
 });

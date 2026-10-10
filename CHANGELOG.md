@@ -1,5 +1,12 @@
 # Changelog
 
+## [8.0.1] — 2026-10-11
+
+- **fix: 8.0.0 could not be installed with npm.** Its `package.json` declared `undici` and `zod` with the pnpm-only `catalog:` protocol, so `npm install` and `npx` failed with `EUNSUPPORTEDPROTOCOL`. Runtime dependencies now use plain version ranges, and a test fails the build if a pnpm protocol reaches `dependencies` again.
+- **fix: the MCP registry publish waits for npm.** The registry rejected 8.0.0 because npm still answered 404 for the brand-new version; the release job now polls npm before registering.
+
+---
+
 ## [8.0.0] — 2026-10-11
 
 A speed, accuracy and coverage release: 195 new libraries, every existing entry re-verified,

@@ -154,6 +154,20 @@ jobs:
       - name: Validate server.json
         run: mcp-publisher validate server.json
 
+      # The registry validates the npm version exists; right after publish npm can still
+      # answer 404 for a few minutes, which made 8.0.0's registry publish fail.
+      - name: Wait for the npm version to be visible
+        run: |
+          PKG_NAME=$(node -p "require('./package.json').name")
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          for i in $(seq 1 30); do
+            if npm view "${PKG_NAME}@${PKG_VERSION}" version 2>/dev/null | grep -q "^${PKG_VERSION}$"; then
+              echo "npm has ${PKG_NAME}@${PKG_VERSION}"; exit 0
+            fi
+            sleep 10
+          done
+          echo "::warning ::${PKG_NAME}@${PKG_VERSION} not visible on npm after 5 minutes"
+
       - name: Login via GitHub OIDC
         run: mcp-publisher login github-oidc
 

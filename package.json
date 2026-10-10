@@ -71,8 +71,8 @@
   },
   "dependencies": {
     "@modelcontextprotocol/server": "^2.3.1",
-    "undici": "catalog:",
-    "zod": "catalog:"
+    "undici": "^8.11.2",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@types/node": "^26.1.2",
