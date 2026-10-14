@@ -66,14 +66,17 @@ function htmlToMarkdown(html: string): string {
   });
 
   // Links — allowlist scheme to block javascript:, data:, vbscript:, etc.
-  md = md.replace(/<a\s[^>]*?href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi, (_, rawHref: string, text: string) => {
-    const linkText = stripTags(text).trim();
-    if (!linkText) return "";
-    const normalized = normalizeHref(rawHref);
-    if (normalized === "" || normalized.startsWith("#")) return linkText;
-    if (!isSafeHref(normalized)) return linkText;
-    return `[${linkText}](${normalized})`;
-  });
+  md = md.replace(/<a\s[^>]*?href=(?:"([^"]*)"|'([^']*)'|([^\s>]+))[^>]*>([\s\S]*?)<\/a>/gi,
+    (_, dq: string | undefined, sq: string | undefined, uq: string | undefined, text: string) => {
+      const rawHref = dq ?? sq ?? uq ?? "";
+      const linkText = stripTags(text).trim();
+      if (!linkText) return "";
+      const normalized = normalizeHref(rawHref);
+      if (normalized === "" || normalized.startsWith("#")) return linkText;
+      if (!isSafeHref(normalized)) return linkText;
+      return `[${linkText}](${normalized})`;
+    },
+  );
 
   // Bold
   md = md.replace(/<(?:strong|b)(?:\s[^>]*)?>([\s\S]*?)<\/(?:strong|b)>/gi, (_, c: string) => `**${stripTags(c).trim()}**`);
