@@ -37,6 +37,8 @@ const InputSchema = z.object({
         "css",
         "seo",
         "i18n",
+        "data",
+        "ml",
         "all",
       ]),
     )

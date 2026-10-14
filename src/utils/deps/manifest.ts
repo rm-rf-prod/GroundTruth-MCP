@@ -1,7 +1,7 @@
 import { readFile } from "fs/promises";
 import { join } from "path";
 import { parsePackageJson, parseComposerJson, parseDenoJson, parseGemfile } from "./parsers-js.js";
-import { parseRequirementsTxt, parsePyproject } from "./parsers-python.js";
+import { parseRequirementsTxt, parsePyproject, parseCondaYaml, parsePipfile } from "./parsers-python.js";
 import { parseCargoToml, parseGoMod, parsePomXml, parseGradle, parsePubspec } from "./parsers-native.js";
 
 export interface DependencySource {
@@ -20,6 +20,10 @@ const MANIFESTS: Manifest[] = [
   { file: "package.json", parse: parsePackageJson },
   { file: "requirements.txt", parse: parseRequirementsTxt },
   { file: "pyproject.toml", parse: parsePyproject },
+  { file: "environment.yml", parse: parseCondaYaml, group: "conda" },
+  { file: "environment.yaml", parse: parseCondaYaml, group: "conda" },
+  { file: "conda.yaml", parse: parseCondaYaml, group: "conda" },
+  { file: "Pipfile", parse: parsePipfile },
   { file: "Cargo.toml", parse: parseCargoToml },
   { file: "go.mod", parse: parseGoMod },
   { file: "pom.xml", parse: parsePomXml },

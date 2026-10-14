@@ -11,7 +11,7 @@ export const NOISE_PHRASES = [
   // "use" is noise ("use gt for react") EXCEPT in "can i use X" — that is the
   // caniuse compat idiom and must survive to hint matching.
   /(?<!\bcan\s+i\s)(?<![\w-])use(?![\w-])/gi,
-  /(?<![\w-])(?:using|run|invoke|call|please|can\s+you|could\s+you|let'?s|i\s+want\s+to|i\s+need|just|simply|quickly)(?![\w-])/gi,
+  /(?<![\w-])(?:using|run|invoke|call|please|can\s+you|could\s+you|let'?s|i\s+want\s+to|i\s+need|just|simply|quickly|tolong|mohon|bisa|coba|apakah|bagaimana|gunakan|pakai)(?![\w-])/gi,
   /(?<![\w-])(?:gt(?:\s*[-_]?\s*mcp)?|groundtruth(?:\s*mcp)?|the\s+gt|the\s+gt[-_]?mcp)(?![\w-])/gi,
   /(?<![\w-])please(?![\w-])/gi,
 ];
@@ -20,19 +20,19 @@ export const NOISE_PHRASES = [
 // Matched whole-word, so inflected forms are listed explicitly. "migrations" is
 // left out on purpose: "drizzle migrations" is a docs question, not an upgrade.
 export const VERB_HINTS: Array<{ tool: GtToolName; words: string[] }> = [
-  { tool: "gt_audit", words: ["audit", "audits", "auditing", "find issues", "find bugs", "check issues", "find problems", "code issues", "review code", "scan code", "scan source", "find all the issues", "find all issues", "find all bugs", "any issues", "any bugs"] },
-  { tool: "gt_migration", words: ["migrate", "migration", "upgrade", "upgrades", "upgrading", "breaking change", "breaking changes", "move from", "switch to"] },
-  { tool: "gt_changelog", words: ["changelog", "changelogs", "release notes", "what's new", "whats new", "new in", "recent changes"] },
-  { tool: "gt_compare", words: ["compare", "vs", "versus", "differences between", "which one", "or better"] },
-  { tool: "gt_compat", words: ["browser support", "browser compatibility", "compatibility", "supported in", "works on", "caniuse", "can i use", "does safari", "does chrome", "does firefox", "does edge", "does node", "safari support", "chrome support", "firefox support", "edge support", "node support", "which browsers", "baseline status"] },
-  { tool: "gt_examples", words: ["example", "examples", "real-world", "real world", "show me code", "sample", "samples"] },
-  { tool: "gt_snippets", words: ["snippets", "snippet", "code snippets", "snippet index"] },
-  { tool: "gt_best_practices", words: ["best practices", "best-practices", "patterns", "recommendations", "guidelines", "tips for"] },
-  { tool: "gt_auto_scan", words: ["scan project", "scan dependencies", "scan deps", "all my deps", "all dependencies", "every dependency", "every library"] },
+  { tool: "gt_audit", words: ["audit", "audits", "auditing", "find issues", "find bugs", "check issues", "find problems", "code issues", "review code", "scan code", "scan source", "find all the issues", "find all issues", "find all bugs", "any issues", "any bugs", "periksa kode", "audit kode", "cari bug", "cek masalah", "periksa masalah", "cek isu"] },
+  { tool: "gt_migration", words: ["migrate", "migration", "upgrade", "upgrades", "upgrading", "breaking change", "breaking changes", "move from", "switch to", "migrasi", "cara migrasi", "panduan migrasi", "cara upgrade"] },
+  { tool: "gt_changelog", words: ["changelog", "changelogs", "release notes", "what's new", "whats new", "new in", "recent changes", "catatan rilis", "apa yang baru", "perubahan terbaru"] },
+  { tool: "gt_compare", words: ["compare", "vs", "versus", "differences between", "which one", "or better", "bandingkan", "perbandingan", "beda antara", "pilih mana", "lebih bagus mana"] },
+  { tool: "gt_compat", words: ["browser support", "browser compatibility", "compatibility", "supported in", "works on", "caniuse", "can i use", "does safari", "does chrome", "does firefox", "does edge", "does node", "safari support", "chrome support", "firefox support", "edge support", "node support", "which browsers", "baseline status", "kompatibilitas", "apakah didukung", "dukungan browser"] },
+  { tool: "gt_examples", words: ["example", "examples", "real-world", "real world", "show me code", "sample", "samples", "contoh kode", "contoh penggunaan", "sampel kode"] },
+  { tool: "gt_snippets", words: ["snippets", "snippet", "code snippets", "snippet index", "cuplikan kode"] },
+  { tool: "gt_best_practices", words: ["best practices", "best-practices", "patterns", "recommendations", "guidelines", "tips for", "praktik terbaik", "rekomendasi", "best practice", "pola terbaik"] },
+  { tool: "gt_auto_scan", words: ["scan project", "scan dependencies", "scan deps", "all my deps", "all dependencies", "every dependency", "every library", "pindai proyek", "pindai dependensi", "scan proyek"] },
   { tool: "gt_batch_resolve", words: ["resolve multiple", "lookup all", "batch lookup", "resolve every"] },
-  { tool: "gt_search", words: ["search for", "find docs about", "look up topic", "what is", "explain"] },
-  { tool: "gt_get_docs", words: ["docs for", "documentation for", "official docs", "fetch docs", "read docs"] },
-  { tool: "gt_resolve_library", words: ["resolve", "lookup", "look up", "find library", "where is"] },
+  { tool: "gt_search", words: ["search for", "find docs about", "look up topic", "what is", "explain", "cari tentang", "jelaskan", "apa itu"] },
+  { tool: "gt_get_docs", words: ["docs for", "documentation for", "official docs", "fetch docs", "read docs", "dokumentasi", "baca dokumentasi", "buka dokumentasi"] },
+  { tool: "gt_resolve_library", words: ["resolve", "lookup", "look up", "find library", "where is", "cari library", "cari pustaka", "temukan library"] },
 ];
 
 export const URL_RE = /\bhttps?:\/\/\S+/i;

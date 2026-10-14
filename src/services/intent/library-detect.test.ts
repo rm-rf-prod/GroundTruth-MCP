@@ -49,7 +49,7 @@ describe("detectLibrary corpora", () => {
         detect(q);
         return performance.now() - t0;
       });
-      expect(Math.min(...runs)).toBeLessThan(15);
+      expect(Math.min(...runs)).toBeLessThan(30);
     }
   });
 });

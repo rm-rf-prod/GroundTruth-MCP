@@ -37,7 +37,8 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-afterAll(() => {
+afterAll(async () => {
+  await new Promise((resolve) => setTimeout(resolve, 50));
   rmSync(process.env.GT_CACHE_DIR ?? "", { recursive: true, force: true });
 });
 

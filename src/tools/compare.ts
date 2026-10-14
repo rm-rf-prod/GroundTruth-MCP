@@ -7,7 +7,7 @@ import { extractRelevantContent } from "../utils/extract.js";
 import { sanitizeContent } from "../utils/sanitize.js";
 import { isExtractionAttempt, withNotice, withToolTimeout } from "../utils/guard.js";
 import { docCache } from "../services/cache.js";
-import type { LibraryEntry } from "../types.js";
+import { resolveDynamic } from "../services/resolve.js";
 
 const InputSchema = z.object({
   libraries: z
@@ -28,8 +28,44 @@ const InputSchema = z.object({
     .default(2000),
 });
 
-function resolveLibrary(name: string): LibraryEntry | null {
-  return lookupById(name) ?? lookupByAlias(name) ?? fuzzySearch(name, 1)[0] ?? null;
+export interface CompareTarget {
+  id: string;
+  name: string;
+  description?: string | undefined;
+  docsUrl: string;
+  llmsTxtUrl?: string | undefined;
+  llmsFullTxtUrl?: string | undefined;
+}
+
+async function resolveLibrary(name: string): Promise<CompareTarget | null> {
+  const staticEntry = lookupById(name) ?? lookupByAlias(name) ?? fuzzySearch(name, 1)[0];
+  if (staticEntry) {
+    return {
+      id: staticEntry.id,
+      name: staticEntry.name,
+      description: staticEntry.description,
+      docsUrl: staticEntry.docsUrl,
+      llmsTxtUrl: staticEntry.llmsTxtUrl,
+      llmsFullTxtUrl: staticEntry.llmsFullTxtUrl,
+    };
+  }
+
+  try {
+    const dynamic = await resolveDynamic(name);
+    if (dynamic) {
+      return {
+        id: name,
+        name: dynamic.displayName,
+        docsUrl: dynamic.docsUrl,
+        llmsTxtUrl: dynamic.llmsTxtUrl,
+        llmsFullTxtUrl: dynamic.llmsFullTxtUrl,
+      };
+    }
+  } catch {
+    // Dynamic fallback unavailable or resolution threw
+  }
+
+  return null;
 }
 
 /** Returned when the whole pipeline exceeds the tool timeout — an actionable
@@ -61,10 +97,12 @@ export function registerCompareTool(server: McpServer): void {
           const angle = criteria ? `${criteria} comparison tradeoffs` : "overview features comparison";
           // Per-item guard: one flagged name is treated as unresolvable instead of
           // aborting the sibling libraries' comparison.
-          const entries = libraries.map((lib) => ({
-            lib,
-            entry: isExtractionAttempt(lib) ? null : resolveLibrary(lib),
-          }));
+          const entries = await Promise.all(
+            libraries.map(async (lib) => ({
+              lib,
+              entry: isExtractionAttempt(lib) ? null : await resolveLibrary(lib),
+            })),
+          );
 
           if (entries.every(({ entry }) => entry === null)) {
             const text = withNotice(

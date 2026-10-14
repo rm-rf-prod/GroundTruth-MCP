@@ -70,7 +70,12 @@ export const AUDIT_PATTERNS: AuditPattern[] = [
       "<img> bypasses Next.js automatic WebP/AVIF conversion, lazy loading, and layout-shift prevention.",
     fix: "Replace <img> with next/image Image component. Provide width+height or use fill inside a sized container.",
     docsQuery: "next/image optimization WebP AVIF lazy loading",
-    test: (line) => (/<img\b/.test(line) && !line.trim().startsWith("//") ? line : null),
+    test: (line, content, _offset, _lines, _idx, filePath) => {
+      if (filePath && !/\.[jt]sx$/.test(filePath)) return null;
+      const isNext = content.includes("next/") || content.includes('"next"') || content.includes("'next'") || (filePath !== undefined && /[/\\](?:app|pages)[/\\]/.test(filePath));
+      if (!isNext) return null;
+      return /<img\b/.test(line) && !line.trim().startsWith("//") ? line : null;
+    },
   },
   {
     category: "layout",
@@ -657,12 +662,14 @@ export const AUDIT_PATTERNS: AuditPattern[] = [
       "Pages without an exported metadata object or generateMetadata function have no title or description, harming SEO and social sharing.",
     fix: "Add `export const metadata: Metadata = { title: '...', description: '...' }` to every page.tsx.",
     docsQuery: "Next.js App Router metadata SEO title description generateMetadata",
-    test: (line, content) =>
-      /^export\s+default\s+(?:async\s+)?function\s+[A-Z]/.test(line) &&
-      !content.includes("metadata") &&
-      !content.includes("generateMetadata")
+    test: (line, content, _offset, _lines, _idx, filePath) => {
+      if (filePath && !/(?:^|[/\\])page\.[jt]sx?$/.test(filePath)) return null;
+      return /^export\s+default\s+(?:async\s+)?function\s+[A-Z]/.test(line) &&
+        !content.includes("metadata") &&
+        !content.includes("generateMetadata")
         ? line
-        : null,
+        : null;
+    },
   },
 
   // === TYPESCRIPT ===
@@ -1415,6 +1422,102 @@ export const AUDIT_PATTERNS: AuditPattern[] = [
       const nearby = content.slice(Math.max(0, idx - 500), idx + 500);
       return !/ErrorBoundary/.test(nearby) ? line : null;
     },
+  },
+
+  // === MACHINE LEARNING (ML) & DATA SCIENCE (DS) ===
+  {
+    category: "ml",
+    severity: "critical",
+    title: "torch.load() without weights_only=True — arbitrary code execution risk",
+    detail:
+      "torch.load() uses Python pickle by default, which can execute arbitrary code during deserialization. PyTorch 2.4+ and CVE-2024-8088 strongly recommend weights_only=True.",
+    fix: "Pass weights_only=True: `torch.load('model.pt', weights_only=True)` or adopt Safetensors (`safetensors.torch.load_file`).",
+    docsQuery: "PyTorch torch.load weights_only security CVE-2024-8088 safetensors",
+    test: (line) =>
+      /\btorch\.load\s*\(/.test(line) &&
+      (!line.includes("weights_only") || /weights_only\s*=\s*False\b/.test(line))
+        ? line
+        : null,
+  },
+  {
+    category: "ml",
+    severity: "high",
+    title: "Data leakage: fit_transform() or fit() on evaluation/test data",
+    detail:
+      "Calling .fit() or .fit_transform() on evaluation, validation, or test datasets leaks target or feature distribution information into the model pipeline.",
+    fix: "Fit transformers only on training data (`scaler.fit_transform(X_train)`), then call `.transform()` on evaluation/test data (`scaler.transform(X_test)`).",
+    docsQuery: "scikit-learn data leakage fit_transform test set pipeline",
+    test: (line) => {
+      const isFitCall = /\.(?:fit_transform|fit)\s*\(/.test(line);
+      if (!isFitCall) return null;
+      return /\b(?:scaler|encoder|vectorizer|transformer|pipe|pipeline)\.(?:fit_transform|fit)\s*\([^)]*(?:test|val|valid|eval|holdout)/i.test(line) ||
+        /\.(?:fit_transform|fit)\s*\(\s*(?:X_test|X_val|x_test|x_val|test_df|val_df|test_data|val_data)\b/.test(line)
+        ? line
+        : null;
+    },
+  },
+  {
+    category: "ml",
+    severity: "medium",
+    title: "train_test_split() missing random_state — non-reproducible ML split",
+    detail:
+      "Splitting datasets with train_test_split() without specifying random_state generates a different data partition on every run, breaking experiment reproducibility.",
+    fix: "Provide an explicit integer seed: `train_test_split(X, y, test_size=0.2, random_state=42)`.",
+    docsQuery: "scikit-learn train_test_split random_state reproducibility",
+    test: (line) =>
+      /\btrain_test_split\s*\(/.test(line) && !line.includes("random_state") ? line : null,
+  },
+
+  // === DATA ENGINEERING (DE) & DATA ANALYTICS (DA) ===
+  {
+    category: "data",
+    severity: "high",
+    title: "Inefficient DataFrame row iteration via .iterrows()",
+    detail:
+      "df.iterrows() converts each row into a Pandas Series, introducing immense overhead. Vectorized operations or .itertuples() are 100x-1000x faster.",
+    fix: "Replace .iterrows() with vectorized column operations, `np.where()`, `df.apply()`, or `df.itertuples(index=False)` when row iteration is unavoidable.",
+    docsQuery: "pandas iterrows performance vectorized operations itertuples",
+    test: (line) =>
+      /\b(?:df|\w+df|\w+_df)\.iterrows\s*\(/.test(line) ? line : null,
+  },
+  {
+    category: "data",
+    severity: "critical",
+    title: "PySpark .collect() on distributed DataFrame — Driver OOM risk",
+    detail:
+      "Calling .collect() on a PySpark DataFrame pulls the entire distributed dataset into the single driver node's memory, causing OutOfMemoryError in production pipelines.",
+    fix: "Avoid .collect() on large tables. Use `.take(N)`, `.limit(N)`, or write directly to storage: `df.write.mode('overwrite').parquet('path')`.",
+    docsQuery: "PySpark collect driver out of memory OOM take limit",
+    test: (line, content) => {
+      if (!/\b(?:df|\w+_df)\.collect\s*\(\s*\)/.test(line)) return null;
+      return content.includes("pyspark") || content.includes("SparkSession") || content.includes("spark")
+        ? line
+        : null;
+    },
+  },
+  {
+    category: "data",
+    severity: "high",
+    title: "SELECT * in analytical or pipeline SQL query",
+    detail:
+      "SELECT * forces columnar engines (BigQuery, Snowflake, DuckDB, ClickHouse) to scan and transfer all columns, drastically increasing query cost and latency.",
+    fix: "Specify only required columns explicitly: `SELECT customer_id, order_date, total_amount FROM orders`.",
+    docsQuery: "SQL SELECT * columnar database performance cost optimization BigQuery Snowflake",
+    test: (line, _content, _offset, _lines, _idx, filePath) => {
+      const isSqlContext = (filePath && /\.sql$/i.test(filePath)) || /\bSELECT\s+\*\s+FROM\b/i.test(line);
+      return isSqlContext && /\bSELECT\s+\*\s+FROM\b/i.test(line) ? line : null;
+    },
+  },
+  {
+    category: "data",
+    severity: "critical",
+    title: "Hardcoded database credentials in connection string",
+    detail:
+      "Hardcoded database passwords or URIs (postgresql://user:pass@host) in pipeline code risk severe credential compromise when committed to version control.",
+    fix: "Store credentials in environment variables or cloud secrets managers (e.g. `os.environ['DB_URL']` or SecretManagerClient).",
+    docsQuery: "database connection string credentials environment variables security OWASP",
+    test: (line) =>
+      /(?:postgres(?:ql)?|mysql|snowflake|mongodb|clickhouse|redshift):\/\/[^:\s'"$]+:[^@\s'"$]+@/i.test(line) ? line : null,
   },
 ];
 

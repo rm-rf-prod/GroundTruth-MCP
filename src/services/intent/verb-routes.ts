@@ -76,8 +76,8 @@ switch (top.tool) {
   }
   case "gt_compare": {
     const libs: string[] = [];
-    // crude: "X vs Y", "X or Y", "X and Y", "X with Y" — both sides must resolve below
-    const vs = raw.match(/([\w@/.-]+)\s+(?:vs\.?|versus|or|and|with)\s+([\w@/.-]+)/i);
+    // crude: "X vs Y", "X or Y", "X and Y", "X with Y", "X dan Y" — both sides must resolve below
+    const vs = raw.match(/([\w@/.-]+)\s+(?:vs\.?|versus|or|and|with|dan|dengan|atau)\s+([\w@/.-]+)/i);
     if (vs && vs[1] && vs[2] && resolveName(vs[1]) && resolveName(vs[2])) libs.push(vs[1], vs[2]);
     if (libs.length < 2) return library ? null : searchFallback("compare");
     args["libraries"] = libs;

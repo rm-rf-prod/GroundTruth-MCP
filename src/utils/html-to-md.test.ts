@@ -33,6 +33,13 @@ describe("convertHtmlToMarkdown", () => {
     expect(result).toContain("[Example Site](https://example.com)");
   });
 
+  it("converts links with single-quoted and unquoted href attributes", () => {
+    const html = `<html><body><h1>Links Page</h1><p>Check <a href='https://example.org/docs'>Docs</a> and <a href=/api/v1>API</a> for more info. Padding text to meet the minimum length threshold.</p></body></html>`;
+    const result = convertHtmlToMarkdown(html);
+    expect(result).toContain("[Docs](https://example.org/docs)");
+    expect(result).toContain("[API](/api/v1)");
+  });
+
   it("converts lists", () => {
     const html = `<html><body><h1>Features</h1><ul><li>First item with some text</li><li>Second item with more text</li><li>Third item to make it longer</li></ul><p>Additional paragraph text for minimum length requirements that need to be met.</p></body></html>`;
     const result = convertHtmlToMarkdown(html);

@@ -8,15 +8,67 @@ export interface SourceFile {
   content: string;
 }
 
+/**
+ * Extract executable Python code from a Jupyter Notebook (.ipynb) JSON string.
+ * Extracts all code cells into Python code with cell markers.
+ * Comments out IPython magics (%...) and shell escapes (!...) to prevent false positives.
+ * Returns null if the JSON is malformed or has no cells array.
+ */
+export function extractNotebookCode(raw: string): string | null {
+  try {
+    const nb = JSON.parse(raw) as { cells?: unknown };
+    if (!nb || typeof nb !== "object" || !Array.isArray(nb.cells)) return null;
+
+    const lines: string[] = [];
+    let cellNum = 0;
+
+    for (const cell of nb.cells) {
+      if (!cell || typeof cell !== "object") continue;
+      cellNum++;
+
+      const c = cell as { cell_type?: unknown; source?: unknown };
+      if (c.cell_type === "code" && c.source !== undefined) {
+        lines.push(`# %% [code cell ${cellNum}]`);
+        const source = c.source;
+        const joined = Array.isArray(source)
+          ? source.map(String).join("")
+          : typeof source === "string"
+            ? source
+            : "";
+        const cellLines = joined.split(/\r?\n/);
+        if (cellLines.length > 0 && cellLines[cellLines.length - 1] === "") {
+          cellLines.pop();
+        }
+
+        for (const line of cellLines) {
+          const trimmed = line.trimStart();
+          if (trimmed.startsWith("%") || trimmed.startsWith("!")) {
+            lines.push(`# ${line}`);
+          } else {
+            lines.push(line);
+          }
+        }
+      }
+    }
+
+    return lines.join("\n");
+  } catch {
+    return null;
+  }
+}
+
 export async function readProjectFiles(
   projectPath: string,
   maxFiles: number,
 ): Promise<SourceFile[]> {
-  const SOURCE_EXT = new Set([".ts", ".tsx", ".js", ".jsx", ".css", ".scss", ".html", ".mjs", ".py", ".vue", ".svelte"]);
+  const SOURCE_EXT = new Set([
+    ".ts", ".tsx", ".js", ".jsx", ".css", ".scss", ".html", ".mjs", ".py", ".vue", ".svelte", ".ipynb",
+    ".sql", ".r", ".R", ".jl",
+  ]);
   const SKIP_DIRS = new Set([
     "node_modules", ".git", ".next", "dist", "build", ".turbo",
     "coverage", ".cache", "out", ".vercel", "storybook-static",
-    "__pycache__", ".venv", "venv", "env",
+    "__pycache__", ".venv", "venv", "env", ".ipynb_checkpoints",
   ]);
 
   const files: SourceFile[] = [];
@@ -24,8 +76,13 @@ export async function readProjectFiles(
   async function readSource(fullPath: string): Promise<string | null> {
     try {
       const s = await stat(fullPath);
-      if (s.size > 200_000) return null;
-      return await readFile(fullPath, "utf-8");
+      const isNotebook = extname(fullPath) === ".ipynb";
+      // Notebooks can embed base64 image plots/outputs; allow a higher size budget
+      const maxBytes = isNotebook ? 2_000_000 : 200_000;
+      if (s.size > maxBytes) return null;
+      const raw = await readFile(fullPath, "utf-8");
+      if (isNotebook) return extractNotebookCode(raw);
+      return raw;
     } catch {
       return null; // unreadable — skip
     }
@@ -35,7 +92,8 @@ export async function readProjectFiles(
     if (depth > 6 || files.length >= maxFiles) return;
     try {
       const entries = await readdir(dir, { withFileTypes: true });
-      const isSource = (e: (typeof entries)[number]): boolean => e.isFile() && SOURCE_EXT.has(extname(e.name));
+      const isSource = (e: (typeof entries)[number]): boolean =>
+        e.isFile() && SOURCE_EXT.has(extname(e.name)) && !e.name.endsWith("-checkpoint.ipynb");
       // Start this directory's reads together, capped at the remaining budget;
       // consume them in listing order so results match a sequential walk.
       const pending = new Map<string, Promise<string | null>>();
@@ -80,9 +138,9 @@ export function runPatterns(
 
       // Skip lines that are entirely inside a block comment
       const lineIsInBlockComment = commentMap.has(charOffset);
-      // Skip single-line comments (JS/TS // and Python #)
+      // Skip single-line comments (JS/TS //, Python/R/Julia #, and SQL --)
       const trimmed = line.trimStart();
-      const lineIsLineComment = trimmed.startsWith("//") || trimmed.startsWith("#");
+      const lineIsLineComment = trimmed.startsWith("//") || trimmed.startsWith("#") || trimmed.startsWith("--");
 
       if (lineIsInBlockComment || lineIsLineComment) {
         charOffset += line.length + 1;

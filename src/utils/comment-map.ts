@@ -1,5 +1,5 @@
-/** Skip generated, test, and declaration files — patterns don't apply there */
-export const SKIP_FILE_RE = /(?:\.test\.[jt]sx?|\.spec\.[jt]sx?|\.d\.ts|__tests__[/\\]|\.stories\.[jt]sx?)$/;
+/** Skip generated, test, declaration, and notebook checkpoint files — patterns don't apply there */
+export const SKIP_FILE_RE = /(?:\.test\.[jt]sx?|\.spec\.[jt]sx?|\.d\.ts|__tests__[/\\]|\.stories\.[jt]sx?|-checkpoint\.ipynb)$/;
 
 /** Range-based comment map — O(n) build, O(log n) lookup, O(ranges) memory */
 class CommentMap {
@@ -19,6 +19,16 @@ class CommentMap {
   get size(): number { return this.ranges.length; }
 }
 
+function isEscaped(content: string, idx: number): boolean {
+  let count = 0;
+  let p = idx - 1;
+  while (p >= 0 && content[p] === "\\") {
+    count++;
+    p--;
+  }
+  return count % 2 === 1;
+}
+
 /**
  * Build a CommentMap of block-comment ranges to reduce false positives.
  * String/template literals and // comments are skipped so a '/*' inside a
@@ -31,6 +41,39 @@ export function buildCommentMap(content: string): CommentMap {
   let i = 0;
   while (i < content.length) {
     const ch = content[i];
+
+    // Python multiline docstrings: """...""" and '''...'''
+    if (ch === '"' && content.startsWith('"""', i)) {
+      let closeIdx = content.indexOf('"""', i + 3);
+      while (closeIdx !== -1 && isEscaped(content, closeIdx)) {
+        closeIdx = content.indexOf('"""', closeIdx + 1);
+      }
+      const stop = closeIdx === -1 ? content.length - 1 : closeIdx + 2;
+      ranges.push([i, stop]);
+      i = stop + 1;
+      continue;
+    }
+    if (ch === "'" && content.startsWith("'''", i)) {
+      let closeIdx = content.indexOf("'''", i + 3);
+      while (closeIdx !== -1 && isEscaped(content, closeIdx)) {
+        closeIdx = content.indexOf("'''", closeIdx + 1);
+      }
+      const stop = closeIdx === -1 ? content.length - 1 : closeIdx + 2;
+      ranges.push([i, stop]);
+      i = stop + 1;
+      continue;
+    }
+
+    // Julia block comments: #= ... =#
+    if (ch === "#" && content[i + 1] === "=") {
+      const end = content.indexOf("=#", i + 2);
+      const stop = end === -1 ? content.length - 1 : end + 1;
+      ranges.push([i, stop]);
+      i = stop + 1;
+      continue;
+    }
+
+    // Standard string/template literals (skip without adding to comment ranges)
     if (ch === '"' || ch === "'" || ch === "`") {
       i++;
       while (i < content.length) {
