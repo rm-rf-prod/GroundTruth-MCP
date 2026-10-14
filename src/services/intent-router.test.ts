@@ -153,6 +153,12 @@ describe("intent-router", () => {
       expect(table).toContain("gt_best_practices");
       expect(table).toContain("gt_audit");
     });
+
+    it("routes Indonesian queries accurately", () => {
+      expect(detectIntent({ query: "tolong periksa kode project ini" }).tool).toBe("gt_audit");
+      expect(detectIntent({ query: "tolong bandingkan prisma dan drizzle" }).tool).toBe("gt_compare");
+      expect(detectIntent({ query: "bisa beri contoh kode trpc" }).tool).toBe("gt_examples");
+    });
   });
 });
 

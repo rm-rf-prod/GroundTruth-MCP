@@ -64,8 +64,19 @@ export const TOPIC_SYNONYMS: Record<string, readonly string[]> = {
   ppr: ["partial prerendering"],
   cwv: ["core web vitals", "web vitals"],
   mfa: ["multi-factor authentication", "two-factor"],
-  sso: ["single sign-on", "single sign on"],
   rbac: ["role-based access control"],
+  // Data Engineering, Analytics, Data Science, Machine Learning
+  ml: ["machine learning", "model"],
+  dl: ["deep learning", "neural network"],
+  llm: ["large language model", "foundation model"],
+  rag: ["retrieval augmented generation", "retrieval-augmented generation", "vector search"],
+  eda: ["exploratory data analysis", "data exploration"],
+  etl: ["extract transform load", "data pipeline"],
+  elt: ["extract load transform", "data pipeline"],
+  dag: ["directed acyclic graph", "airflow dag", "pipeline"],
+  df: ["dataframe", "data frame"],
+  cv: ["cross-validation", "cross validation"],
+  nlp: ["natural language processing"],
 };
 // Query-meta words describe the KIND of answer wanted, not its subject — they
 // appear on virtually every docs page, so counting them as topic coverage lets
