@@ -31,6 +31,39 @@ export function buildCommentMap(content: string): CommentMap {
   let i = 0;
   while (i < content.length) {
     const ch = content[i];
+
+    // Python multiline docstrings: """...""" and '''...'''
+    if (ch === '"' && content.startsWith('"""', i)) {
+      let closeIdx = content.indexOf('"""', i + 3);
+      while (closeIdx !== -1 && content[closeIdx - 1] === "\\") {
+        closeIdx = content.indexOf('"""', closeIdx + 1);
+      }
+      const stop = closeIdx === -1 ? content.length - 1 : closeIdx + 2;
+      ranges.push([i, stop]);
+      i = stop + 1;
+      continue;
+    }
+    if (ch === "'" && content.startsWith("'''", i)) {
+      let closeIdx = content.indexOf("'''", i + 3);
+      while (closeIdx !== -1 && content[closeIdx - 1] === "\\") {
+        closeIdx = content.indexOf("'''", closeIdx + 1);
+      }
+      const stop = closeIdx === -1 ? content.length - 1 : closeIdx + 2;
+      ranges.push([i, stop]);
+      i = stop + 1;
+      continue;
+    }
+
+    // Julia block comments: #= ... =#
+    if (ch === "#" && content[i + 1] === "=") {
+      const end = content.indexOf("=#", i + 2);
+      const stop = end === -1 ? content.length - 1 : end + 1;
+      ranges.push([i, stop]);
+      i = stop + 1;
+      continue;
+    }
+
+    // Standard string/template literals (skip without adding to comment ranges)
     if (ch === '"' || ch === "'" || ch === "`") {
       i++;
       while (i < content.length) {

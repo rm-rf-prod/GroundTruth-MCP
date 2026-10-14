@@ -60,6 +60,20 @@ describe("buildCommentMap", () => {
     expect(map.has(content.indexOf("real comment"))).toBe(true);
     expect(map.has(content.indexOf("const z"))).toBe(false);
   });
+
+  it("marks offsets inside Python triple-quote docstrings", () => {
+    const content = `"""\nDocstring example:\neval(code)\n"""\nvalid_code = 1`;
+    const map = buildCommentMap(content);
+    expect(map.has(content.indexOf("eval(code)"))).toBe(true);
+    expect(map.has(content.indexOf("valid_code"))).toBe(false);
+  });
+
+  it("marks offsets inside Julia #= =# block comments", () => {
+    const content = `#=\nJulia block comment\n=#\nx = 1`;
+    const map = buildCommentMap(content);
+    expect(map.has(content.indexOf("Julia block comment"))).toBe(true);
+    expect(map.has(content.indexOf("x = 1"))).toBe(false);
+  });
 });
 
 // ── Python patterns ───────────────────────────────────────────────────────────
