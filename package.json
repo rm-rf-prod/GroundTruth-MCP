@@ -33,7 +33,7 @@
     "release:major": "npm run typecheck && npm run test && npm version major && npm publish --access public && mcp-publisher publish"
   },
   "engines": {
-    "node": ">=24"
+    "node": ">=20"
   },
   "keywords": [
     "mcp",
