@@ -1,5 +1,5 @@
-/** Skip generated, test, and declaration files — patterns don't apply there */
-export const SKIP_FILE_RE = /(?:\.test\.[jt]sx?|\.spec\.[jt]sx?|\.d\.ts|__tests__[/\\]|\.stories\.[jt]sx?)$/;
+/** Skip generated, test, declaration, and notebook checkpoint files — patterns don't apply there */
+export const SKIP_FILE_RE = /(?:\.test\.[jt]sx?|\.spec\.[jt]sx?|\.d\.ts|__tests__[/\\]|\.stories\.[jt]sx?|-checkpoint\.ipynb)$/;
 
 /** Range-based comment map — O(n) build, O(log n) lookup, O(ranges) memory */
 class CommentMap {
