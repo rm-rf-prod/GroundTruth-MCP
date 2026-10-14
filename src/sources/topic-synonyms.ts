@@ -64,6 +64,7 @@ export const TOPIC_SYNONYMS: Record<string, readonly string[]> = {
   ppr: ["partial prerendering"],
   cwv: ["core web vitals", "web vitals"],
   mfa: ["multi-factor authentication", "two-factor"],
+  sso: ["single sign-on", "single sign on"],
   rbac: ["role-based access control"],
   // Data Engineering, Analytics, Data Science, Machine Learning
   ml: ["machine learning", "model"],

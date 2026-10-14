@@ -1434,7 +1434,10 @@ export const AUDIT_PATTERNS: AuditPattern[] = [
     fix: "Pass weights_only=True: `torch.load('model.pt', weights_only=True)` or adopt Safetensors (`safetensors.torch.load_file`).",
     docsQuery: "PyTorch torch.load weights_only security CVE-2024-8088 safetensors",
     test: (line) =>
-      /\btorch\.load\s*\(/.test(line) && !line.includes("weights_only") ? line : null,
+      /\btorch\.load\s*\(/.test(line) &&
+      (!line.includes("weights_only") || /weights_only\s*=\s*False\b/.test(line))
+        ? line
+        : null,
   },
   {
     category: "ml",

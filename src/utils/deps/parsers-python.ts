@@ -94,8 +94,10 @@ export function parseCondaYaml(content: string): string[] {
     if (inDeps && line.startsWith("-")) {
       const item = line.slice(1).trim();
       if (!item || item.startsWith("pip:")) continue;
+      // Strip conda channel prefix (e.g. "conda-forge::scipy=1.10" -> "scipy=1.10")
+      const rawPkg = item.includes("::") ? (item.split("::").pop() ?? item) : item;
       // Extract package name before =, >, <, ~, [, etc.
-      const name = item.split(/[=><~\[\s]/)[0]?.trim();
+      const name = rawPkg.split(/[=><~\[\s]/)[0]?.trim();
       if (name && name !== "python" && name !== "pip") {
         deps.push(name);
       }

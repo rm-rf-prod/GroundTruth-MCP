@@ -74,6 +74,17 @@ describe("buildCommentMap", () => {
     expect(map.has(content.indexOf("Julia block comment"))).toBe(true);
     expect(map.has(content.indexOf("x = 1"))).toBe(false);
   });
+
+  it("handles escaped and non-escaped backslashes before docstring quotes", () => {
+    const doubleBackslash = `"""path\\\\"""\nreal_code = 123`;
+    const map1 = buildCommentMap(doubleBackslash);
+    expect(map1.has(doubleBackslash.indexOf("real_code"))).toBe(false);
+
+    const singleBackslash = `"""escaped\\""" still inside"""\ncode_after = 456`;
+    const map2 = buildCommentMap(singleBackslash);
+    expect(map2.has(singleBackslash.indexOf("still inside"))).toBe(true);
+    expect(map2.has(singleBackslash.indexOf("code_after"))).toBe(false);
+  });
 });
 
 // ── Python patterns ───────────────────────────────────────────────────────────

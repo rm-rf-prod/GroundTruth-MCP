@@ -19,6 +19,16 @@ class CommentMap {
   get size(): number { return this.ranges.length; }
 }
 
+function isEscaped(content: string, idx: number): boolean {
+  let count = 0;
+  let p = idx - 1;
+  while (p >= 0 && content[p] === "\\") {
+    count++;
+    p--;
+  }
+  return count % 2 === 1;
+}
+
 /**
  * Build a CommentMap of block-comment ranges to reduce false positives.
  * String/template literals and // comments are skipped so a '/*' inside a
@@ -35,7 +45,7 @@ export function buildCommentMap(content: string): CommentMap {
     // Python multiline docstrings: """...""" and '''...'''
     if (ch === '"' && content.startsWith('"""', i)) {
       let closeIdx = content.indexOf('"""', i + 3);
-      while (closeIdx !== -1 && content[closeIdx - 1] === "\\") {
+      while (closeIdx !== -1 && isEscaped(content, closeIdx)) {
         closeIdx = content.indexOf('"""', closeIdx + 1);
       }
       const stop = closeIdx === -1 ? content.length - 1 : closeIdx + 2;
@@ -45,7 +55,7 @@ export function buildCommentMap(content: string): CommentMap {
     }
     if (ch === "'" && content.startsWith("'''", i)) {
       let closeIdx = content.indexOf("'''", i + 3);
-      while (closeIdx !== -1 && content[closeIdx - 1] === "\\") {
+      while (closeIdx !== -1 && isEscaped(content, closeIdx)) {
         closeIdx = content.indexOf("'''", closeIdx + 1);
       }
       const stop = closeIdx === -1 ? content.length - 1 : closeIdx + 2;

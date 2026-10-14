@@ -16,11 +16,17 @@ function matchesPattern(
 
 describe("DE, DA, DS, and ML audit patterns", () => {
   describe("Machine Learning & Deep Learning", () => {
-    it("flags torch.load without weights_only=True", () => {
+    it("flags torch.load without weights_only=True or with weights_only=False", () => {
       expect(
         matchesPattern(
           "torch.load() without weights_only=True — arbitrary code execution risk",
           "model = torch.load('checkpoint.pt')",
+        ),
+      ).toBe(true);
+      expect(
+        matchesPattern(
+          "torch.load() without weights_only=True — arbitrary code execution risk",
+          "model = torch.load('checkpoint.pt', weights_only=False)",
         ),
       ).toBe(true);
     });

@@ -23,7 +23,7 @@ dependencies:
     expect(deps).toContain("numpy");
     expect(deps).toContain("pandas");
     expect(deps).toContain("scikit-learn");
-    expect(deps).toContain("pytorch::torchvision");
+    expect(deps).toContain("torchvision");
     expect(deps).toContain("transformers");
     expect(deps).toContain("datasets");
     expect(deps).not.toContain("python");

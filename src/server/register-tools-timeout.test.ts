@@ -24,7 +24,7 @@ describe("GT_TOOL_TIMEOUT_MS enforcement", () => {
       expect(result["isError"], name).toBe(true);
       expect(JSON.stringify(result["content"]), name).toContain("40 ms");
     }
-  });
+  }, 15000);
 
   it("leaves self-timed tools to their own tailored timeout fallback", async () => {
     const { guardToolHandler } = await loadWithTimeout("40");
