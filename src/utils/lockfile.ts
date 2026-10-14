@@ -81,18 +81,91 @@ export async function detectVersionFromLockfile(
   return null;
 }
 
+async function readLockfileIfExists(filePath: string): Promise<string | null> {
+  try {
+    return await readFile(filePath, "utf-8");
+  } catch {
+    return null;
+  }
+}
+
 export async function detectAllVersions(
   projectPath: string,
   packageNames: string[],
 ): Promise<Map<string, string>> {
   const versions = new Map<string, string>();
-  // Detect all packages in parallel — auto-scan can request 20+ at once, and
-  // each detection independently reads the same lockfiles.
-  const entries = await Promise.all(
-    packageNames.map(async (name) => [name, await detectVersionFromLockfile(projectPath, name)] as const),
-  );
-  for (const [name, v] of entries) {
-    if (v) versions.set(name, v);
+  if (packageNames.length === 0) return versions;
+
+  // Single-pass parallel read: avoids redundant disk reads for N packages
+  const [packageLockRaw, pnpmLock, yarnLock, cargoLock, poetryLock, uvLock, goSum] = await Promise.all([
+    readLockfileIfExists(join(projectPath, "package-lock.json")),
+    readLockfileIfExists(join(projectPath, "pnpm-lock.yaml")),
+    readLockfileIfExists(join(projectPath, "yarn.lock")),
+    readLockfileIfExists(join(projectPath, "Cargo.lock")),
+    readLockfileIfExists(join(projectPath, "poetry.lock")),
+    readLockfileIfExists(join(projectPath, "uv.lock")),
+    readLockfileIfExists(join(projectPath, "go.sum")),
+  ]);
+
+  let packageLockJson: {
+    packages?: Record<string, { version?: string }>;
+    dependencies?: Record<string, { version?: string }>;
+  } | undefined;
+
+  if (packageLockRaw) {
+    try {
+      packageLockJson = JSON.parse(packageLockRaw);
+    } catch { /* malformed */ }
   }
+
+  for (const name of packageNames) {
+    let v: string | null = null;
+
+    if (packageLockJson) {
+      const pkgKey = `node_modules/${name}`;
+      v = packageLockJson.packages?.[pkgKey]?.version ?? packageLockJson.dependencies?.[name]?.version ?? null;
+    }
+
+    if (!v && pnpmLock) {
+      const escaped = escapeRegex(name);
+      const re = new RegExp(`(?:^|["',])\\s*/?${escaped}[@/]([\\d.]+)`, "m");
+      v = pnpmLock.match(re)?.[1] ?? null;
+    }
+
+    if (!v && yarnLock) {
+      const escaped = escapeRegex(name);
+      const re = new RegExp(`(?:^|["',])\\s*${escaped}@[^"]*"?[\\s\\S]*?\\n\\s+version\\s+"([^"]+)"`, "m");
+      v = yarnLock.match(re)?.[1] ?? null;
+    }
+
+    if (!v && cargoLock) {
+      const escaped = escapeRegex(name);
+      const re = new RegExp(`\\[\\[package\\]\\]\\nname = "${escaped}"\\nversion = "([^"]+)"`, "m");
+      v = cargoLock.match(re)?.[1] ?? null;
+    }
+
+    if (!v && poetryLock) {
+      const escaped = escapeRegex(name);
+      const re = new RegExp(`\\[\\[package\\]\\]\\nname = "${escaped}"\\nversion = "([^"]+)"`, "m");
+      v = poetryLock.match(re)?.[1] ?? null;
+    }
+
+    if (!v && uvLock) {
+      const escaped = escapeRegex(name);
+      const re = new RegExp(`\\[\\[package\\]\\]\\nname = "${escaped}"\\nversion = "([^"]+)"`, "m");
+      v = uvLock.match(re)?.[1] ?? null;
+    }
+
+    if (!v && goSum) {
+      const escaped = escapeRegex(name);
+      const re = new RegExp(`^${escaped}\\s+v([\\d.a-zA-Z-]+)`, "m");
+      v = goSum.match(re)?.[1] ?? null;
+    }
+
+    if (v) {
+      versions.set(name, v);
+    }
+  }
+
   return versions;
 }

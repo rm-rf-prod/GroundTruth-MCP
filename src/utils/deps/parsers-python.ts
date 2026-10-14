@@ -70,3 +70,47 @@ export function parsePyproject(content: string): string[] {
 
   return [...new Set(deps)];
 }
+
+export function parseCondaYaml(content: string): string[] {
+  const deps: string[] = [];
+  const lines = content.split("\n");
+  let inDeps = false;
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) continue;
+
+    if (/^dependencies\s*:/.test(line)) {
+      inDeps = true;
+      continue;
+    }
+
+    // Another top-level key ends the dependencies section
+    if (inDeps && /^[a-zA-Z0-9_-]+\s*:/.test(line) && !line.startsWith("-")) {
+      inDeps = false;
+      continue;
+    }
+
+    if (inDeps && line.startsWith("-")) {
+      const item = line.slice(1).trim();
+      if (!item || item.startsWith("pip:")) continue;
+      // Extract package name before =, >, <, ~, [, etc.
+      const name = item.split(/[=><~\[\s]/)[0]?.trim();
+      if (name && name !== "python" && name !== "pip") {
+        deps.push(name);
+      }
+    }
+  }
+  return [...new Set(deps)];
+}
+
+export function parsePipfile(content: string): string[] {
+  const deps: string[] = [];
+  const packagesBlock = content.match(/\[packages\]([\s\S]*?)(?:\n\s*\[|$)/);
+  if (packagesBlock?.[1]) deps.push(...tomlTableKeys(packagesBlock[1]));
+
+  const devPackagesBlock = content.match(/\[dev-packages\]([\s\S]*?)(?:\n\s*\[|$)/);
+  if (devPackagesBlock?.[1]) deps.push(...tomlTableKeys(devPackagesBlock[1]));
+
+  return [...new Set(deps)];
+}
