@@ -63,6 +63,7 @@ export async function readProjectFiles(
 ): Promise<SourceFile[]> {
   const SOURCE_EXT = new Set([
     ".ts", ".tsx", ".js", ".jsx", ".css", ".scss", ".html", ".mjs", ".py", ".vue", ".svelte", ".ipynb",
+    ".sql", ".r", ".R", ".jl",
   ]);
   const SKIP_DIRS = new Set([
     "node_modules", ".git", ".next", "dist", "build", ".turbo",
@@ -137,9 +138,9 @@ export function runPatterns(
 
       // Skip lines that are entirely inside a block comment
       const lineIsInBlockComment = commentMap.has(charOffset);
-      // Skip single-line comments (JS/TS // and Python #)
+      // Skip single-line comments (JS/TS //, Python/R/Julia #, and SQL --)
       const trimmed = line.trimStart();
-      const lineIsLineComment = trimmed.startsWith("//") || trimmed.startsWith("#");
+      const lineIsLineComment = trimmed.startsWith("//") || trimmed.startsWith("#") || trimmed.startsWith("--");
 
       if (lineIsInBlockComment || lineIsLineComment) {
         charOffset += line.length + 1;
