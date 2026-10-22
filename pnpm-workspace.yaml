@@ -58,7 +58,7 @@ overrides:
   'ws@>=8.0.0 <8.21.0': '^8.21.0'
 catalog:
   '@typescript-eslint/eslint-plugin': '^8.71.1'
-  '@typescript-eslint/parser': '^8.71.1'
+  '@typescript-eslint/parser': '^8.71.2'
   'javascript-obfuscator': '^5.9.0'
   'tsx': '^4.23.15'
   'undici': '^8.11.2'
