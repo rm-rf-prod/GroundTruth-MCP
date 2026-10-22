@@ -79,7 +79,7 @@
     "@typescript-eslint/eslint-plugin": "catalog:",
     "@typescript-eslint/parser": "catalog:",
     "@vitest/coverage-v8": "^4.1.11",
-    "eslint": "^10.8.0",
+    "eslint": "^10.13.0",
     "javascript-obfuscator": "catalog:",
     "tsx": "catalog:",
     "typescript": "^6.0.3",
