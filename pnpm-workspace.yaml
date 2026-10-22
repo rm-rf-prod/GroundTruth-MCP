@@ -61,6 +61,6 @@ catalog:
   '@typescript-eslint/parser': '^8.71.1'
   'javascript-obfuscator': '^5.9.0'
   'tsx': '^4.23.15'
-  'undici': '^8.11.2'
+  'undici': '^8.12.2'
   'zod': '^4.6.5'
 # <<< shared stack
