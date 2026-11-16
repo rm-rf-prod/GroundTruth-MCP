@@ -10,7 +10,7 @@
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-ELv2-orange" alt="Elastic License 2.0" /></a>
   <img src="https://img.shields.io/badge/libraries-795%2B-teal" alt="795+ curated libraries" />
   <img src="https://img.shields.io/badge/audit_patterns-107%2B-red" alt="107+ audit patterns" />
-  <img src="https://img.shields.io/badge/tests-2122-brightgreen" alt="2122 tests" />
+  <img src="https://img.shields.io/badge/tests-2139-brightgreen" alt="2139 tests" />
   <img src="https://img.shields.io/badge/tools-14-blue" alt="14 tools" />
   <img src="https://img.shields.io/badge/node-%3E%3D24-green" alt="Node 24+" />
 </p>
@@ -474,7 +474,7 @@ Adding a library is a pull request to [`src/sources/registry.ts`](./src/sources/
 ```bash
 pnpm install
 pnpm typecheck
-pnpm test        # 2122 tests across 280 files
+pnpm test        # 2139 tests across 283 files
 pnpm build
 ```
 
