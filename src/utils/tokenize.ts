@@ -5,7 +5,7 @@ export function tokenize(text: string): string[] {
     .toLowerCase()
     .replace(/[^a-z0-9\s]/g, " ")
     .split(/\s+/)
-    .filter((w) => (VERSION_TOKEN.test(w) ? w.length >= 1 : w.length > 2) && !STOP_WORDS.has(w));
+    .filter((w) => (VERSION_TOKEN.test(w) ? w.length >= 1 : w.length > 2 || (w.length === 2 && /\d/.test(w))) && !STOP_WORDS.has(w));
 }
 /**
  * A topic token plus the vocabulary docs use for the same idea. Used by the

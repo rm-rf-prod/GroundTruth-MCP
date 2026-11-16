@@ -16,9 +16,11 @@ export function parseMajor(version?: string): number | undefined {
 /** Extract candidate major versions referenced in a single heading line. */
 function headingVersions(heading: string): number[] {
   const out: number[] = [];
+  // Dates ("2024-03-15") would otherwise contribute day/month as majors.
+  const text = heading.replace(/\d{4}-\d{2}-\d{2}|\d{1,2}[./]\d{1,2}[./]\d{4}/g, " ");
   const re = /\bv?(\d{1,3})(?:\.\d+)*\b/gi;
   let m: RegExpExecArray | null;
-  while ((m = re.exec(heading)) !== null) {
+  while ((m = re.exec(text)) !== null) {
     const n = Number(m[1]);
     if (Number.isFinite(n) && n < 1000) out.push(n);
   }

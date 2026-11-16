@@ -11,7 +11,9 @@ export function convertTable(tableHtml: string): string {
     const cells: string[] = [];
     let cellMatch;
     while ((cellMatch = cellRegex.exec(rowMatch[1] ?? "")) !== null) {
-      cells.push(stripTags(cellMatch[1] ?? "").trim());
+      // Escape "|" and flatten line breaks so the cell cannot split the row.
+      const text = stripTags((cellMatch[1] ?? "").replace(/<br\s*\/?>|<\/p>|<\/div>/gi, " "));
+      cells.push(text.replace(/\s+/g, " ").trim().replace(/\|/g, "\\|"));
     }
     if (cells.length > 0) rows.push(cells);
   }

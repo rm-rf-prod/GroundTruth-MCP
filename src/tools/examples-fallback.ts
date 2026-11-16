@@ -19,6 +19,7 @@ async function docsExamples(
   pattern: string | undefined,
   maxResults: number,
   reason: string,
+  language?: string,
 ): Promise<{ text: string; sourceUrl: string; count: number } | null> {
   const entry = lookupById(library) ?? lookupByAlias(library);
   if (!entry) return null;
@@ -32,7 +33,7 @@ async function docsExamples(
     pattern ?? "",
   ).catch(() => null);
   if (!index || index.snippets.length === 0) return null;
-  const ranked = rankSnippets(index.snippets, pattern ?? "", undefined, maxResults);
+  const ranked = rankSnippets(index.snippets, pattern ?? "", language, maxResults);
   if (ranked.length === 0) return null;
   const text = withNotice(
     [
@@ -59,7 +60,7 @@ export async function docsFallbackResponse(params: {
   emptyText?: string;
 }): Promise<ExamplesResponse> {
   const { library, pattern, language, maxResults, reason, emptyText } = params;
-  const fallback = await docsExamples(library, pattern, maxResults, reason).catch(() => null);
+  const fallback = await docsExamples(library, pattern, maxResults, reason, language).catch(() => null);
   if (fallback) {
     return {
       content: [{ type: "text", text: fallback.text }],

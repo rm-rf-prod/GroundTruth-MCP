@@ -67,6 +67,10 @@ switch (top.tool) {
   case "gt_changelog": {
     if (!library) return searchFallback("changelog/release");
     args["libraryId"] = library.id;
+    // Version right after the library mention ("react 19", "next v15.1"), else a "v15" token.
+    const after = raw.toLowerCase().split(library.surface.toLowerCase())[1] ?? "";
+    const ver = /^\s+v?(\d+(?:\.\d+)*)\b/.exec(after)?.[1] ?? /\bv(\d+(?:\.\d+)*)\b/i.exec(raw)?.[1];
+    if (ver) args["version"] = ver;
     return {
       tool: "gt_changelog",
       args,

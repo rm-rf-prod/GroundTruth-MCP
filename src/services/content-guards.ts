@@ -68,13 +68,19 @@ export function isLoginWall(content: string): boolean {
   return content.length < 1000 && signals.some(Boolean);
 }
 
+/** Real documentation: long and carries code. Challenge/rate-limit/loading shells are short and fence-free. */
+function looksLikeDocs(content: string): boolean {
+  return content.length >= 1500 && content.includes("```");
+}
+
 /** Detect Cloudflare browser challenges and bot-check pages */
 export function isCloudflareChallenge(content: string): boolean {
+  if (looksLikeDocs(content)) return false;
   const sample = content.slice(0, 5000).toLowerCase();
   return (
     /checking\s+your\s+browser/.test(sample) ||
     /just\s+a\s+moment/.test(sample) ||
-    /ray\s+id/.test(sample) ||
+    /\bray\s+id\b/.test(sample) ||
     /enable\s+javascript\s+and\s+cookies/.test(sample) ||
     /attention\s+required/.test(sample) ||
     /cf-browser-verification/.test(sample) ||
@@ -85,6 +91,7 @@ export function isCloudflareChallenge(content: string): boolean {
 
 /** Detect rate-limit responses masquerading as content */
 export function isRateLimitPage(content: string): boolean {
+  if (looksLikeDocs(content)) return false;
   const sample = content.slice(0, 5000).toLowerCase();
   return (
     /rate\s+limit\s+exceeded/.test(sample) ||
@@ -124,7 +131,7 @@ export function isEmptySPAShell(content: string): boolean {
     /<div\s+id="app"\s*>\s*<\/div>/i.test(sample);
 
   const hasLoadingSignal =
-    /loading\.\.\./i.test(sampleLower) ||
+    (!looksLikeDocs(content) && /loading\.\.\./i.test(sampleLower)) ||
     /please\s+enable\s+javascript/i.test(sampleLower);
 
   const textContent = content.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();

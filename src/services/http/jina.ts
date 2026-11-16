@@ -5,7 +5,7 @@ import { assertPublicUrl } from "../../utils/guard.js";
 import { log } from "../../utils/logger.js";
 import { sanitizeContent } from "../../utils/sanitize.js";
 import { fetchWithTimeout, inFlightRequests } from "./request.js";
-import { readBodyCapped } from "./body.js";
+import { discardBody, readBodyCapped } from "./body.js";
 import { isGarbageContent } from "../content-guards.js";
 import { isKnownMissing } from "./negative-cache.js";
 import { singleFlight } from "./single-flight.js";
@@ -48,6 +48,7 @@ export async function fetchViaJina(url: string): Promise<string | null> {
           "X-Wait-For-Selector": "main,article,.docs-content,[role=main]",
           ...jinaAuthHeaders(),
         });
+        if (!res.ok) discardBody(res);
         if (res.status === 429 || res.status === 503) {
           recordFailure(jinaDomain);
           if (attempt === 0) {

@@ -6,7 +6,8 @@ const MAX_CODE_LENGTH = 4000;
 const MAX_DESCRIPTION_LENGTH = 280;
 const MAX_TITLE_LENGTH = 120;
 
-const FENCE_RE = /^(```|~~~)([a-zA-Z0-9_+\-.#]*)\s*$/;
+// Indented fences (list items) and info strings (```js title="a.js") are valid openers.
+const FENCE_RE = /^\s*(`{3,}|~{3,})\s*([a-zA-Z0-9_+\-.#]*)[^`]*$/;
 const HEADING_RE = /^(#{1,6})\s+(.+?)\s*$/;
 const HTML_TAG_RE = /<[^>]+>/g;
 
@@ -100,7 +101,7 @@ export function extractSnippets(
       // CommonMark close: a fence run >= the opening length, same char, only
       // trailing spaces. startsWith() would wrongly close a 3-backtick block on
       // a nested 4-backtick line.
-      const trimmedLine = line.trimEnd();
+      const trimmedLine = line.trim();
       const fenceChar = currentFence[0] ?? "`";
       const fenceRun = trimmedLine.match(new RegExp("^" + fenceChar.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "+"))?.[0] ?? "";
       if (fenceRun.length >= currentFence.length && trimmedLine.slice(fenceRun.length).trim() === "") {
@@ -135,7 +136,7 @@ export function extractSnippets(
       continue;
     }
 
-    const fenceMatch = FENCE_RE.exec(line.trimEnd());
+    const fenceMatch = FENCE_RE.exec(line);
     if (fenceMatch) {
       inCode = true;
       currentFence = fenceMatch[1] ?? "```";
