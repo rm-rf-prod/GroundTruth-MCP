@@ -70,20 +70,22 @@
     "registry": "https://registry.npmjs.org"
   },
   "dependencies": {
-    "@modelcontextprotocol/server": "^2.3.1",
-    "undici": "^8.11.2",
-    "zod": "^4.6.5"
+    "@modelcontextprotocol/server": "^2.4.0",
+    "undici": "^8.12.4",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@types/node": "^26.1.2",
+    "@types/node": "^26.6.6",
     "@typescript-eslint/eslint-plugin": "catalog:",
     "@typescript-eslint/parser": "catalog:",
-    "@vitest/coverage-v8": "^4.1.11",
-    "eslint": "^10.8.0",
+    "@typescript/native": "npm:typescript@^7.0.2",
+    "@vitest/coverage-v8": "^5.1.0",
+    "eslint": "^10.15.0",
     "javascript-obfuscator": "catalog:",
     "tsx": "catalog:",
-    "typescript": "^6.0.3",
-    "vitest": "^4.1.11"
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
+    "vite": "^8.1.6",
+    "vitest": "^5.1.0"
   },
   "packageManager": "pnpm@12.10.1"
 }

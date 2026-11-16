@@ -1,5 +1,21 @@
 # Changelog
 
+## [8.1.0] — 2026-11-16
+
+- **feat: `gt_audit` and `gt_auto_scan` read Jupyter notebooks (#41).** `gt_audit` scans the code cells of `.ipynb` files (never the outputs) and reports issues as `analysis.ipynb:cell_2:line_5`, the code cell and the line inside it. IPython magic and shell lines are skipped, notebooks for other kernels and `.ipynb_checkpoints` are ignored, and notebooks up to 5 MB are read. `gt_auto_scan` reads root-level notebooks: packages from `%pip install`, `!pip install` and `%conda install` lines, plus imports of libraries the registry knows by name. Standard library imports (`os`, `re`, `json`) are not listed.
+- **feat: Cloudflare D1 and R2 in the registry.** `cloudflare-d1` used to fall through to an npm search and answer with `@effect/sql-d1`; it now reads the D1 docs and their `llms.txt`. `cloudflare`, `cf` and `wrangler` resolve to Workers.
+- **fix: real docs pages were thrown away as junk.** The challenge, rate-limit and empty-shell checks matched ordinary text such as "array id", "returns 429" or "Loading...". Long pages with code blocks now pass, and "ray id" only matches as a whole phrase.
+- **fix: HTML cleanup cut content.** Class names like `has-sidebar` or `read-more` matched the noise filter as substrings, and a nested `</div>` ended the removal early. Classes are now matched by whole token, nesting is tracked, and a wrapper that holds the article or an unclosed tag never takes the page with it.
+- **fix: `gt_dispatch` passes the version to `gt_changelog`.** "what's new in react 19" now asks for the 19 notes instead of every release.
+- **fix: version filtering ignored dates.** A heading like `3.2.0 (2024-03-15)` counted 15 as a version and leaked into `gt_changelog` and `gt_migration` results for v15.
+- **fix: `gt_examples` respects `language` in its docs fallback**, the default path without a GitHub token.
+- **fix: code blocks with an info string** (```` ```ts title="a.ts" ````) or indentation are extracted as snippets.
+- **fix: two-character terms with a digit** (D1, S3, R2) count in ranking, and `|` inside table cells no longer breaks markdown tables.
+- **fix: failed Jina responses release their connection** right away instead of holding it until the 25 s timeout.
+- **chore: dependencies on their latest releases**, including the MCP SDK 2.4.0, undici 8.12.4 and zod 4.6.7. Builds use TypeScript 7 (`tsc` 7.0.2), with the TypeScript 6 API kept for linting as Microsoft recommends; tests run on Vitest 5.
+
+---
+
 ## [8.0.1] — 2026-10-11
 
 - **fix: 8.0.0 could not be installed with npm.** Its `package.json` declared `undici` and `zod` with the pnpm-only `catalog:` protocol, so `npm install` and `npx` failed with `EUNSUPPORTEDPROTOCOL`. Runtime dependencies now use plain version ranges, and a test fails the build if a pnpm protocol reaches `dependencies` again.
