@@ -46,6 +46,7 @@ import { isExtractionAttempt } from "../utils/guard.js";
 import { docCache } from "../services/cache.js";
 import { findTopicUrls } from "../services/search/topic-match.js";
 import { extractRelevantContent } from "../utils/extract.js";
+import { isHostOrSubdomain } from "../utils/url-host.js";
 
 // ── Handler capture ──────────────────────────────────────────────────────────
 
@@ -191,7 +192,7 @@ describe("gt_compat handler", () => {
         .mockResolvedValueOnce("caniuse data content here for browsers");
       await handler({ feature: "CSS grid layout" });
       const calls = vi.mocked(fetchAsMarkdownRace).mock.calls;
-      expect(calls.some(([url]) => new URL(String(url)).hostname.endsWith("caniuse.com"))).toBe(true);
+      expect(calls.some(([url]) => isHostOrSubdomain(String(url), "caniuse.com"))).toBe(true);
     });
   });
 
