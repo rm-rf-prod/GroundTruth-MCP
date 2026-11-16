@@ -18,8 +18,8 @@ const INVISIBLE = /[\u200B-\u200F\u202A-\u202E\u2060-\u2069\uFEFF\u00AD\u180B-\u
 
 const MARKUP = [
   // Remove HTML script/style tags that could confuse the LLM
-  /<script[\s\S]*?<\/script>/gi,
-  /<style[\s\S]*?<\/style>/gi,
+  /<script[\s\S]*?<\/script\b[^>]*>/gi,
+  /<style[\s\S]*?<\/style\b[^>]*>/gi,
   // Strip raw HTML structural preamble that leaks through when html-to-md
   // extraction fails to find a <main>/<article> region. These add zero
   // signal for an LLM consumer.

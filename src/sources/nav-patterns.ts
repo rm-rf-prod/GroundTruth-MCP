@@ -89,8 +89,8 @@ export const NAV_FOOTER_PATTERNS: RegExp[] = [
 
   // Orphan HTML comment markers left after the balanced <!-- --> strip in
   // INJECTION_PATTERNS \u2014 a line that is ONLY a closing/opening marker is noise.
-  /^[ \t]*-->[ \t]*$/gm,
-  /^[ \t]*<!--[^\n]*$/gm,
+  /^[ \t]*--!?>[ \t]*$/gm,
+  /^[ \t]*<!--(?:(?!--!?>)[^\n])*$/gm,
 
   // Classic / versioned-docs navigation chrome (PostgreSQL, Read the Docs, devdocs):
   // version switcher bars and "Prev Up Home Next" pager rows on their own line.

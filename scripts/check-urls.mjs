@@ -11,6 +11,17 @@ import { readFileSync } from "fs";
 // Curated URL tables live in src/sources/ (moved out of src/tools/ in 7.5.0).
 const URL_FILES = ["src/sources/best-practice-urls.ts", "src/sources/topic-urls.ts", "src/sources/registry.ts"];
 
+const SKIPPED_HOSTS = ["example.com", "localhost", "127.0.0.1"];
+
+function isSkippedHost(url) {
+  try {
+    const h = new URL(url).hostname;
+    return SKIPPED_HOSTS.some((s) => h === s || h.endsWith(`.${s}`));
+  } catch {
+    return false;
+  }
+}
+
 function extractUrls(content) {
   const urlRegex = /https?:\/\/[^\s"',)}\]]+/g;
   const matches = content.match(urlRegex) || [];
@@ -18,9 +29,7 @@ function extractUrls(content) {
     (u) =>
       !u.includes("${") && // template-literal fragments, not real URLs
       !u.includes("{") && // urlPatterns templates like /docs/{slug}
-      !u.includes("example.com") &&
-      !u.includes("localhost") &&
-      !u.includes("127.0.0.1") &&
+      !isSkippedHost(u) &&
       !u.endsWith(".") &&
       !u.endsWith(","),
   );

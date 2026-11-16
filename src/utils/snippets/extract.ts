@@ -1,5 +1,6 @@
 import type { Snippet } from "../../types.js";
 import { createHash } from "crypto";
+import { replaceUntilStable } from "../replace-stable.js";
 
 const MIN_CODE_LENGTH = 20;
 const MAX_CODE_LENGTH = 4000;
@@ -31,8 +32,7 @@ export function normalizeLanguage(raw: string): string {
 }
 
 function stripFormatting(text: string): string {
-  return text
-    .replace(HTML_TAG_RE, "")
+  return replaceUntilStable(text, HTML_TAG_RE)
     .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
     .replace(/[*_`]+/g, "")
     .replace(/\s+/g, " ")

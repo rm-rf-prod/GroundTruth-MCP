@@ -154,6 +154,6 @@ describe("fetchDocs GitHub route never lends the operator token to a caller URL"
 
   it("leaves non-repo GitHub pages (issues, pulls) to the page fetch", async () => {
     await fetchDocs("https://github.com/o/r/issues/1").catch(() => {});
-    expect(requested().some((u) => u.includes("raw.githubusercontent.com") || u.includes("api.github.com"))).toBe(false);
+    expect(requested().some((u) => ["raw.githubusercontent.com", "api.github.com"].includes(new URL(u).hostname))).toBe(false);
   });
 });

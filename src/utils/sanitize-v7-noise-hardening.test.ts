@@ -50,7 +50,7 @@ describe("sanitizeContent", () => {
 
     it("strips orphan HTML comment markers (FIX-8)", () => {
       const out = sanitizeContent("Good content.\n-->\nMore content.");
-      expect(out).not.toMatch(/^\s*-->\s*$/m);
+      expect(out).not.toMatch(/^\s*--!?>\s*$/m);
       expect(out).toContain("Good content.");
       expect(out).toContain("More content.");
     });

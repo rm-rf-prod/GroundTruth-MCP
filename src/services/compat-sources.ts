@@ -5,6 +5,7 @@ import { checkEvidence } from "../utils/evidence.js";
 import { sanitizeContent } from "../utils/sanitize.js";
 import { findTopicUrls } from "./search/topic-match.js";
 import { searchMDN } from "./search/engines.js";
+import { isHostOrSubdomain } from "../utils/url-host.js";
 
 export interface CompatSection {
   text: string;
@@ -20,7 +21,7 @@ export interface CompatSection {
 export async function resolveMdnCandidates(feature: string): Promise<string[]> {
   const candidates: string[] = findTopicUrls(feature)
     .flatMap((t) => t.urls)
-    .filter((u) => u.includes("mozilla.org"));
+    .filter((u) => isHostOrSubdomain(u, "mozilla.org"));
   // Always append MDN search hits: topic-map entries are often GUIDE pages
   // that carry no BCD paths — the reference page (with the compat table)
   // only surfaces via search, often below the guides ("container queries":

@@ -13,7 +13,7 @@ export function convertTable(tableHtml: string): string {
     while ((cellMatch = cellRegex.exec(rowMatch[1] ?? "")) !== null) {
       // Escape "|" and flatten line breaks so the cell cannot split the row.
       const text = stripTags((cellMatch[1] ?? "").replace(/<br\s*\/?>|<\/p>|<\/div>/gi, " "));
-      cells.push(text.replace(/\s+/g, " ").trim().replace(/\|/g, "\\|"));
+      cells.push(text.replace(/\s+/g, " ").trim().replace(/[\\|]/g, "\\$&"));
     }
     if (cells.length > 0) rows.push(cells);
   }

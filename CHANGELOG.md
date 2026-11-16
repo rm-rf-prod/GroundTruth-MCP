@@ -1,5 +1,12 @@
 # Changelog
 
+## [8.1.1] — 2026-11-16
+
+- **fix: stricter host and markup checks (25 code scanning alerts).** Hosts such as `github.com` and `mozilla.org` are now compared on the parsed hostname, so `evil-github.com` or a URL that merely mentions the host no longer passes. Script, style and comment stripping also catches `</script >`, `</SCRIPT foo>`, `--!>` and tags rebuilt by nesting, and backslashes are escaped in table cells and generated commands. Repository fields without a scheme (`github.com/o/r`, `git@github.com:o/r.git`) still count as GitHub.
+- **chore: minimatch 11.0.1+ in the dev toolchain** for GHSA-g3hv-75wg-m249. It came in only through typescript-eslint, which has not shipped a stable release on minimatch 11 yet; the published package was never affected.
+
+---
+
 ## [8.1.0] — 2026-11-16
 
 - **feat: `gt_audit` and `gt_auto_scan` read Jupyter notebooks (#41).** `gt_audit` scans the code cells of `.ipynb` files (never the outputs) and reports issues as `analysis.ipynb:cell_2:line_5`, the code cell and the line inside it. IPython magic and shell lines are skipped, notebooks for other kernels and `.ipynb_checkpoints` are ignored, and notebooks up to 5 MB are read. `gt_auto_scan` reads root-level notebooks: packages from `%pip install`, `!pip install` and `%conda install` lines, plus imports of libraries the registry knows by name. Standard library imports (`os`, `re`, `json`) are not listed.

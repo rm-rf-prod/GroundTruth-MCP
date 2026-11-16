@@ -109,4 +109,12 @@ describe("gt_dispatch tool", () => {
       expect(result.content[0]?.text.length).toBeGreaterThan(200);
     }
   });
+
+  it("escapes backslash and quote in the fallback query hint", async () => {
+    const server = new McpServer({ name: "test", version: "0.0.0" });
+    registerDispatchTool(server);
+    const handler = getHandler(server, "gt_dispatch");
+    const result = (await handler({ query: 'weird \\" query' })) as { content: Array<{ text: string }> };
+    expect(result.content[0]?.text).toContain('gt_search({ query: "weird \\\\\\" query" })');
+  });
 });

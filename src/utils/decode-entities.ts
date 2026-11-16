@@ -17,6 +17,8 @@
  *    Decoding before the injection scan also closes the `&#73;gnore` bypass.
  */
 
+import { replaceUntilStable } from "./replace-stable.js";
+
 // Named HTML entities common in scraped technical documentation. Maps to the real
 // Unicode glyph (faithful content) — `&nbsp;` maps to a normal space on purpose so
 // downstream whitespace collapse and trim work without a U+00A0 special case.
@@ -122,7 +124,7 @@ export function decodeCloudflareEmails(html: string): string {
   out = out.replace(/<a\b[^>]*\bhref="[^"]*\/cdn-cgi\/l\/email-protection#([0-9a-fA-F]+)"[^>]*>[\s\S]*?<\/a>/gi,
     (_m, hex: string) => decodeCfEmail(hex));
   // leftover Cloudflare loader script
-  out = out.replace(/<script\b[^>]*\/cdn-cgi\/scripts\/[^>]*>[\s\S]*?<\/script>/gi, "");
+  out = replaceUntilStable(out, /<script\b[^>]*\/cdn-cgi\/scripts\/[^>]*>[\s\S]*?<\/script\b[^>]*>/gi);
   return out;
 }
 

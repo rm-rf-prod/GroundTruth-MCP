@@ -8,6 +8,7 @@
  */
 
 import { decodeHtmlEntities } from "./decode-entities.js";
+import { replaceUntilStable } from "./replace-stable.js";
 
 import { stripNoisyElements, extractMainContent } from "./html/clean.js";
 import { stripTags, normalizeHref, isSafeHref } from "./html/links.js";
@@ -125,16 +126,16 @@ function htmlToMarkdown(html: string): string {
  * hydration payloads (Next.js RSC, Nuxt) dilute a real HTML page below the
  * markdown threshold, so it was passed through raw and rejected as a blob.
  */
-const SCRIPT_STYLE = /<script\b[\s\S]*?<\/script\s*>|<style\b[\s\S]*?<\/style\s*>/gi;
+const SCRIPT_STYLE = /<script\b[\s\S]*?<\/script\b[^>]*>|<style\b[\s\S]*?<\/style\b[^>]*>/gi;
 
 export function markupDensity(text: string): number {
-  const markup = text.replace(SCRIPT_STYLE, "");
+  const markup = replaceUntilStable(text, SCRIPT_STYLE);
   return (markup.match(/<[a-z]/gi) ?? []).length / Math.max(markup.length, 1);
 }
 
 /** Characters a reader sees: markup, script and style bodies, and whitespace left out. */
 export function visibleTextLength(html: string): number {
-  return stripTags(html.replace(SCRIPT_STYLE, "")).replace(/\s+/g, "").length;
+  return stripTags(replaceUntilStable(html, SCRIPT_STYLE)).replace(/\s+/g, "").length;
 }
 
 /**

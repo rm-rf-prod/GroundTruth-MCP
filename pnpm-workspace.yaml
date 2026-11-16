@@ -39,6 +39,7 @@ overrides:
   'minimatch@<3.1.4': '^3.1.4'
   'minimatch@>=9.0.0 <9.0.7': '^9.0.7'
   'nanoid@<3.3.18': '^3.3.18'
+  'minimatch@>=7.0.0 <11.0.1': '^11.0.1'
   'path-to-regexp': '>=8.4.0'
   'picomatch@<2.3.2': '^2.3.2'
   'postcss': '^8.5.10'

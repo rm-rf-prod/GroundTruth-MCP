@@ -1,8 +1,9 @@
 import { decodeHtmlEntities } from "../decode-entities.js";
+import { replaceUntilStable } from "../replace-stable.js";
 
 /** URL-scheme safety and tag stripping for converted markdown links. */
 export function stripTags(html: string): string {
-  return html.replace(/<[^>]+>/g, "");
+  return replaceUntilStable(html, /<[^>]+>/g);
 }
 
 // Schemes safe to render as links in extracted markdown. Allowlist beats denylist:

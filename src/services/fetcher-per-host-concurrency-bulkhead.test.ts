@@ -123,7 +123,7 @@ describe("per-host concurrency bulkhead", () => {
     let peakSameHost = 0;
     let inFlightSameHost = 0;
     mockFetch.mockImplementation(async (url: string) => {
-      const sameHost = String(url).includes("slow.example.com");
+      const sameHost = new URL(String(url)).hostname === "slow.example.com";
       if (sameHost) {
         inFlightSameHost++;
         peakSameHost = Math.max(peakSameHost, inFlightSameHost);

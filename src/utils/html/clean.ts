@@ -1,3 +1,5 @@
+import { replaceUntilStable } from "../replace-stable.js";
+
 /** Strip page chrome and isolate the main content region before conversion. */
 const NOISE_WORD = /(?:^|[-_])(?:sidebar|cookie|banner|newsletter|popup|modal|ads?|social|share|footer|nav|menu|breadcrumb|toc|table-of-contents)(?:$|[-_])/i;
 /** Noise words after `has-`/`with-`/`no-` describe a wrapper (`has-sidebar`, `page-with-toc`), not the noise itself. */
@@ -50,9 +52,9 @@ function removeNoisyByAttr(html: string): string {
 /** Remove elements that add noise: nav, footer, sidebar, scripts, styles, ads */
 export function stripNoisyElements(html: string): string {
   // Remove script and style blocks entirely (including content)
-  let cleaned = html.replace(/<script[\s\S]*?<\/script>/gi, "");
-  cleaned = cleaned.replace(/<style[\s\S]*?<\/style>/gi, "");
-  cleaned = cleaned.replace(/<noscript[\s\S]*?<\/noscript>/gi, "");
+  let cleaned = replaceUntilStable(html, /<script[\s\S]*?<\/script\b[^>]*>/gi);
+  cleaned = replaceUntilStable(cleaned, /<style[\s\S]*?<\/style\b[^>]*>/gi);
+  cleaned = replaceUntilStable(cleaned, /<noscript[\s\S]*?<\/noscript\b[^>]*>/gi);
 
   // Remove common noisy elements by tag
   const noisyTags = ["nav", "footer", "aside", "header"];

@@ -191,7 +191,7 @@ describe("gt_compat handler", () => {
         .mockResolvedValueOnce("caniuse data content here for browsers");
       await handler({ feature: "CSS grid layout" });
       const calls = vi.mocked(fetchAsMarkdownRace).mock.calls;
-      expect(calls.some(([url]) => String(url).includes("caniuse.com"))).toBe(true);
+      expect(calls.some(([url]) => new URL(String(url)).hostname.endsWith("caniuse.com"))).toBe(true);
     });
   });
 

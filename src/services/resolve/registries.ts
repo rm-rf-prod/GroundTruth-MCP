@@ -6,6 +6,7 @@ import type { LibraryMatch, NpmPackageInfo, PypiPackageInfo } from "../../types.
 import { log } from "../../utils/logger.js";
 import { sanitizeInline } from "../../utils/sanitize.js";
 import { probeLlmsTxt } from "./llms-probe.js";
+import { isHostOrSubdomain } from "../../utils/url-host.js";
 
 interface CratesApiResponse {
   crate: {
@@ -138,7 +139,7 @@ export async function resolveFromCrates(packageName: string): Promise<LibraryMat
       docsUrl,
       llmsTxtUrl: llmsProbe.llmsTxtUrl,
       ...(llmsProbe.llmsFullTxtUrl !== undefined && { llmsFullTxtUrl: llmsProbe.llmsFullTxtUrl }),
-      githubUrl: crate.repository?.includes("github.com") ? crate.repository : undefined,
+      githubUrl: crate.repository && isHostOrSubdomain(crate.repository, "github.com") ? crate.repository : undefined,
       score: 60,
       source: "crates",
     };

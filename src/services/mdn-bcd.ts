@@ -1,6 +1,7 @@
 import { fetchWithTimeout } from "./fetcher.js";
 import { discardBody } from "./http/body.js";
 import { log } from "../utils/logger.js";
+import { isHostOrSubdomain } from "../utils/url-host.js";
 
 /**
  * MDN machine-readable compatibility data.
@@ -48,7 +49,7 @@ const BROWSER_LABELS: ReadonlyArray<readonly [string, string]> = [
 function docIndexJsonUrl(docUrl: string): string | null {
   try {
     const u = new URL(docUrl);
-    if (!u.hostname.endsWith("mozilla.org")) return null;
+    if (!isHostOrSubdomain(u.href, "mozilla.org")) return null;
     const path = u.pathname.replace(/\/+$/, "");
     if (path.endsWith("/index.json")) return `${u.origin}${path}`;
     return `${u.origin}${path}/index.json`;

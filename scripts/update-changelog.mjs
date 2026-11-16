@@ -26,7 +26,7 @@ const today = new Date().toISOString().slice(0, 10);
 const changelogPath = join(root, "CHANGELOG.md");
 const existing = readFileSync(changelogPath, "utf-8");
 
-if (new RegExp(`^## \\[${version.replace(/\./g, "\\.")}\\]`, "m").test(existing)) {
+if (new RegExp(`^## \\[${version.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\]`, "m").test(existing)) {
   console.log(`changelog: section for v${version} already written by hand — left untouched`);
   process.exit(0);
 }

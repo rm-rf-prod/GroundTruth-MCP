@@ -5,6 +5,7 @@ import { resolveCache } from "../cache.js";
 import type { LibraryMatch } from "../../types.js";
 import { log } from "../../utils/logger.js";
 import { probeLlmsTxt } from "./llms-probe.js";
+import { isHostOrSubdomain } from "../../utils/url-host.js";
 
 export async function searchNpm(query: string): Promise<LibraryMatch | null> {
   const cacheKey = `npm-search:${query}`;
@@ -26,7 +27,7 @@ export async function searchNpm(query: string): Promise<LibraryMatch | null> {
     const pkg = objects[0]!.package;
     const homepage = (pkg.links?.homepage ?? "").replace(/\/+$/, "");
     const repoUrl = pkg.links?.repository;
-    const githubUrl = repoUrl?.includes("github.com") ? repoUrl : undefined;
+    const githubUrl = repoUrl && isHostOrSubdomain(repoUrl, "github.com") ? repoUrl : undefined;
 
     const llmsProbe = homepage ? await probeLlmsTxt(homepage) : {};
 

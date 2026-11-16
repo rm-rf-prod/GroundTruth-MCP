@@ -22,7 +22,7 @@ const changelog = readFileSync(join(root, "CHANGELOG.md"), "utf-8");
 
 // Extract the section for this version: from "## [X.Y.Z]" to the next "## [" or end of file
 const sectionRe = new RegExp(
-  `## \\[${version.replace(/\./g, "\\.")}\\][^\n]*\n([\\s\\S]*?)(?=\n## \\[|$)`,
+  `## \\[${version.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\][^\n]*\n([\\s\\S]*?)(?=\n## \\[|$)`,
 );
 const match = changelog.match(sectionRe);
 const notes = match ? match[1].trim().replace(/\n---\s*$/, "").trim() : `Release ${tag}`;
