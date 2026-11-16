@@ -1,17 +1,17 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.rm-rf-prod/groundtruth",
-  "description": "Live docs MCP server. 793+ libraries, evidence-verified answers, code audit, snippets, dispatch.",
+  "description": "Live docs MCP server. 795+ libraries, evidence-verified answers, code audit, snippets, dispatch.",
   "repository": {
     "url": "https://github.com/rm-rf-prod/GroundTruth-MCP",
     "source": "github"
   },
-  "version": "8.0.1",
+  "version": "8.1.0",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "@groundtruth-mcp/gt-mcp",
-      "version": "8.0.1",
+      "version": "8.1.0",
       "transport": {
         "type": "stdio"
       },

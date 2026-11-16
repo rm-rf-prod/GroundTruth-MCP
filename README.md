@@ -8,9 +8,9 @@
   <a href="https://www.npmjs.com/package/@groundtruth-mcp/gt-mcp"><img src="https://img.shields.io/npm/v/@groundtruth-mcp/gt-mcp?color=00d4aa&label=npm" alt="npm version" /></a>
   <a href="https://github.com/rm-rf-prod/GroundTruth-MCP/actions/workflows/ci.yml"><img src="https://github.com/rm-rf-prod/GroundTruth-MCP/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-ELv2-orange" alt="Elastic License 2.0" /></a>
-  <img src="https://img.shields.io/badge/libraries-793%2B-teal" alt="793+ curated libraries" />
+  <img src="https://img.shields.io/badge/libraries-795%2B-teal" alt="795+ curated libraries" />
   <img src="https://img.shields.io/badge/audit_patterns-107%2B-red" alt="107+ audit patterns" />
-  <img src="https://img.shields.io/badge/tests-2063-brightgreen" alt="2063 tests" />
+  <img src="https://img.shields.io/badge/tests-2122-brightgreen" alt="2122 tests" />
   <img src="https://img.shields.io/badge/tools-14-blue" alt="14 tools" />
   <img src="https://img.shields.io/badge/node-%3E%3D24-green" alt="Node 24+" />
 </p>
@@ -460,7 +460,7 @@ Context7 is a good product. The differences:
 | Changelog, compat, compare, examples, migration | Yes | No |
 | MCP Resources + Prompts | 2 resources, 8 prompts | No |
 | Lockfile detection | Reads exact versions from lockfiles | No |
-| Libraries | 793+ curated + npm/PyPI/crates.io/Go fallback | Undisclosed (claims "thousands") |
+| Libraries | 795+ curated + npm/PyPI/crates.io/Go fallback | Undisclosed (claims "thousands") |
 | API key required | No | No |
 
 Context7 indexes docs into a vector database, which is fast but lags behind new releases. GroundTruth fetches from the source at query time and tells the model when it found nothing on the topic.
@@ -474,7 +474,7 @@ Adding a library is a pull request to [`src/sources/registry.ts`](./src/sources/
 ```bash
 pnpm install
 pnpm typecheck
-pnpm test        # 2063 tests across 267 files
+pnpm test        # 2122 tests across 280 files
 pnpm build
 ```
 

@@ -1,11 +1,11 @@
 import { config } from "./config.js";
 
 export const SERVER_NAME = "GroundTruth";
-export const SERVER_VERSION = "8.0.1";
+export const SERVER_VERSION = "8.1.0";
 
 // Entry count of src/sources/registry.ts, the full registry that ships; rewritten
 // by scripts/lib/readme-stats.mjs (npm run update-stats), never edited by hand.
-export const REGISTRY_BADGE_SIZE = 793;
+export const REGISTRY_BADGE_SIZE = 795;
 
 // Number of MCP tools registered in index.ts — single source of truth for the
 // --health / `/health` payloads and the server-instructions header, so the count
