@@ -33,3 +33,11 @@ describe("Python audit patterns", () => {
     });
   });
 });
+
+describe("print() in notebooks", () => {
+  it("does not flag print() for .ipynb paths", () => {
+    const p = AUDIT_PATTERNS.find((x) => x.title === "print() in production code")!;
+    expect(p.test("print(1)", "print(1)", 0, ["print(1)"], 0, "a/b.ipynb")).toBeNull();
+    expect(p.test("print(1)", "print(1)", 0, ["print(1)"], 0, "a/b.py")).not.toBeNull();
+  });
+});

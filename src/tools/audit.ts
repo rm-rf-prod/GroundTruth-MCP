@@ -63,7 +63,7 @@ export function registerAuditTool(server: McpServer): void {
       // tools legitimately return long reports, so raise their inline ceiling.
       _meta: { "anthropic/maxResultSizeChars": 200_000 },
       title: "Audit Project Code",
-      description: "Scan the project's own source files for issues (file:line) and attach fixes from official docs. Use categories [\"all\"] for broad requests. Best practices for its dependencies: gt_auto_scan.",
+      description: "Scan project source files, incl. .ipynb code cells, for issues (file:line; notebooks file:cell_N:line_M) and attach fixes from official docs. Use categories [\"all\"] for broad requests. Best practices for its dependencies: gt_auto_scan.",
       inputSchema: InputSchema,
       annotations: {
         readOnlyHint: true,

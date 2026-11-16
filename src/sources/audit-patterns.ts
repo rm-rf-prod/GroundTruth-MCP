@@ -6,7 +6,10 @@
  */
 export interface Issue {
   file: string;
+  /** Line in the file, or within the notebook code cell when `cell` is set. */
   line: number;
+  /** 1-based code-cell index; set only for .ipynb files. */
+  cell?: number;
   category: string;
   severity: "critical" | "high" | "medium" | "low";
   title: string;
@@ -949,7 +952,7 @@ export const AUDIT_PATTERNS: AuditPattern[] = [
       "`print()` writes to stdout with no log level, no timestamps, and no filtering. In production this pollutes logs and can expose sensitive data.",
     fix: "Replace with `logging.debug()`, `logging.info()`, etc. Configure the root logger at application startup with a structured formatter.",
     docsQuery: "Python logging best practices production print",
-    test: (line) => /\bprint\s*\(/.test(line) ? line : null,
+    test: (line, _c, _o, _l, _i, filePath) => (filePath?.endsWith(".ipynb") ? null : /\bprint\s*\(/.test(line) ? line : null),
   },
   {
     category: "python",

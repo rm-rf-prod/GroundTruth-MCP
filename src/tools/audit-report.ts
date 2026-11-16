@@ -24,11 +24,18 @@ export interface AuditReport {
   };
 }
 
+/** `file:line`, or `file:cell_N:line_M` for a notebook code cell. */
+export function issueLocation(issue: Pick<Issue, "file" | "line" | "cell">): string {
+  return issue.cell === undefined
+    ? `${issue.file}:${issue.line}`
+    : `${issue.file}:cell_${issue.cell}:line_${issue.line}`;
+}
+
 function renderSection(title: string, issues: Issue[], bpMap: Map<string, string>): string {
   const first = issues[0]!;
   const locations = issues
     .slice(0, 10)
-    .map((i) => `  - \`${i.file}:${i.line}\``)
+    .map((i) => `  - \`${issueLocation(i)}\``)
     .join("\n");
   const overflow = issues.length > 10 ? `  - ...and ${issues.length - 10} more` : "";
   const bp = bpMap.get(title) ?? "";
@@ -90,7 +97,7 @@ export function renderAuditReport(params: {
       severity: occs[0]?.severity,
       category: occs[0]?.category,
       count: occs.length,
-      locations: occs.slice(0, 5).map((i) => `${i.file}:${i.line}`),
+      locations: occs.slice(0, 5).map(issueLocation),
     })),
   };
 

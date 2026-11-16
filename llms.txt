@@ -33,9 +33,9 @@ For Cursor, VS Code, or Claude Desktop, add to your MCP config:
 - gt_resolve_library. Looks up a library name in the registry, then falls back to npm, PyPI, crates.io, and Go. Call this before gt_get_docs.
 - gt_get_docs. Fetches docs for a library. Optional topic filter, lockfile-aware version detection.
 - gt_best_practices. Patterns, anti-patterns, and config guidance for one library.
-- gt_auto_scan. Reads dependency manifests, detects lockfile versions, fetches best practices for every dep.
+- gt_auto_scan. Reads dependency manifests and root-level Jupyter notebooks (.ipynb), detects lockfile versions, fetches best practices for every dep.
 - gt_search. Freeform search across OWASP, MDN, web.dev, W3C, AI provider docs. No library name required.
-- gt_audit. Scans source files. Returns issues at file:line with fixes from official specs.
+- gt_audit. Scans source files and Jupyter notebook code cells (.ipynb). Returns issues at file:line, or file:cell_N:line_M in notebooks, with fixes from official specs.
 - gt_changelog. Recent release notes. Read this before upgrading.
 - gt_compat. Browser and runtime compatibility from MDN and caniuse.
 - gt_compare. Side-by-side comparison of two or three libraries.

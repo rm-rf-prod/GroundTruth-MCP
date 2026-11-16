@@ -91,7 +91,7 @@ Fourteen tools. Each does one job, and each is also a CLI command.
 | `gt_best_practices` | `bp` | Patterns, anti-patterns and configuration guidance for a library |
 | `gt_auto_scan` | `scan` | Reads your manifest and fetches best practices for each dependency |
 | `gt_search` | `search` | Any topic without a library: OWASP, MDN, web.dev, W3C, AI provider docs, Google APIs |
-| `gt_audit` | `audit` | Scans source files and reports issues at `file:line` with links to the fix |
+| `gt_audit` | `audit` | Scans source files and Jupyter notebooks, reports issues at `file:line` (`file:cell_N:line_M` in notebooks) with links to the fix |
 | `gt_changelog` | `changelog` | Release notes before you upgrade |
 | `gt_compat` | `compat` | Browser and runtime support from MDN browser-compat-data and caniuse |
 | `gt_compare` | `compare` | Two or three libraries side by side |
@@ -131,6 +131,8 @@ gt_examples({ library: "hono", pattern: "middleware" })
 ### `gt_audit`
 
 Walks your project, runs 107+ patterns across 18 categories, reports each issue at `file:line`, then fetches the fix from the authoritative source.
+
+It reads `.ts`, `.tsx`, `.js`, `.jsx`, `.mjs`, `.css`, `.scss`, `.html`, `.py`, `.vue`, `.svelte` and `.ipynb` files. For a Python notebook it scans the code cells only, never the outputs, skips IPython magic and shell lines (`%matplotlib inline`, `!ls`), and reports `analysis.ipynb:cell_2:line_5`: the code cell (counting code cells only) and the line inside it. It reads notebooks up to 5 MB and skips notebooks for other kernels (R, Julia) and `.ipynb_checkpoints` folders.
 
 ```
 gt_audit({ categories: ["all"] })                      // all 18 categories
@@ -173,6 +175,8 @@ Live fix: OWASP SQL Injection Prevention Cheat Sheet
 Point it at a project root. It reads the manifest and lockfile, works out which libraries you use and at which versions, and returns best practices for each, top libraries first. Default output is about 15K characters.
 
 Reads `package.json`, `deno.json`, `requirements.txt`, `pyproject.toml`, `Cargo.toml`, `go.mod`, `pom.xml`, `build.gradle`, `build.gradle.kts`, `composer.json`, `Gemfile` and `pubspec.yaml`.
+
+It also reads Python notebooks (`*.ipynb`) in the project root: the packages named on `%pip install`, `!pip install` and `%conda install` lines, plus imports of libraries the registry knows (first 20 notebooks only). Standard library imports such as `os` or `json` are not listed.
 
 ### `gt_search`
 

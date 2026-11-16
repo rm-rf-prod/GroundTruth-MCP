@@ -43,7 +43,7 @@ export function registerAutoScanTool(server: McpServer): void {
       // tools legitimately return long reports, so raise their inline ceiling.
       _meta: { "anthropic/maxResultSizeChars": 200_000 },
       title: "Auto-Scan Project Dependencies",
-      description: "Detect the project's dependencies (package.json, pyproject.toml, requirements.txt, Cargo.toml, go.mod, ...) and fetch best practices for each. Issues in the project's own code: gt_audit.",
+      description: "Detect the project's dependencies (package.json, pyproject.toml, requirements.txt, Cargo.toml, go.mod, root .ipynb, ...) and fetch best practices for each. Issues in the project's own code: gt_audit.",
       inputSchema: InputSchema,
       annotations: {
         readOnlyHint: true,
@@ -69,7 +69,7 @@ export function registerAutoScanTool(server: McpServer): void {
           return {
             content: [{
               type: "text",
-              text: `No dependency files found in: ${resolvedPath}\n\nLooked for: package.json, requirements.txt, pyproject.toml, Cargo.toml, go.mod\n\nTry providing the correct projectPath or use gt_get_docs / gt_best_practices directly.`,
+              text: `No dependency files found in: ${resolvedPath}\n\nLooked for: package.json, requirements.txt, pyproject.toml, Cargo.toml, go.mod, *.ipynb (project root)\n\nTry providing the correct projectPath or use gt_get_docs / gt_best_practices directly.`,
             }],
           };
         }
