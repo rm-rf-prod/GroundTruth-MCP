@@ -60,7 +60,7 @@ overrides:
   'ws@>=8.0.0 <8.21.0': '^8.21.0'
 catalog:
   '@typescript-eslint/eslint-plugin': '^8.72.2'
-  '@typescript-eslint/parser': '^8.72.2'
+  '@typescript-eslint/parser': '^8.73.0'
   'javascript-obfuscator': '^5.10.0'
   'tsx': '^4.23.15'
   'undici': '^8.12.4'
